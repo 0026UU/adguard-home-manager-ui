@@ -122,13 +122,19 @@ void main() {
     expect(inline, findsOneWidget);
     expect(tester.widget<AnimatedOpacity>(inline).opacity, 1);
 
-    // The collapsing area shrinks to nothing, so the large title loses all of
-    // its height and cannot be painted over the inline title.
+    // The collapsing area shrinks to nothing, so the large title is clipped
+    // and cannot be painted over the inline title. The inner ClipRect is the
+    // one AppleLargeTitle puts around the title.
     final large = find.descendant(
       of: find.byType(AppleLargeTitle),
       matching: find.text('Settings'),
     );
-    expect(tester.getRect(large).height, 0);
+    final clips = find.descendant(
+      of: find.byType(AppleLargeTitle),
+      matching: find.byType(ClipRect),
+    );
+    expect(tester.getSize(clips.last).height, 0);
+    expect(tester.getRect(large).height, greaterThan(0));
 
     await expectLater(
       find.byType(MaterialApp),
@@ -152,6 +158,74 @@ void main() {
     await expectLater(
       find.byType(MaterialApp),
       matchesGoldenFile('goldens/header_with_segment.png'),
+    );
+  });
+
+  testWidgets('the overview hero and statistics grid draw as cards',
+      (tester) async {
+    await _pump(
+      tester,
+      Scaffold(
+        backgroundColor: ApplePalette(Brightness.light).window,
+        body: ListView(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: AppleHero(
+                active: true,
+                icon: Icons.shield,
+                title: 'Protection enabled',
+                description: 'Blocked 5,921 / 18,432',
+                trailing: SizedBox(width: 58, height: 58),
+                actions: [
+                  AppleButton.secondary(label: 'Manage'),
+                  AppleButton(label: 'Logs'),
+                ],
+              ),
+            ),
+            const AppleStatGrid(
+              tiles: [
+                AppleStatTile(
+                  label: 'Queries',
+                  value: '18,432',
+                  sparkline: AppleSparkline(
+                    values: [12, 18, 9, 24, 20, 31, 27],
+                    color: Color(0xFF0A84FF),
+                    width: 74,
+                    height: 28,
+                  ),
+                ),
+                AppleStatTile(
+                  label: 'Blocked',
+                  value: '5,921',
+                  caption: '32.1%',
+                ),
+                AppleStatTile(
+                  label: 'Elapsed time',
+                  value: '24.6',
+                  unit: 'ms',
+                ),
+                AppleStatTile(
+                  label: 'Rules',
+                  value: '312,547',
+                  sparkline: AppleSparkline(
+                    values: [30, 12, 22, 8, 26, 19, 24],
+                    color: Color(0xFFFF9F0A),
+                    width: 74,
+                    height: 28,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/overview_hero.png'),
     );
   });
 

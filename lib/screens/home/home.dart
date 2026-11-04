@@ -91,8 +91,21 @@ class _HomeState extends State<Home> {
       ? ''
       : "${server.connectionMethod}://${server.domain}${server.path ?? ""}${server.port != null ? ':${server.port}' : ""}";
 
+    // The status line under the title, as the design layer draws it. The
+    // protection word differs from the one the hero card uses, so the two
+    // lines do not read as the same sentence twice.
+    final subtitle = [
+      server?.name,
+      if (!appConfigProvider.hideServerAddress) address,
+      protectedOn
+          ? AppLocalizations.of(context)!.enabled
+          : AppLocalizations.of(context)!.disabled,
+    ].where((part) => part != null && part.isNotEmpty).join(' · ');
+
     return AppleScreen(
-      title: server?.name ?? AppLocalizations.of(context)!.noServerSelected,
+      title: AppLocalizations.of(context)!.home,
+      subtitle: subtitle,
+      subtitleDot: protectedOn ? p.green : p.red,
       onRefresh: _refresh,
       floatingActionButton: const HomeFab(),
       actions: [
@@ -156,7 +169,6 @@ class _HomeState extends State<Home> {
           SliverToBoxAdapter(
             child: _HeroCard(
               stats: stats,
-              address: appConfigProvider.hideServerAddress ? null : address,
               protectionOn: protectedOn,
               protectionLabel: AppLocalizations.of(context)!.allProtections,
               onManage: () => showAppleSheet(
@@ -168,6 +180,13 @@ class _HomeState extends State<Home> {
                   child: ManagementModal(dialog: false),
                 ),
               ),
+              onOpenLogs: () => _openLogs('all'),
+            ),
+          ),
+
+          SliverToBoxAdapter(
+            child: _StatGrid(
+              stats: stats,
               onOpenLogs: () => _openLogs('all'),
             ),
           ),
@@ -286,7 +305,6 @@ class _HomeState extends State<Home> {
 /// Green/red status card at the top of the overview.
 class _HeroCard extends StatelessWidget {
   final DnsStatistics stats;
-  final String? address;
   final bool protectionOn;
   final String protectionLabel;
   final VoidCallback onManage;
@@ -294,7 +312,6 @@ class _HeroCard extends StatelessWidget {
 
   const _HeroCard({
     required this.stats,
-    required this.address,
     required this.protectionOn,
     required this.protectionLabel,
     required this.onManage,
@@ -311,127 +328,125 @@ class _HeroCard extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-      child: AppleCard(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: AppleHero(
+        active: protectionOn,
+        icon: protectionOn
+            ? CupertinoIcons.checkmark_shield
+            : CupertinoIcons.pause_circle,
+        onTapIcon: onManage,
+        title: protectionOn
+            ? AppLocalizations.of(context)!.protectionEnabled
+            : AppLocalizations.of(context)!.disabled,
+        description:
+            "${AppLocalizations.of(context)!.blocked} "
+            "${intFormat(stats.numBlockedFiltering, Platform.localeName)} / "
+            "${intFormat(stats.numDnsQueries, Platform.localeName)}",
+        trailing: AppleDonut(
+          percent: rate,
+          size: 58,
+          stroke: 7,
+          color: p.red,
+          child: Text.rich(
+            TextSpan(
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+                color: p.label,
+              ),
               children: [
-                AppleIconBadge(
-                  icon: protectionOn ? CupertinoIcons.checkmark_shield : CupertinoIcons.slash_circle,
-                  color: protectionOn ? p.green : p.red,
-                  size: 34,
-                  iconSize: 21,
-                ),
-                const SizedBox(width: 11),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        protectionLabel,
-                        style: TextStyle(fontSize: 13, color: p.label2),
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        protectionOn
-                          ? AppLocalizations.of(context)!.protectionEnabled
-                          : AppLocalizations.of(context)!.disabled,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.4,
-                          color: protectionOn ? p.label : p.red,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                AppleDonut(
-                  percent: rate,
-                  size: 56,
-                  stroke: 7,
-                  color: p.red,
-                  child: Text(
-                    '${rate.toStringAsFixed(0)}%',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.4,
-                      color: p.red,
-                    ),
-                  ),
+                TextSpan(text: rate.toStringAsFixed(0)),
+                TextSpan(
+                  text: '%',
+                  style: TextStyle(fontSize: 10, letterSpacing: 0),
                 ),
               ],
             ),
-            if (address != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                address!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontFamily: 'monospace',
-                  color: p.label3,
-                ),
-              ),
-            ],
-            const SizedBox(height: 14),
-            AppleSeparator(indent: 0, color: p.separatorSoft),
-            const SizedBox(height: 2),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: AppleStatCard(
-                      label: AppLocalizations.of(context)!.queries,
-                      value: intFormat(stats.numDnsQueries, Platform.localeName),
-                    ),
-                  ),
-                  Expanded(
-                    child: AppleStatCard(
-                      label: AppLocalizations.of(context)!.blocked,
-                      value: intFormat(stats.numBlockedFiltering, Platform.localeName),
-                      valueColor: p.red,
-                    ),
-                  ),
-                  Expanded(
-                    child: AppleStatCard(
-                      label: AppLocalizations.of(context)!.elapsedTime,
-                      value: "${doubleFormat(stats.avgProcessingTime*1000, Platform.localeName)} ms",
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            AppleSeparator(indent: 0, color: p.separatorSoft),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: AppleButton.secondary(
-                    label: protectionLabel,
-                    icon: CupertinoIcons.slider_horizontal_3,
-                    onPressed: onManage,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: AppleButton(
-                    label: AppLocalizations.of(context)!.queryLogsAndStatistics,
-                    icon: CupertinoIcons.doc_text,
-                    onPressed: onOpenLogs,
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
+        actions: [
+          AppleButton.secondary(
+            label: protectionLabel,
+            onPressed: onManage,
+          ),
+          AppleButton(
+            label: AppLocalizations.of(context)!.logs,
+            onPressed: onOpenLogs,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The four headline numbers of the overview, as the design layer grids them.
+class _StatGrid extends StatelessWidget {
+  final DnsStatistics stats;
+  final VoidCallback onOpenLogs;
+
+  const _StatGrid({
+    required this.stats,
+    required this.onOpenLogs,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+    final l = AppLocalizations.of(context)!;
+
+    final double rate = stats.numDnsQueries > 0
+      ? (stats.numBlockedFiltering / stats.numDnsQueries) * 100
+      : 0;
+
+    List<double> series(List<int> values) =>
+        values.map((value) => value.toDouble()).toList();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: AppleStatGrid(
+        tiles: [
+          AppleStatTile(
+            label: l.queries,
+            value: intFormat(stats.numDnsQueries, Platform.localeName),
+            sparkline: AppleSparkline(
+              values: series(stats.dnsQueries),
+              color: p.tint,
+              width: 74,
+              height: 28,
+            ),
+            onTap: onOpenLogs,
+          ),
+          AppleStatTile(
+            label: l.blocked,
+            value: intFormat(stats.numBlockedFiltering, Platform.localeName),
+            caption: "${doubleFormat(rate, Platform.localeName)}%",
+            captionColor: p.red,
+            sparkline: AppleSparkline(
+              values: series(stats.blockedFiltering),
+              color: p.red,
+              width: 74,
+              height: 28,
+            ),
+          ),
+          AppleStatTile(
+            label: l.elapsedTime,
+            value: doubleFormat(
+              stats.avgProcessingTime * 1000,
+              Platform.localeName,
+            ),
+            unit: 'ms',
+          ),
+          AppleStatTile(
+            label: l.malwarePhishingBlocked,
+            value: intFormat(stats.numReplacedSafebrowsing, Platform.localeName),
+            sparkline: AppleSparkline(
+              values: series(stats.replacedSafebrowsing),
+              color: p.orange,
+              width: 74,
+              height: 28,
+            ),
+          ),
+        ],
       ),
     );
   }

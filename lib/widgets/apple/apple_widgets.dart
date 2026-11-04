@@ -138,6 +138,13 @@ class AppleScreen extends StatelessWidget {
   /// destinations leave this empty.
   final Widget? leading;
 
+  /// Second line under the large title, like the status line the design layer
+  /// puts below every page title. It scrolls away with the title.
+  final String? subtitle;
+
+  /// Colour of the status dot drawn in front of [subtitle].
+  final Color? subtitleDot;
+
   const AppleScreen({
     super.key,
     required this.title,
@@ -151,6 +158,8 @@ class AppleScreen extends StatelessWidget {
     this.body,
     this.scrollController,
     this.leading,
+    this.subtitle,
+    this.subtitleDot,
   });
 
   @override
@@ -174,6 +183,8 @@ class AppleScreen extends StatelessWidget {
       actionsIconTheme: IconThemeData(color: p.tint),
       flexibleSpace: AppleLargeTitle(
         title: title,
+        subtitle: subtitle,
+        subtitleDot: subtitleDot,
         bottomHeight: header == null ? 0 : 44,
       ),
     );
@@ -230,11 +241,19 @@ class AppleLargeTitle extends StatelessWidget {
   /// Leading inset, 20pt like an iOS large title.
   final double leadingInset;
 
+  /// Status line drawn under the title, 14pt like the design layer.
+  final String? subtitle;
+
+  /// Colour of the dot in front of [subtitle].
+  final Color? subtitleDot;
+
   const AppleLargeTitle({
     super.key,
     required this.title,
     this.bottomHeight = 0,
     this.leadingInset = 20,
+    this.subtitle,
+    this.subtitleDot,
   });
 
   @override
@@ -266,17 +285,63 @@ class AppleLargeTitle extends StatelessWidget {
                     16,
                     bottomHeight > 0 ? 4 : 10,
                   ),
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 34,
-                      height: 1.15,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -1.1,
-                      color: p.label,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 34,
+                          height: 1.15,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -1.1,
+                          color: p.label,
+                        ),
+                      ),
+                      if (subtitle != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (subtitleDot != null) ...[
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: subtitleDot,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: subtitleDot!.withValues(
+                                          alpha: 0.22,
+                                        ),
+                                        spreadRadius: 3,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 7),
+                              ],
+                              Flexible(
+                                child: Text(
+                                  subtitle!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    height: 1.25,
+                                    color: p.label2,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -1118,6 +1183,326 @@ class AppleCard extends StatelessWidget {
         borderRadius: radius ?? BorderRadius.circular(10),
       ),
       child: child,
+    );
+  }
+}
+
+/// Status card at the top of the overview: a tinted wash, a soft glow in the
+/// corner, a round action on the leading edge, the state and the actions
+/// underneath. The wash and the glow follow [active], green when the server is
+/// protecting and red when it is not.
+class AppleHero extends StatelessWidget {
+  final bool active;
+  final IconData icon;
+
+  /// Title of the card, e.g. the protection state.
+  final String title;
+
+  /// Second line under the title.
+  final String? description;
+
+  /// Round button on the leading edge.
+  final VoidCallback? onTapIcon;
+
+  /// Ring progress at the trailing edge.
+  final Widget? trailing;
+
+  /// Buttons along the bottom edge, laid out side by side.
+  final List<Widget> actions;
+
+  const AppleHero({
+    super.key,
+    required this.active,
+    required this.icon,
+    required this.title,
+    this.description,
+    this.onTapIcon,
+    this.trailing,
+    this.actions = const [],
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+    final Color accent = active ? p.green : p.red;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.alphaBlend(accent.withValues(alpha: 0.16), p.card),
+            p.card,
+          ],
+          stops: const [0.0, 0.62],
+        ),
+      ),
+      child: Stack(
+        children: [
+          // The glow sits outside the card and is cut by its corner radius.
+          Positioned(
+            right: -70,
+            top: -90,
+            child: Container(
+              width: 220,
+              height: 220,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    accent.withValues(alpha: 0.34),
+                    accent.withValues(alpha: 0),
+                  ],
+                  stops: const [0.0, 0.7],
+                ),
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: onTapIcon,
+                    child: Container(
+                      width: 62,
+                      height: 62,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: accent,
+                        boxShadow: [
+                          BoxShadow(
+                            color: accent.withValues(alpha: 0.3),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Icon(icon, size: 30, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                            color: p.label,
+                          ),
+                        ),
+                        if (description != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 3),
+                            child: Text(
+                              description!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                height: 1.45,
+                                color: p.label2,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (trailing != null) trailing!,
+                ],
+              ),
+              if (actions.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Row(
+                    children: [
+                      for (var i = 0; i < actions.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 10),
+                        Expanded(child: actions[i]),
+                      ],
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One tile of the statistics grid: caption, big number, optional note and an
+/// optional sparkline pinned to the top right corner of the tile.
+class AppleStatTile extends StatelessWidget {
+  final String label;
+  final String value;
+
+  /// Unit shown after the number, smaller and grey.
+  final String? unit;
+
+  /// Note under the number, e.g. a percentage.
+  final String? caption;
+  final Color? captionColor;
+
+  /// Series drawn behind the number, e.g. an `AppleSparkline`.
+  final Widget? sparkline;
+
+  final VoidCallback? onTap;
+
+  const AppleStatTile({
+    super.key,
+    required this.label,
+    required this.value,
+    this.unit,
+    this.caption,
+    this.captionColor,
+    this.sparkline,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+        decoration: BoxDecoration(
+          color: p.card,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: p.label2,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -1.2,
+                          height: 1.05,
+                          color: p.label,
+                        ),
+                      ),
+                    ),
+                    if (unit != null)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 2),
+                        child: Text(
+                          unit!,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: p.label2,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                if (caption != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      caption!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: captionColor ?? p.label3,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            if (sparkline != null)
+              Positioned(
+                right: 8,
+                top: 10,
+                child: Opacity(opacity: 0.42, child: sparkline!),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Statistics laid out as the design layer does: two columns of tiles.
+class AppleStatGrid extends StatelessWidget {
+  final List<Widget> tiles;
+  final EdgeInsetsGeometry padding;
+
+  const AppleStatGrid({
+    super.key,
+    required this.tiles,
+    this.padding = const EdgeInsets.symmetric(horizontal: 16),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[];
+    for (var i = 0; i < tiles.length; i += 2) {
+      // IntrinsicHeight keeps the two tiles of a row the same height, which is
+      // what the grid does in the design layer.
+      rows.add(
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: tiles[i]),
+              if (i + 1 < tiles.length) ...[
+                const SizedBox(width: 10),
+                Expanded(child: tiles[i + 1]),
+              ] else
+                const SizedBox(width: 10),
+            ],
+          ),
+        ),
+      );
+      if (i + 2 < tiles.length) {
+        rows.add(const SizedBox(height: 10));
+      }
+    }
+
+    return Padding(
+      padding: padding,
+      child: Column(children: rows),
     );
   }
 }
