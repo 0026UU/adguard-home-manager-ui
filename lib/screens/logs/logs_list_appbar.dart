@@ -2,6 +2,7 @@
 
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
@@ -11,8 +12,9 @@ import 'package:adguard_home_manager/screens/logs/live/live_logs_screen.dart';
 import 'package:adguard_home_manager/screens/logs/filters/logs_filters_modal.dart';
 import 'package:adguard_home_manager/widgets/floating_search_bar.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
 import 'package:adguard_home_manager/constants/enums.dart';
-import 'package:adguard_home_manager/functions/desktop_mode.dart';
 import 'package:adguard_home_manager/providers/live_logs_provider.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/models/applied_filters.dart';
@@ -22,12 +24,10 @@ final GlobalKey _searchButtonKey = GlobalKey();
 
 class LogsListAppBar extends StatelessWidget {
   final bool innerBoxIsScrolled;
-  final bool showDivider;
 
   const LogsListAppBar({
     super.key,
     required this.innerBoxIsScrolled,
-    required this.showDivider,
   });
 
   @override
@@ -35,6 +35,8 @@ class LogsListAppBar extends StatelessWidget {
     final logsProvider = Provider.of<LogsProvider>(context);
 
     final width = MediaQuery.of(context).size.width;
+    final localizations = AppLocalizations.of(context)!;
+    final palette = ApplePalette.of(context);
 
     void openFilersModal() {
       if (width > 700 || !(Platform.isAndroid || Platform.isIOS)) {
@@ -107,44 +109,57 @@ class LogsListAppBar extends StatelessWidget {
     }
 
     final Map<String, String> translatedString = {
-      "all": AppLocalizations.of(context)!.all, 
-      "filtered": AppLocalizations.of(context)!.filtered, 
-      "processed": AppLocalizations.of(context)!.processedRow, 
-      "whitelisted": AppLocalizations.of(context)!.processedWhitelistRow, 
-      "blocked": AppLocalizations.of(context)!.blocked, 
-      "blocked_safebrowsing": AppLocalizations.of(context)!.blockedSafeBrowsingRow, 
-      "blocked_parental": AppLocalizations.of(context)!.blockedParentalRow, 
-      "safe_search": AppLocalizations.of(context)!.safeSearch, 
+      "all": localizations.all, 
+      "filtered": localizations.filtered, 
+      "processed": localizations.processedRow, 
+      "whitelisted": localizations.processedWhitelistRow, 
+      "blocked": localizations.blocked, 
+      "blocked_safebrowsing": localizations.blockedSafeBrowsingRow, 
+      "blocked_parental": localizations.blockedParentalRow, 
+      "safe_search": localizations.safeSearch, 
     };
+
+    final applied = logsProvider.appliedFilters;
+    final hasFilters = applied.searchText != null
+      || applied.selectedResultStatus != 'all'
+      || applied.clients.isNotEmpty;
 
     return SliverAppBar.large(
       pinned: true,
       floating: true,
       centerTitle: false,
+      titleSpacing: 20,
       forceElevated: innerBoxIsScrolled,
-      surfaceTintColor: isDesktop(width) ? Colors.transparent : null,
-      title: Text(AppLocalizations.of(context)!.logs),
+      title: Text(localizations.logs),
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
+      backgroundColor: Colors.transparent,
+      foregroundColor: palette.label,
+      iconTheme: IconThemeData(color: palette.label),
+      actionsIconTheme: IconThemeData(color: palette.tint),
+      flexibleSpace: AppleBlur(color: palette.chrome),
       actions: [
         if (!(Platform.isAndroid || Platform.isIOS)) IconButton(
           onPressed: () => logsProvider.fetchLogs(inOffset: 0), 
-          icon: const Icon(Icons.refresh_rounded),
-          tooltip: AppLocalizations.of(context)!.refresh,
+          icon: const Icon(CupertinoIcons.arrow_clockwise),
+          tooltip: localizations.refresh,
         ),
         if (logsProvider.loadStatus == LoadStatus.loaded) IconButton(
           key: _searchButtonKey,
           onPressed: showSearchDialog,
-          icon: const Icon(Icons.search_rounded),
-          tooltip: AppLocalizations.of(context)!.search,
+          icon: const Icon(CupertinoIcons.search),
+          tooltip: localizations.search,
         ),
         if (logsProvider.loadStatus == LoadStatus.loaded) PopupMenuButton(
+          tooltip: localizations.filters,
           itemBuilder: (context) => [
             PopupMenuItem(
               onTap: openFilersModal,
               child: Row(
                 children: [
-                  const Icon(Icons.filter_list_rounded),
+                  const Icon(CupertinoIcons.slider_horizontal_3),
                   const SizedBox(width: 10),
-                  Text(AppLocalizations.of(context)!.filters)
+                  Text(localizations.filters)
                 ],
               )
             ),
@@ -152,9 +167,9 @@ class LogsListAppBar extends StatelessWidget {
               onTap: openLiveLogsScreen,
               child: Row(
                 children: [
-                  const Icon(Icons.stream_rounded),
+                  const Icon(CupertinoIcons.bolt),
                   const SizedBox(width: 10),
-                  Text(AppLocalizations.of(context)!.liveLogs)
+                  Text(localizations.liveLogs)
                 ],
               )
             ),
@@ -162,133 +177,77 @@ class LogsListAppBar extends StatelessWidget {
         ),
         const SizedBox(width: 8),
       ],
-      bottom: logsProvider.appliedFilters.searchText != null || logsProvider.appliedFilters.selectedResultStatus != 'all' || logsProvider.appliedFilters.clients.isNotEmpty
-        ? PreferredSize(
-            preferredSize: const Size(double.maxFinite, 70),
-            child: Container(
-              height: 50,
-              width: double.maxFinite,
-              padding: const EdgeInsets.only(bottom: 10),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: showDivider == true
-                      ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1)
-                      : Colors.transparent,
-                  )
-                )
-              ),
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  if (logsProvider.appliedFilters.searchText != null) ...[
-                    const SizedBox(width: 15),
-                    Chip(
-                      avatar: const Icon(
-                        Icons.search_rounded,
-                      ),
-                      label: Row(
-                        children: [
-                          Text(
-                            logsProvider.appliedFilters.searchText!,
-                          ),
-                        ],
-                      ),
-                      deleteIcon: const Icon(
-                        Icons.clear,
-                        size: 18,
-                      ),
-                      onDeleted: () {
-                        logsProvider.setAppliedFilters(
-                          AppliedFiters(
-                            selectedResultStatus: logsProvider.appliedFilters.selectedResultStatus, 
-                            searchText: null,
-                            clients: logsProvider.appliedFilters.clients
-                          )
-                        );
-                        logsProvider.setSearchText(null);
-                        logsProvider.fetchLogs(
-                          inOffset: 0,
-                          searchText: ''
-                        );
-                      },
-                    ),
-                  ],
-                  if (logsProvider.appliedFilters.selectedResultStatus != 'all') ...[
-                    const SizedBox(width: 15),
-                    Chip(
-                      avatar: const Icon(
-                        Icons.shield_rounded,
-                      ),
-                      label: Row(
-                        children: [
-                          Text(
-                            translatedString[logsProvider.appliedFilters.selectedResultStatus]!,
-                          ),
-                        ],
-                      ),
-                      deleteIcon: const Icon(
-                        Icons.clear,
-                        size: 18,
-                      ),
-                      onDeleted: () {
-                        logsProvider.setAppliedFilters(
-                          AppliedFiters(
-                            selectedResultStatus: 'all', 
-                            searchText: logsProvider.appliedFilters.searchText,
-                            clients: logsProvider.appliedFilters.clients
-                          )
-                        );
-                        logsProvider.setSelectedResultStatus(value: 'all');
-                        logsProvider.fetchLogs(
-                          inOffset: 0,
-                          responseStatus: 'all'
-                        );
-                      },
-                    ),
-                  ],
-                  if (logsProvider.appliedFilters.clients.isNotEmpty) ...[
-                    const SizedBox(width: 15),
-                    Chip(
-                      avatar: const Icon(
-                        Icons.smartphone_rounded,
-                      ),
-                      label: Row(
-                        children: [
-                          Text(
-                            logsProvider.appliedFilters.clients.length == 1
-                              ? logsProvider.appliedFilters.clients[0]
-                              : "${logsProvider.appliedFilters.clients.length} ${AppLocalizations.of(context)!.clients}",
-                          ),
-                        ],
-                      ),
-                      deleteIcon: const Icon(
-                        Icons.clear,
-                        size: 18,
-                      ),
-                      onDeleted: () {
-                        logsProvider.setAppliedFilters(
-                          AppliedFiters(
-                            selectedResultStatus: logsProvider.appliedFilters.selectedResultStatus, 
-                            searchText: logsProvider.appliedFilters.searchText,
-                            clients: []
-                          )
-                        );
-                        logsProvider.setSelectedClients(null);
-                        logsProvider.fetchLogs(
-                          inOffset: 0,
-                          responseStatus: logsProvider.appliedFilters.selectedResultStatus
-                        );
-                      },
-                    ),
-                  ],
-                  const SizedBox(width: 15),
-                ],
-              ),
-            )
+      bottom: hasFilters
+        ? AppleHeaderBar(
+            height: 46,
+            padding: const EdgeInsets.fromLTRB(16, 2, 12, 8),
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                if (applied.searchText != null)
+                  AppleFilterChip(
+                    icon: CupertinoIcons.search,
+                    label: applied.searchText!,
+                    onDeleted: () {
+                      logsProvider.setAppliedFilters(
+                        AppliedFiters(
+                          selectedResultStatus: applied.selectedResultStatus, 
+                          searchText: null,
+                          clients: applied.clients
+                        )
+                      );
+                      logsProvider.setSearchText(null);
+                      logsProvider.fetchLogs(
+                        inOffset: 0,
+                        searchText: ''
+                      );
+                    },
+                  ),
+                if (applied.selectedResultStatus != 'all')
+                  AppleFilterChip(
+                    icon: CupertinoIcons.checkmark_shield,
+                    color: palette.tint,
+                    label: translatedString[applied.selectedResultStatus]!,
+                    onDeleted: () {
+                      logsProvider.setAppliedFilters(
+                        AppliedFiters(
+                          selectedResultStatus: 'all', 
+                          searchText: applied.searchText,
+                          clients: applied.clients
+                        )
+                      );
+                      logsProvider.setSelectedResultStatus(value: 'all');
+                      logsProvider.fetchLogs(
+                        inOffset: 0,
+                        responseStatus: 'all'
+                      );
+                    },
+                  ),
+                if (applied.clients.isNotEmpty)
+                  AppleFilterChip(
+                    icon: CupertinoIcons.person_2,
+                    label: applied.clients.length == 1
+                      ? applied.clients[0]
+                      : "${applied.clients.length} ${localizations.clients}",
+                    onDeleted: () {
+                      logsProvider.setAppliedFilters(
+                        AppliedFiters(
+                          selectedResultStatus: applied.selectedResultStatus, 
+                          searchText: applied.searchText,
+                          clients: []
+                        )
+                      );
+                      logsProvider.setSelectedClients(null);
+                      logsProvider.fetchLogs(
+                        inOffset: 0,
+                        responseStatus: applied.selectedResultStatus
+                      );
+                    },
+                  ),
+              ],
+            ),
           )
-      : null,
+        : null,
     );
   }
 }
-

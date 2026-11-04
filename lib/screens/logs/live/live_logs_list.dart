@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
@@ -5,6 +6,8 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 import 'package:adguard_home_manager/screens/logs/log_tile.dart';
 import 'package:adguard_home_manager/screens/logs/details/log_details_screen.dart';
+
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/models/logs.dart';
 import 'package:adguard_home_manager/providers/live_logs_provider.dart';
@@ -24,6 +27,7 @@ class LiveLogsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final liveLogsProvider = Provider.of<LiveLogsProvider>(context);
+    final palette = ApplePalette.of(context);
 
     return NestedScrollView(
       headerSliverBuilder: (context, innerBoxIsScrolled) => [
@@ -31,6 +35,13 @@ class LiveLogsList extends StatelessWidget {
           handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
           sliver: SliverAppBar.large(
             title: Text(AppLocalizations.of(context)!.liveLogs),
+            titleSpacing: 20,
+            pinned: true,
+            scrolledUnderElevation: 0,
+            surfaceTintColor: Colors.transparent,
+            backgroundColor: Colors.transparent,
+            foregroundColor: palette.label,
+            flexibleSpace: AppleBlur(color: palette.chrome),
           )
         )
       ],
@@ -44,18 +55,11 @@ class LiveLogsList extends StatelessWidget {
                 handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
               ),
               if (liveLogsProvider.logs.isEmpty) SliverFillRemaining(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      AppLocalizations.of(context)!.hereWillAppearRealtimeLogs,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 22
-                      ),
-                    ),
-                  ),
+                hasScrollBody: false,
+                child: AppleEmptyState(
+                  icon: CupertinoIcons.bolt,
+                  title: AppLocalizations.of(context)!.hereWillAppearRealtimeLogs,
+                  color: palette.label3,
                 ),
               ),
               if (liveLogsProvider.logs.isNotEmpty) SliverPadding(

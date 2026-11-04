@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/screens/logs/details/log_details_screen.dart';
 import 'package:adguard_home_manager/screens/logs/live/live_logs_list.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
 import 'package:adguard_home_manager/models/logs.dart';
 import 'package:adguard_home_manager/providers/live_logs_provider.dart';
 
@@ -26,12 +28,15 @@ class _LiveLogsScreenState extends State<LiveLogsScreen> {
 
   @override
   Widget build(BuildContext context) {
+     final palette = ApplePalette.of(context);
+
      return Scaffold(
+        backgroundColor: palette.card,
         body: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth > 800) {
             return Material(
-              color: Colors.transparent,
+              color: palette.card,
               child: Row(
                 children: [
                   Expanded(
@@ -41,6 +46,10 @@ class _LiveLogsScreenState extends State<LiveLogsScreen> {
                       selectedLog: _selectedLog,
                       onLogSelected: (log) => setState(() => _selectedLog = log),
                     )
+                  ),
+                  SizedBox(
+                    width: 0.5,
+                    child: ColoredBox(color: palette.separator),
                   ),
                   Expanded(
                     flex: 3,

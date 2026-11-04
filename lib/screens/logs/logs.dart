@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/screens/logs/logs_list.dart';
 import 'package:adguard_home_manager/screens/logs/details/log_details_screen.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
 import 'package:adguard_home_manager/models/logs.dart';
 import 'package:adguard_home_manager/providers/filtering_provider.dart';
 
@@ -27,11 +29,13 @@ class _LogsState extends State<Logs> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = ApplePalette.of(context);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth > 800) {
           return Material(
-            color: Colors.transparent,
+            color: palette.card,
             child: Row(
               children: [
                 Expanded(
@@ -41,6 +45,10 @@ class _LogsState extends State<Logs> {
                     selectedLog: _selectedLog,
                     onLogSelected: (log) => setState(() => _selectedLog = log),
                   )
+                ),
+                SizedBox(
+                  width: 0.5,
+                  child: ColoredBox(color: palette.separator),
                 ),
                 Expanded(
                   flex: 3,
