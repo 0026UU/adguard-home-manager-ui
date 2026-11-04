@@ -69,7 +69,7 @@ class _LayoutState extends State<Layout> with WidgetsBindingObserver {
     String translatedName(String key) {
       switch (key) {
         case 'home':
-          return AppLocalizations.of(context)!.home;
+          return AppLocalizations.of(context)!.overview;
 
         case 'settings':
           return AppLocalizations.of(context)!.settings;
@@ -78,7 +78,7 @@ class _LayoutState extends State<Layout> with WidgetsBindingObserver {
           return AppLocalizations.of(context)!.connect;
 
         case 'clients':
-          return AppLocalizations.of(context)!.clients;
+          return AppLocalizations.of(context)!.devices;
 
         case 'logs':
           return AppLocalizations.of(context)!.logs;

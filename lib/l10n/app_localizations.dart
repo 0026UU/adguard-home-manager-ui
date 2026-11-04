@@ -5653,6 +5653,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Certificate source'**
   String get certificateSource;
+
+  /// No description provided for @unknownResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get unknownResult;
+
+  /// No description provided for @notAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'N/A'**
+  String get notAvailable;
 }
 
 class _AppLocalizationsDelegate

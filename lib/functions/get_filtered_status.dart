@@ -125,7 +125,10 @@ Map<String, dynamic> getFilteredStatus(BuildContext context, AppConfigProvider a
       };
 
     default:
-      return {'filtered': null, 'label': 'Unknown'};
+      return {
+        'filtered': null,
+        'label': AppLocalizations.of(context)!.unknownResult,
+      };
   }
 }
 

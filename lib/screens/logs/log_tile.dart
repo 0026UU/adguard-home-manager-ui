@@ -248,7 +248,7 @@ class LogTile extends StatelessWidget {
 
     final tile = AppleLogRow(
       leading: statusPill(),
-      title: log.question.name ?? "N/A",
+      title: log.question.name ?? localizations.notAvailable,
       time: convertTimestampLocalTimezone(log.time, 'HH:mm:ss'),
       details: [
         logClient(),

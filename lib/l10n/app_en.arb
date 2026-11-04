@@ -923,5 +923,7 @@
     "portNotConfigured": "No port set",
     "certificateValid": "Certificate valid",
     "certificateInvalid": "Certificate not valid",
-    "certificateSource": "Certificate source"
+    "certificateSource": "Certificate source",
+    "unknownResult": "Unknown",
+    "notAvailable": "N/A"
 }

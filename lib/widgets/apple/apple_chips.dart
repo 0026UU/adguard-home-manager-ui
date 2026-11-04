@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 import 'package:adguard_home_manager/widgets/apple/apple_widgets.dart';
 
@@ -22,11 +23,13 @@ class AppleFilterChip extends StatelessWidget {
     final p = ApplePalette.of(context);
     final tint = color ?? p.label;
 
+    // A chip that is on is painted solid, the way UISegmentedControl and the
+    // prototype's `.chip.on` read; only the text stays white on top of it.
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Container(
         decoration: BoxDecoration(
-          color: p.pill(tint),
+          color: tint,
           borderRadius: BorderRadius.circular(20),
         ),
         padding: const EdgeInsets.fromLTRB(10, 5, 6, 5),
@@ -34,7 +37,7 @@ class AppleFilterChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 13, color: tint),
+              Icon(icon, size: 13, color: Colors.white),
               const SizedBox(width: 5),
             ],
             ConstrainedBox(
@@ -47,7 +50,7 @@ class AppleFilterChip extends StatelessWidget {
                   fontSize: 13,
                   height: 1.25,
                   fontWeight: FontWeight.w500,
-                  color: tint,
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -59,7 +62,7 @@ class AppleFilterChip extends StatelessWidget {
                 child: Icon(
                   CupertinoIcons.xmark_circle_fill,
                   size: 16,
-                  color: p.label3,
+                  color: Colors.white.withValues(alpha: 0.7),
                 ),
               ),
             ],

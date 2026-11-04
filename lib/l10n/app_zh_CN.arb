@@ -895,5 +895,7 @@
     "portNotConfigured": "未设置端口",
     "certificateValid": "证书有效",
     "certificateInvalid": "证书无效",
-    "certificateSource": "证书来源"
+    "certificateSource": "证书来源",
+    "unknownResult": "未知",
+    "notAvailable": "无"
 }

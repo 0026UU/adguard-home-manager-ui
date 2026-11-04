@@ -1153,7 +1153,7 @@ class AppleSegmented extends StatelessWidget {
       height: height,
       padding: EdgeInsets.zero,
       decoration: BoxDecoration(
-        color: p.fill2,
+        color: p.fill3,
         borderRadius: BorderRadius.circular(height / 2),
       ),
       child: Row(children: children),

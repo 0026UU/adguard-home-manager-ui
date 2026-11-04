@@ -2983,4 +2983,10 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get certificateSource => 'Certificate source';
+
+  @override
+  String get unknownResult => 'Unknown';
+
+  @override
+  String get notAvailable => 'N/A';
 }

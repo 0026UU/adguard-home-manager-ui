@@ -2880,6 +2880,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get certificateSource => '证书来源';
+
+  @override
+  String get unknownResult => '未知';
+
+  @override
+  String get notAvailable => '无';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -5666,4 +5672,10 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get certificateSource => '证书来源';
+
+  @override
+  String get unknownResult => '未知';
+
+  @override
+  String get notAvailable => '无';
 }
