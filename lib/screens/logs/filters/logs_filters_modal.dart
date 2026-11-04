@@ -62,19 +62,13 @@ class _FiltersList extends StatelessWidget {
         showDialog(
           barrierDismissible: false,
           context: context,
-          builder: (context) => FilterStatusModal(
-            value: logsProvider.selectedResultStatus,
-            dialog: true,
-          ),
+          builder: (context) => FilterStatusModal(dialog: true),
         );
       } else {
         showModalBottomSheet(
             context: context,
             useRootNavigator: true,
-            builder: (context) => FilterStatusModal(
-                  value: logsProvider.selectedResultStatus,
-                  dialog: false,
-                ),
+            builder: (context) => FilterStatusModal(dialog: false),
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             useSafeArea: true);
@@ -85,19 +79,13 @@ class _FiltersList extends StatelessWidget {
       if (width > 700 || !(Platform.isAndroid || Platform.isIOS)) {
         showDialog(
             context: context,
-            builder: (context) => ClientsModal(
-                  value: logsProvider.selectedClients,
-                  dialog: true,
-                ),
+            builder: (context) => ClientsModal(dialog: true),
             barrierDismissible: false);
       } else {
         showModalBottomSheet(
             context: context,
             useRootNavigator: true,
-            builder: (context) => ClientsModal(
-                  value: logsProvider.selectedClients,
-                  dialog: false,
-                ),
+            builder: (context) => ClientsModal(dialog: false),
             isScrollControlled: true,
             useSafeArea: true,
             backgroundColor: Colors.transparent);

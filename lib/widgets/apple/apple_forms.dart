@@ -59,9 +59,26 @@ class AppleFormModal extends StatelessWidget {
       ),
     );
 
+    // One column for both shapes: the body is the flexible child, so a form
+    // taller than the screen scrolls instead of overflowing.
     final form = Column(
       mainAxisSize: MainAxisSize.min,
-      children: [header, Flexible(child: body)],
+      children: [
+        if (!dialog)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Container(
+              width: 36,
+              height: 5,
+              decoration: BoxDecoration(
+                color: p.fill2,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+        header,
+        Flexible(child: body),
+      ],
     );
 
     if (dialog) {
@@ -88,26 +105,7 @@ class AppleFormModal extends StatelessWidget {
           borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
           child: ColoredBox(
             color: p.chromeSolid,
-            child: SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Container(
-                      width: 36,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: p.fill2,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                  ),
-                  form,
-                ],
-              ),
-            ),
+            child: SafeArea(top: false, child: form),
           ),
         ),
       ),

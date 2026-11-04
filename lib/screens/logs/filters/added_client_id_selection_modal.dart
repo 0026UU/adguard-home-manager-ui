@@ -1,6 +1,10 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
+/// Lets the user pick which identifier of an added client to filter the logs by.
 class AddedClientIdSelectionModal extends StatefulWidget {
   final List<String> clientIds;
   final void Function(String) onConfirm;
@@ -8,14 +12,16 @@ class AddedClientIdSelectionModal extends StatefulWidget {
   const AddedClientIdSelectionModal({
     super.key,
     required this.clientIds,
-    required this.onConfirm
+    required this.onConfirm,
   });
 
   @override
-  State<AddedClientIdSelectionModal> createState() => _AddedClientIdSelectionModalState();
+  State<AddedClientIdSelectionModal> createState() =>
+      _AddedClientIdSelectionModalState();
 }
 
-class _AddedClientIdSelectionModalState extends State<AddedClientIdSelectionModal> {
+class _AddedClientIdSelectionModalState
+    extends State<AddedClientIdSelectionModal> {
   String _selectedId = "";
 
   @override
@@ -26,49 +32,45 @@ class _AddedClientIdSelectionModalState extends State<AddedClientIdSelectionModa
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(AppLocalizations.of(context)!.selectIdToFilter),
-      content: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: DropdownButtonFormField(
-          items: widget.clientIds.map((item) => DropdownMenuItem(
-            value: item,
-            child: Text(item),
-          )).toList(),
-          initialValue: widget.clientIds.first,
-          onChanged: (value) => setState(() => _selectedId = value!),
-          decoration: InputDecoration(
-            border: const OutlineInputBorder(
-              borderRadius: BorderRadius.all(
-                Radius.circular(10)
-              )
+    final l = AppLocalizations.of(context)!;
+
+    return AppleFormModal(
+      title: l.selectIdToFilter,
+      icon: CupertinoIcons.person,
+      // Reached from a `showDialog`, like the alert it replaces.
+      dialog: true,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                child: DropdownButtonFormField<String>(
+                  items: widget.clientIds
+                      .map((item) =>
+                          DropdownMenuItem(value: item, child: Text(item)))
+                      .toList(),
+                  initialValue: widget.clientIds.first,
+                  style: AppleInput.style(context),
+                  onChanged: (value) => setState(() => _selectedId = value!),
+                  borderRadius: const BorderRadius.all(Radius.circular(14)),
+                  decoration:
+                      AppleInput.decoration(context, label: l.clientIds),
+                ),
+              ),
             ),
-            label: Text(AppLocalizations.of(context)!.clientIds)
           ),
-          borderRadius: BorderRadius.circular(20),
-        ),
+          AppleFormFooter(
+            confirmLabel: l.confirm,
+            onConfirm: () {
+              Navigator.pop(context);
+              widget.onConfirm(_selectedId);
+            },
+            cancelLabel: l.cancel,
+          ),
+        ],
       ),
-      actions: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text(AppLocalizations.of(context)!.cancel),
-            ),
-            const SizedBox(width: 8),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                widget.onConfirm(_selectedId);
-              },
-              child: Text(AppLocalizations.of(context)!.confirm),
-            ),
-          ],
-        )
-      ],
     );
   }
 }
