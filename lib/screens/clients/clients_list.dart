@@ -32,6 +32,7 @@ class ClientsList extends StatelessWidget {
     final palette = ApplePalette.of(context);
 
     return CustomTabContentList(
+      insetCard: true,
       listPadding: splitView == true 
         ? const EdgeInsets.only(top: 8)
         : null,

@@ -124,7 +124,7 @@ class LogsListAppBar extends StatelessWidget {
     return SliverAppBar.large(
       pinned: true,
       floating: true,
-      centerTitle: false,
+      centerTitle: true,
       titleSpacing: 20,
       forceElevated: innerBoxIsScrolled,
       title: Text(localizations.logs),
@@ -134,7 +134,10 @@ class LogsListAppBar extends StatelessWidget {
       foregroundColor: palette.label,
       iconTheme: IconThemeData(color: palette.label),
       actionsIconTheme: IconThemeData(color: palette.tint),
-      flexibleSpace: AppleBlur(color: palette.chrome),
+      flexibleSpace: AppleLargeTitle(
+        title: localizations.logs,
+        bottomHeight: hasFilters ? 46 : 0,
+      ),
       actions: [
         if (!(Platform.isAndroid || Platform.isIOS)) IconButton(
           onPressed: () => logsProvider.fetchLogs(inOffset: 0), 

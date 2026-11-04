@@ -131,6 +131,7 @@ class AddedList extends StatelessWidget {
       : data;
 
     return CustomTabContentList(
+      insetCard: true,
       listPadding: splitView == true 
         ? const EdgeInsets.only(top: 8)
         : null,

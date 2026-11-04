@@ -172,21 +172,7 @@ class _HomeState extends State<Home> {
             ),
           ),
 
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 22, 16, 7),
-              child: Text(
-                AppLocalizations.of(context)!.serverStatus.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.08,
-                  color: p.label2,
-                ),
-              ),
-            ),
-          ),
-
+          // The server status card titles itself, so no caption here.
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -197,17 +183,9 @@ class _HomeState extends State<Home> {
           ),
 
           SliverToBoxAdapter(
-            child: Padding(
+            child: AppleFormGroupLabel(
+              AppLocalizations.of(context)!.statistics,
               padding: const EdgeInsets.fromLTRB(16, 22, 16, 7),
-              child: Text(
-                AppLocalizations.of(context)!.statistics.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.08,
-                  color: p.label2,
-                ),
-              ),
             ),
           ),
 

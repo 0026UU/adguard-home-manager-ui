@@ -195,6 +195,7 @@ class _ClientsListState extends State<ClientsList> {
     }
 
     return CustomTabContentList(
+      insetCard: true,
       noSliver: !(Platform.isAndroid || Platform.isIOS) ? true : false,
       loadingGenerator: () => SizedBox(
         width: double.maxFinite,

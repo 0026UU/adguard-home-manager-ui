@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 class CustomTabContentList extends StatelessWidget {
   final Widget Function() loadingGenerator;
@@ -19,6 +20,9 @@ class CustomTabContentList extends StatelessWidget {
   final EdgeInsets? listPadding;
   final double? heightFabHidden;
 
+  /// Draw the rows as one inset-grouped card instead of a full-bleed list.
+  final bool insetCard;
+
   const CustomTabContentList({
     super.key,
     required this.loadingGenerator,
@@ -34,6 +38,7 @@ class CustomTabContentList extends StatelessWidget {
     this.noSliver,
     this.listPadding,
     this.heightFabHidden,
+    this.insetCard = false,
   });
 
   @override
@@ -131,7 +136,13 @@ class CustomTabContentList extends StatelessWidget {
                           SliverOverlapInjector(
                             handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
                           ),
-                          if (itemsCount > 0) SliverList(
+                          if (itemsCount > 0 && insetCard)
+                            ...AppleListCard.slivers(
+                              context,
+                              itemsCount: itemsCount,
+                              row: contentWidget,
+                            ),
+                          if (itemsCount > 0 && !insetCard) SliverList(
                             delegate: SliverChildBuilderDelegate(
                               (context, index) => contentWidget(index),
                               childCount: itemsCount

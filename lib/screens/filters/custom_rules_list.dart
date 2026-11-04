@@ -156,6 +156,7 @@ class _CustomRulesListState extends State<CustomRulesList> {
     }
 
     return CustomTabContentList(
+      insetCard: true,
       loadingGenerator: () => AppleLoading(label: l.loadingFilters), 
       itemsCount: renderData.length, 
       contentWidget: row, 

@@ -103,7 +103,7 @@ class _LogsListWidgetState extends State<LogsListWidget> {
     return ScaffoldMessenger(
       key: widget.twoColumns ? _scaffoldMessengerKey : null,
       child: Scaffold(
-        backgroundColor: palette.card,
+        backgroundColor: palette.window,
         body: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) => [
             SliverOverlapAbsorber(
@@ -170,47 +170,49 @@ class _LogsListWidgetState extends State<LogsListWidget> {
                         SliverOverlapInjector(
                           handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
                         ),
-                        if (logs.isNotEmpty) SliverList.builder(
-                          itemCount: logsProvider.isLoadingMore 
-                            ? logs.length + 1 
-                            : logs.length,
-                          itemBuilder: (context, index) {
-                            if (logsProvider.isLoadingMore == true && index == logs.length) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 20),
-                                child: Center(
-                                  child: CupertinoActivityIndicator(radius: 12),
-                                ),
-                              );
-                            }
-                            else if (logs[index].question.name != null) {
-                              return LogTile(
-                                log: logs[index],
-                                index: index,
-                                length: logs.length,
-                                isLogSelected: widget.selectedLog != null && widget.selectedLog == logs[index],
-                                onLogTap: (log) {
-                                  if (!widget.twoColumns) {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (context) => LogDetailsScreen(
-                                          log: log,
-                                          dialog: false,
-                                          twoColumns: widget.twoColumns,
+                        if (logs.isNotEmpty)
+                          ...AppleListCard.slivers(
+                            context,
+                            itemsCount: logsProvider.isLoadingMore
+                              ? logs.length + 1
+                              : logs.length,
+                            row: (index) {
+                              if (logsProvider.isLoadingMore == true && index == logs.length) {
+                                return const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 20),
+                                  child: Center(
+                                    child: CupertinoActivityIndicator(radius: 12),
+                                  ),
+                                );
+                              }
+                              else if (logs[index].question.name != null) {
+                                return LogTile(
+                                  log: logs[index],
+                                  index: index,
+                                  length: logs.length,
+                                  isLogSelected: widget.selectedLog != null && widget.selectedLog == logs[index],
+                                  onLogTap: (log) {
+                                    if (!widget.twoColumns) {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) => LogDetailsScreen(
+                                            log: log,
+                                            dialog: false,
+                                            twoColumns: widget.twoColumns,
+                                          )
                                         )
-                                      )
-                                    );
-                                  }
-                                  widget.onLogSelected(log);
-                                },
-                                twoColumns: widget.twoColumns,
-                              );
-                            }
-                            else {
-                              return null;
-                            }
-                          }
-                        ),
+                                      );
+                                    }
+                                    widget.onLogSelected(log);
+                                  },
+                                  twoColumns: widget.twoColumns,
+                                );
+                              }
+                              else {
+                                return null;
+                              }
+                            },
+                          ),
                         if (logs.isEmpty) fill(
                           AppleEmptyState(
                             icon: CupertinoIcons.doc_text,

@@ -124,6 +124,7 @@ class _FiltersListState extends State<FiltersList> {
     }
 
     return CustomTabContentList(
+      insetCard: true,
       loadingGenerator: () => AppleLoading(label: l.loadingFilters), 
       itemsCount: widget.data.length, 
       contentWidget: row, 

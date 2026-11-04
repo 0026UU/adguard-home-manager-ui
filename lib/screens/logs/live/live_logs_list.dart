@@ -36,12 +36,15 @@ class LiveLogsList extends StatelessWidget {
           sliver: SliverAppBar.large(
             title: Text(AppLocalizations.of(context)!.liveLogs),
             titleSpacing: 20,
+            centerTitle: true,
             pinned: true,
             scrolledUnderElevation: 0,
             surfaceTintColor: Colors.transparent,
             backgroundColor: Colors.transparent,
             foregroundColor: palette.label,
-            flexibleSpace: AppleBlur(color: palette.chrome),
+            flexibleSpace: AppleLargeTitle(
+              title: AppLocalizations.of(context)!.liveLogs,
+            ),
           )
         )
       ],

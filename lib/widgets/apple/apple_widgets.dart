@@ -160,6 +160,7 @@ class AppleScreen extends StatelessWidget {
     final appbar = SliverAppBar.large(
       title: Text(title),
       titleSpacing: 20,
+      centerTitle: true,
       leading: leading,
       automaticallyImplyLeading: false,
       actions: actions,
@@ -171,7 +172,10 @@ class AppleScreen extends StatelessWidget {
       foregroundColor: p.label,
       iconTheme: IconThemeData(color: p.label),
       actionsIconTheme: IconThemeData(color: p.tint),
-      flexibleSpace: AppleBlur(color: p.chrome),
+      flexibleSpace: AppleLargeTitle(
+        title: title,
+        bottomHeight: header == null ? 0 : 44,
+      ),
     );
 
     if (body != null) {
@@ -204,6 +208,82 @@ class AppleScreen extends StatelessWidget {
             const CupertinoSliverRefreshControl(),
           ...slivers,
           SliverToBoxAdapter(child: SizedBox(height: bottomSpacer)),
+        ],
+      ),
+    );
+  }
+}
+
+/// The 34pt large title of a screen, drawn on the bar's blur.
+///
+/// `SliverAppBar.large` renders the expanded title *inside* its
+/// `flexibleSpace`, so putting the blur there replaces the title. This widget
+/// is the blur and the title together, with the metrics of the design layer:
+/// the title stays pinned to the bottom of the collapsing area and is clipped
+/// away as the bar shrinks to its 17pt inline title.
+class AppleLargeTitle extends StatelessWidget {
+  final String title;
+
+  /// Height of the row pinned under the title, e.g. an [AppleHeaderBar].
+  final double bottomHeight;
+
+  /// Leading inset, 20pt like an iOS large title.
+  final double leadingInset;
+
+  const AppleLargeTitle({
+    super.key,
+    required this.title,
+    this.bottomHeight = 0,
+    this.leadingInset = 20,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+    final settings =
+        context.dependOnInheritedWidgetOfExactType<FlexibleSpaceBarSettings>();
+    final minExtent = settings?.minExtent ?? kToolbarHeight;
+
+    return AppleBlur(
+      color: p.chrome,
+      child: Column(
+        children: [
+          // Give the collapsed toolbar its own band, so the large title can
+          // only ever be drawn under it.
+          Padding(
+            padding: EdgeInsets.only(
+              top: (minExtent - bottomHeight).clamp(0.0, double.infinity),
+            ),
+          ),
+          Flexible(
+            child: ClipRect(
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    leadingInset,
+                    0,
+                    16,
+                    bottomHeight > 0 ? 4 : 10,
+                  ),
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 34,
+                      height: 1.15,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -1.1,
+                      color: p.label,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (bottomHeight > 0)
+            Padding(padding: EdgeInsets.only(bottom: bottomHeight)),
         ],
       ),
     );
@@ -341,6 +421,71 @@ class AppleListSection extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// A scrolling row list that reads as one inset-grouped card: 16pt side
+/// margins, rounded caps at both ends and the card colour behind every row.
+///
+/// [AppleListSection] groups a fixed number of rows; this is the version for
+/// a lazily built list that keeps scrolling inside its card, the way a
+/// `UITableView` section does. Returns slivers, so the caller drops them into
+/// its own [CustomScrollView].
+class AppleListCard {
+  const AppleListCard._();
+
+  static List<Widget> slivers(
+    BuildContext context, {
+    required int itemsCount,
+    required Widget? Function(int index) row,
+  }) {
+    final p = ApplePalette.of(context);
+
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        sliver: SliverMainAxisGroup(
+          slivers: [
+            const SliverToBoxAdapter(child: AppleCardCap()),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final child = row(index);
+                  if (child == null) return const SizedBox.shrink();
+                  return ColoredBox(color: p.card, child: child);
+                },
+                childCount: itemsCount,
+              ),
+            ),
+            const SliverToBoxAdapter(child: AppleCardCap(top: false)),
+          ],
+        ),
+      ),
+    ];
+  }
+}
+
+/// One rounded end of an [AppleListCard].
+class AppleCardCap extends StatelessWidget {
+  final bool top;
+  final double radius;
+
+  const AppleCardCap({super.key, this.top = true, this.radius = 10});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+
+    return Container(
+      height: radius,
+      decoration: BoxDecoration(
+        color: p.card,
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(top ? radius : 0),
+          bottom: Radius.circular(top ? 0 : radius),
+        ),
       ),
     );
   }

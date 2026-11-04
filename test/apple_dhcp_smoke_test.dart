@@ -208,6 +208,13 @@ IconButton _saveAction(WidgetTester tester) => tester.widget<IconButton>(
       ),
     );
 
+/// The screen title, which the collapsing bar draws twice: large while
+/// expanded, 17pt in the toolbar once scrolled under.
+Finder _largeTitle(String text) => find.descendant(
+      of: find.byType(AppleLargeTitle),
+      matching: find.text(text),
+    );
+
 void main() {
   late AppLocalizations l;
 
@@ -222,7 +229,7 @@ void main() {
     // No Material app bar, switch or outlined text field is left behind.
     expect(find.byType(SliverAppBar), findsOneWidget);
     expect(find.byType(Switch), findsNothing);
-    expect(find.text(l.dhcpSettings), findsOneWidget);
+    expect(_largeTitle(l.dhcpSettings), findsOneWidget);
     expect(find.text(l.ipv4settings.toUpperCase()), findsOneWidget);
     expect(find.text(l.ipv6settings.toUpperCase()), findsOneWidget);
     // Five IPv4 fields plus three IPv6 ones.
@@ -373,7 +380,7 @@ void main() {
     expect(find.byType(ListTile), findsNothing);
     expect(find.text('192.168.1.90'), findsOneWidget);
     // The lease list keeps the title it was pushed with.
-    expect(find.text(l.dhcpStatic), findsOneWidget);
+    expect(_largeTitle(l.dhcpStatic), findsOneWidget);
 
     await tester.tap(find.byIcon(CupertinoIcons.trash));
     await tester.pump();
