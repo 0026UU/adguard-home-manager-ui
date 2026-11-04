@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:adguard_home_manager/config/apple_theme.dart';
+import 'package:adguard_home_manager/l10n/app_localizations.dart';
+import 'package:adguard_home_manager/models/clients.dart';
+import 'package:adguard_home_manager/providers/app_config_provider.dart';
+import 'package:adguard_home_manager/screens/clients/client/device_tile.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 // The log entry, the device row and the settings header card are all defined
@@ -92,45 +99,102 @@ void main() {
     );
   });
 
-  testWidgets('a device row draws the gradient avatar and the trailing value',
+  testWidgets('a device row draws the avatar, the address and the state',
       (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.binding.setSurfaceSize(const Size(390, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
     final palette = ApplePalette(Brightness.light);
 
-    await _pump(
-      tester,
-      inset: 0,
-      AppleListSection(
-        title: 'DEVICES',
-        children: [
-          AppleListTile(
-            title: 'MacBook Pro',
-            subtitle: '192.168.1.24',
-            value: '5.1k',
-            leading: AppleAvatar(
-              text: 'MacBook Pro',
-              size: 40,
-              color: palette.seeded('MacBook Pro'),
-              gradientTo: palette.seededAlt('MacBook Pro'),
+    final rows = mergeDevices(
+      active: [
+        AutoClient(
+          whoisInfo: WhoisInfo(country: 'IT', orgname: 'Example'),
+          name: null,
+          source: 'rdns',
+          ip: '192.168.1.5',
+        ),
+        AutoClient(
+          whoisInfo: WhoisInfo(country: 'IT', orgname: 'Example'),
+          name: 'macbook-pro',
+          source: 'dhcp',
+          ip: '192.168.1.24',
+        ),
+      ],
+      added: [
+        Client(
+          name: 'MacBook Pro',
+          blockedServices: const [],
+          ids: ['192.168.1.24'],
+          tags: const [],
+          upstreams: const [],
+          filteringEnabled: true,
+          parentalEnabled: false,
+          safebrowsingEnabled: true,
+          useGlobalBlockedServices: true,
+          useGlobalSettings: false,
+          safeSearch: null,
+          ignoreQuerylog: null,
+          ignoreStatistics: null,
+          upstreamsCacheEnabled: null,
+          upstreamsCacheSize: null,
+          blockedServicesSchedule: null,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => AppConfigProvider(sharedPreferencesInstance: prefs),
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: appleLightTheme(),
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            AppLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            backgroundColor: palette.window,
+            body: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              children: [
+                const AppleGroupHeader(
+                  title: 'Identified devices',
+                  trailing: '2 devices',
+                ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: ColoredBox(
+                    color: palette.card,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var i = 0; i < rows.length; i++)
+                          DeviceTile(
+                            row: rows[i],
+                            onTap: (_) {},
+                            onEdit: (_) {},
+                            onDelete: (_) {},
+                            splitView: false,
+                            showSeparator: i != rows.length - 1,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-            leadingWidth: 40,
-            onTap: () {},
           ),
-          AppleListTile(
-            title: 'Living Room Mac',
-            subtitle: '192.168.1.5',
-            value: '924',
-            leading: AppleAvatar(
-              text: 'Living Room Mac',
-              size: 40,
-              color: palette.seeded('Living Room Mac'),
-              gradientTo: palette.seededAlt('Living Room Mac'),
-            ),
-            leadingWidth: 40,
-            onTap: () {},
-          ),
-        ],
+        ),
       ),
     );
+    await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
     await expectLater(
