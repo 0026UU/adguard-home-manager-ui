@@ -51,18 +51,128 @@ void main() {
   });
 
   testWidgets('settings groups its rows into inset sections', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(420, 800));
+    await tester.binding.setSurfaceSize(const Size(420, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await _pump(tester, const Settings());
 
     expect(tester.takeException(), isNull);
-    expect(find.byType(AppleListSection), findsNWidgets(2));
-    // The server group is hidden until a server is connected.
+    // The look of the app is a group of its own, above the server one.
+    expect(find.byType(AppleListSection), findsNWidgets(3));
     expect(find.text(l.appSettings.toUpperCase()), findsOneWidget);
+    expect(find.text(l.appearance.toUpperCase()), findsOneWidget);
     expect(find.text(l.customization), findsOneWidget);
-    // App settings rows carry the tinted glyphs; the about group does not.
+    // App settings rows carry the tinted glyphs; the appearance rows do not.
     expect(find.byType(AppleIconBadge), findsNWidgets(5));
+  });
+
+  testWidgets('the appearance group switches the theme from inside its card',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(420, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await _pump(tester, const Settings());
+
+    final context = tester.element(find.byType(Settings));
+    final appConfigProvider =
+        Provider.of<AppConfigProvider>(context, listen: false);
+
+    final segment = tester.widget<AppleSegmented>(find.byType(AppleSegmented));
+    expect(segment.labels, [l.autoTheme, l.light, l.dark]);
+    expect(segment.selectedIndex, 0);
+    expect(appConfigProvider.selectedThemeNumber, 0);
+
+    await tester.tap(find.text(l.dark));
+    await tester.pumpAndSettle();
+
+    expect(appConfigProvider.selectedThemeNumber, 2);
+    expect(appConfigProvider.selectedTheme, ThemeMode.dark);
+
+    await tester.tap(find.text(l.light));
+    await tester.pumpAndSettle();
+
+    expect(appConfigProvider.selectedThemeNumber, 1);
+    // The choice is kept, the way the other settings are.
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getInt('selectedTheme'), 1);
+  });
+
+  testWidgets('the status colours follow the server until the theme is asked for',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(420, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await _pump(tester, const Settings());
+
+    final context = tester.element(find.byType(Settings));
+    final appConfigProvider =
+        Provider.of<AppConfigProvider>(context, listen: false);
+
+    AppleListTile statusRow() => tester.widget<AppleListTile>(find.ancestor(
+          of: find.text(l.statusColors),
+          matching: find.byType(AppleListTile),
+        ));
+
+    expect(statusRow().value, l.semanticColors);
+
+    await tester.tap(find.text(l.statusColors));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(l.themeColorForStatus));
+    await tester.pumpAndSettle();
+
+    expect(appConfigProvider.useThemeColorForStatus, isTrue);
+    expect(statusRow().value, l.themeColorForStatus);
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('useThemeColorForStatus'), isTrue);
+  });
+
+  testWidgets('the accent row names the tint the theme actually uses',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(420, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await _pump(tester, const Settings());
+
+    final context = tester.element(find.byType(Settings));
+    final appConfigProvider =
+        Provider.of<AppConfigProvider>(context, listen: false);
+
+    AppleListTile accentRow() => tester.widget<AppleListTile>(find.ancestor(
+          of: find.text(l.accentColor),
+          matching: find.byType(AppleListTile),
+        ));
+
+    // The Apple theme keeps the system tint, so there is nothing to pick.
+    expect(accentRow().value, l.systemBlue);
+    expect(accentRow().onTap, isNull);
+
+    await tester.tap(find.text(l.accentColor));
+    await tester.pumpAndSettle();
+
+    // A row with nothing to pick does not open the sheet, so its title is
+    // still the only one on screen.
+    expect(find.text(l.accentColor), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    // With the classic theme back on, the same row opens the swatches.
+    await appConfigProvider.setUseAppleStyle(false);
+    await tester.pumpAndSettle();
+
+    expect(accentRow().onTap, isNotNull);
+
+    await tester.tap(find.text(l.accentColor));
+    await tester.pumpAndSettle();
+
+    // The sheet puts the same title above its own list.
+    expect(find.text(l.accentColor), findsNWidgets(2));
+
+    await tester.tap(find.text(l.indigo));
+    await tester.pumpAndSettle();
+
+    expect(appConfigProvider.staticColor, 11);
+    expect(accentRow().value, l.indigo);
   });
 
   testWidgets('the master pane marks the selected section', (tester) async {

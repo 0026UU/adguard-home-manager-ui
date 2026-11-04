@@ -207,10 +207,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appleStyleDescription => '半透明导航栏、大标题与分组列表。关闭后可恢复 Material 界面。';
 
   @override
-  String get light => '明亮';
+  String get light => '浅色';
 
   @override
-  String get dark => '暗夜';
+  String get dark => '深色';
 
   @override
   String get systemDefined => '跟随系统';
@@ -2675,6 +2675,27 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get searchDomainOrClient => '按域名或设备搜索';
+
+  @override
+  String get appearance => '外观';
+
+  @override
+  String get autoTheme => '自动';
+
+  @override
+  String get accentColor => '强调色';
+
+  @override
+  String get systemBlue => '系统蓝';
+
+  @override
+  String get statusColors => '状态色';
+
+  @override
+  String get semanticColors => '语义色（推荐）';
+
+  @override
+  String get themeColorForStatus => '主题色';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -2877,10 +2898,10 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get appleStyleDescription => '半透明导航栏、大标题与分组列表。关闭后可恢复 Material 界面。';
 
   @override
-  String get light => '明亮';
+  String get light => '浅色';
 
   @override
-  String get dark => '暗夜';
+  String get dark => '深色';
 
   @override
   String get systemDefined => '跟随系统';
@@ -5256,4 +5277,25 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get searchDomainOrClient => '按域名或设备搜索';
+
+  @override
+  String get appearance => '外观';
+
+  @override
+  String get autoTheme => '自动';
+
+  @override
+  String get accentColor => '强调色';
+
+  @override
+  String get systemBlue => '系统蓝';
+
+  @override
+  String get statusColors => '状态色';
+
+  @override
+  String get semanticColors => '语义色（推荐）';
+
+  @override
+  String get themeColorForStatus => '主题色';
 }

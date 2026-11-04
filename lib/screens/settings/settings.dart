@@ -21,6 +21,8 @@ import 'package:adguard_home_manager/screens/settings/general_settings/general_s
 
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/functions/open_url.dart';
+import 'package:adguard_home_manager/functions/generate_color_translation.dart';
+import 'package:adguard_home_manager/constants/colors.dart';
 import 'package:adguard_home_manager/constants/urls.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
@@ -142,6 +144,98 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
     }
 
     final updateAvailable = serversProvider.updateAvailable.data != null;
+
+    final appleStyle = appConfigProvider.useAppleStyle == true;
+
+    /// The look of the app is kept on the first screen of the settings page,
+    /// the way the design layer draws it, so the theme does not hide behind
+    /// a sub-screen.
+    Widget appearanceSection() {
+      return AppleListSection(
+        title: l.appearance,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  l.theme,
+                  style: TextStyle(
+                    fontSize: 17,
+                    height: 1.25,
+                    color: palette.label,
+                  ),
+                ),
+                const SizedBox(height: 11),
+                AppleSegmented(
+                  height: 36,
+                  labels: [l.autoTheme, l.light, l.dark],
+                  selectedIndex: appConfigProvider.selectedThemeNumber,
+                  onChanged: (value) =>
+                      appConfigProvider.setSelectedTheme(value),
+                ),
+              ],
+            ),
+          ),
+          AppleListTile(
+            title: l.accentColor,
+            showChevron: false,
+            // The Apple theme keeps the system tint, so the swatches behind
+            // this row only apply while the classic theme is on.
+            value: appleStyle
+                ? l.systemBlue
+                : colorTranslation(context, appConfigProvider.staticColor),
+            onTap: appleStyle
+                ? null
+                : () => showAppleActionSheet(
+                      context,
+                      title: l.accentColor,
+                      actions: [
+                        for (var i = 0; i < colors.length; i++)
+                          AppleSheetAction(
+                            label: colorTranslation(context, i),
+                            color: colors[i],
+                            icon: appConfigProvider.staticColor == i
+                                ? CupertinoIcons.checkmark
+                                : null,
+                            onTap: () => appConfigProvider.setStaticColor(i),
+                          ),
+                      ],
+                    ),
+          ),
+          AppleListTile(
+            title: l.statusColors,
+            showChevron: false,
+            value: appConfigProvider.useThemeColorForStatus == true
+                ? l.themeColorForStatus
+                : l.semanticColors,
+            onTap: () => showAppleActionSheet(
+                  context,
+                  title: l.statusColors,
+                  actions: [
+                    AppleSheetAction(
+                      label: l.semanticColors,
+                      icon: appConfigProvider.useThemeColorForStatus == false
+                          ? CupertinoIcons.checkmark
+                          : null,
+                      onTap: () =>
+                          appConfigProvider.setUseThemeColorForStatus(false),
+                    ),
+                    AppleSheetAction(
+                      label: l.themeColorForStatus,
+                      icon: appConfigProvider.useThemeColorForStatus == true
+                          ? CupertinoIcons.checkmark
+                          : null,
+                      onTap: () =>
+                          appConfigProvider.setUseThemeColorForStatus(true),
+                    ),
+                  ],
+                ),
+          ),
+        ],
+      );
+    }
 
     final server = serversProvider.selectedServer;
     final serverStatus = statusProvider.serverStatus;
@@ -280,6 +374,7 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
                             open(thisItem: 12, screen: const Servers()),
                       ),
                     ),
+                  appearanceSection(),
                   if (serversProvider.selectedServer != null &&
                       statusProvider.serverStatus != null &&
                       serversProvider.apiClient2 != null)

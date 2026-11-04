@@ -64,8 +64,8 @@
     "theme": "主题",
     "appleStyle": "Apple 风格",
     "appleStyleDescription": "半透明导航栏、大标题与分组列表。关闭后可恢复 Material 界面。",
-    "light": "明亮",
-    "dark": "暗夜",
+    "light": "浅色",
+    "dark": "深色",
     "systemDefined": "跟随系统",
     "close": "关闭",
     "connectedTo": "连接到 :",
@@ -834,5 +834,12 @@
     "queryLog": "查询记录",
     "trackingQueries": "正在追踪查询…",
     "loadedRecords": "{count} 条已加载",
-    "searchDomainOrClient": "按域名或设备搜索"
+    "searchDomainOrClient": "按域名或设备搜索",
+    "appearance": "外观",
+    "autoTheme": "自动",
+    "accentColor": "强调色",
+    "systemBlue": "系统蓝",
+    "statusColors": "状态色",
+    "semanticColors": "语义色（推荐）",
+    "themeColorForStatus": "主题色"
 }

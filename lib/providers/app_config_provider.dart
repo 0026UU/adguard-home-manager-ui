@@ -41,7 +41,7 @@ class AppConfigProvider with ChangeNotifier {
   /// BCP 47 tag, or null to follow the system language.
   String? _selectedLanguage;
   int _staticColor = 0;
-  final bool _useThemeColorForStatus = false;
+  bool _useThemeColorForStatus = false;
 
   int _selectedClientsTab = 0;
 
@@ -381,6 +381,18 @@ class AppConfigProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> setUseThemeColorForStatus(bool value) async {
+    try {
+      sharedPreferencesInstance.setBool('useThemeColorForStatus', value);
+      _useThemeColorForStatus = value;
+      notifyListeners();
+      return true;
+    } catch (e, stackTrace) {
+      Sentry.captureException(e, stackTrace: stackTrace);
+      return false;
+    }
+  }
+
   Future<bool> setHomeTopItemsOrder(List<HomeTopItems> order) async {
     try {
       sharedPreferencesInstance.setStringList('homeTopItemsOrder', List<String>.from(order.map((e) => e.name)));
@@ -418,6 +430,8 @@ class AppConfigProvider with ChangeNotifier {
     _useDynamicColor = sharedPreferencesInstance.getBool('useDynamicColor') ?? true;
     _useAppleStyle = sharedPreferencesInstance.getBool('useAppleStyle') ?? true;
     _staticColor = sharedPreferencesInstance.getInt('staticColor') ?? 0;
+    _useThemeColorForStatus =
+        sharedPreferencesInstance.getBool('useThemeColorForStatus') ?? false;
     _showTimeLogs = sharedPreferencesInstance.getBool('showTimeLogs') ?? false;
     _doNotRememberVersion = sharedPreferencesInstance.getString('doNotRememberVersion');
     _showIpLogs = sharedPreferencesInstance.getBool('showIpLogs') ?? false;

@@ -5292,6 +5292,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search by domain or device'**
   String get searchDomainOrClient;
+
+  /// No description provided for @appearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get appearance;
+
+  /// No description provided for @autoTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get autoTheme;
+
+  /// No description provided for @accentColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Accent color'**
+  String get accentColor;
+
+  /// No description provided for @systemBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'System blue'**
+  String get systemBlue;
+
+  /// No description provided for @statusColors.
+  ///
+  /// In en, this message translates to:
+  /// **'Status colors'**
+  String get statusColors;
+
+  /// No description provided for @semanticColors.
+  ///
+  /// In en, this message translates to:
+  /// **'Semantic (recommended)'**
+  String get semanticColors;
+
+  /// No description provided for @themeColorForStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme color'**
+  String get themeColorForStatus;
 }
 
 class _AppLocalizationsDelegate

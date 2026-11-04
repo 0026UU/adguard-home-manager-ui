@@ -862,5 +862,12 @@
     "queryLog": "Query log",
     "trackingQueries": "Tracking queries…",
     "loadedRecords": "{count} loaded",
-    "searchDomainOrClient": "Search by domain or device"
+    "searchDomainOrClient": "Search by domain or device",
+    "appearance": "Appearance",
+    "autoTheme": "Auto",
+    "accentColor": "Accent color",
+    "systemBlue": "System blue",
+    "statusColors": "Status colors",
+    "semanticColors": "Semantic (recommended)",
+    "themeColorForStatus": "Theme color"
 }

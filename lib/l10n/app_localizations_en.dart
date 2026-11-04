@@ -2755,4 +2755,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchDomainOrClient => 'Search by domain or device';
+
+  @override
+  String get appearance => 'Appearance';
+
+  @override
+  String get autoTheme => 'Auto';
+
+  @override
+  String get accentColor => 'Accent color';
+
+  @override
+  String get systemBlue => 'System blue';
+
+  @override
+  String get statusColors => 'Status colors';
+
+  @override
+  String get semanticColors => 'Semantic (recommended)';
+
+  @override
+  String get themeColorForStatus => 'Theme color';
 }
