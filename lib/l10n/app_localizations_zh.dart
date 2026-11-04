@@ -2696,6 +2696,107 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get themeColorForStatus => '主题色';
+
+  @override
+  String get protectionRunning => '防护运行中';
+
+  @override
+  String get protectionPaused => '防护已暂停';
+
+  @override
+  String get protectionOn => '防护已开启';
+
+  @override
+  String get manageProtection => '管理防护';
+
+  @override
+  String get viewLogs => '查看日志';
+
+  @override
+  String get totalQueries => '查询总数';
+
+  @override
+  String vsYesterday(Object delta) {
+    return '$delta 较昨日';
+  }
+
+  @override
+  String blockRate(Object percent) {
+    return '拦截率 $percent';
+  }
+
+  @override
+  String get avgProcessingTime => '平均处理耗时';
+
+  @override
+  String belowReference(Object reference) {
+    return '低于 ${reference}ms 参考值';
+  }
+
+  @override
+  String aboveReference(Object reference) {
+    return '高于 ${reference}ms 参考值';
+  }
+
+  @override
+  String get activeRules => '生效规则';
+
+  @override
+  String filterListsCount(Object count) {
+    return '$count 个过滤列表';
+  }
+
+  @override
+  String get trafficTrend => '流量趋势';
+
+  @override
+  String queriesTotal(Object count) {
+    return '共 $count 条';
+  }
+
+  @override
+  String get chartTipHint => '轻触图表查看每个时间点';
+
+  @override
+  String chartTipPoint(
+      Object blocked, Object label, Object percent, Object queries) {
+    return '$label · 查询 $queries 条 · 拦截 $blocked 条（$percent）';
+  }
+
+  @override
+  String get topRanking => '热门排行';
+
+  @override
+  String get blockedDomainsShort => '拦截域名';
+
+  @override
+  String get queriedDomainsShort => '查询域名';
+
+  @override
+  String get activeDevices => '活跃设备';
+
+  @override
+  String get dnsOverTls => 'DNS-over-TLS';
+
+  @override
+  String get dhcp => 'DHCP';
+
+  @override
+  String protectionRunningNote(Object blocked) {
+    return '防护正在运行 · 已拦截 $blocked 条查询';
+  }
+
+  @override
+  String get pauseForever => '永久暂停';
+
+  @override
+  String get nowLabel => '现在';
+
+  @override
+  String get todayLabel => '今天';
+
+  @override
+  String get configured => '已配置';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -5298,4 +5399,105 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get themeColorForStatus => '主题色';
+
+  @override
+  String get protectionRunning => '防护运行中';
+
+  @override
+  String get protectionPaused => '防护已暂停';
+
+  @override
+  String get protectionOn => '防护已开启';
+
+  @override
+  String get manageProtection => '管理防护';
+
+  @override
+  String get viewLogs => '查看日志';
+
+  @override
+  String get totalQueries => '查询总数';
+
+  @override
+  String vsYesterday(Object delta) {
+    return '$delta 较昨日';
+  }
+
+  @override
+  String blockRate(Object percent) {
+    return '拦截率 $percent';
+  }
+
+  @override
+  String get avgProcessingTime => '平均处理耗时';
+
+  @override
+  String belowReference(Object reference) {
+    return '低于 ${reference}ms 参考值';
+  }
+
+  @override
+  String aboveReference(Object reference) {
+    return '高于 ${reference}ms 参考值';
+  }
+
+  @override
+  String get activeRules => '生效规则';
+
+  @override
+  String filterListsCount(Object count) {
+    return '$count 个过滤列表';
+  }
+
+  @override
+  String get trafficTrend => '流量趋势';
+
+  @override
+  String queriesTotal(Object count) {
+    return '共 $count 条';
+  }
+
+  @override
+  String get chartTipHint => '轻触图表查看每个时间点';
+
+  @override
+  String chartTipPoint(
+      Object blocked, Object label, Object percent, Object queries) {
+    return '$label · 查询 $queries 条 · 拦截 $blocked 条（$percent）';
+  }
+
+  @override
+  String get topRanking => '热门排行';
+
+  @override
+  String get blockedDomainsShort => '拦截域名';
+
+  @override
+  String get queriedDomainsShort => '查询域名';
+
+  @override
+  String get activeDevices => '活跃设备';
+
+  @override
+  String get dnsOverTls => 'DNS-over-TLS';
+
+  @override
+  String get dhcp => 'DHCP';
+
+  @override
+  String protectionRunningNote(Object blocked) {
+    return '防护正在运行 · 已拦截 $blocked 条查询';
+  }
+
+  @override
+  String get pauseForever => '永久暂停';
+
+  @override
+  String get nowLabel => '现在';
+
+  @override
+  String get todayLabel => '今天';
+
+  @override
+  String get configured => '已配置';
 }

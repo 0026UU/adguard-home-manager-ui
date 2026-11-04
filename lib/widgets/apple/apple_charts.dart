@@ -188,6 +188,281 @@ class _AppleAreaPainter extends CustomPainter {
       old.maxValueLabel != maxValueLabel;
 }
 
+/// Queries and blocks over one window: an area under the query line, a dashed
+/// line for the blocked ones, hairline gridlines and hour/day labels.
+///
+/// The two series share one scale, the way the design layer draws them, so a
+/// day with fewer blocks reads lower even when its block rate is the same.
+/// `labels` carries one entry per bucket; only a handful are drawn, each above
+/// its own bucket. Touching the chart reports the bucket through [onSelect]
+/// and marks both series with a dot.
+class AppleTrendChart extends StatelessWidget {
+  final List<double> queries;
+  final List<double> blocked;
+
+  /// One label per bucket, or null for none.
+  final List<String>? labels;
+
+  /// Bucket to mark, or -1 to draw no marker.
+  final int selectedIndex;
+  final ValueChanged<int>? onSelect;
+  final double height;
+
+  const AppleTrendChart({
+    super.key,
+    required this.queries,
+    required this.blocked,
+    this.labels,
+    this.selectedIndex = -1,
+    this.onSelect,
+    this.height = 170,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapUp: onSelect == null
+        ? null
+        : (details) => _select(details.localPosition.dx, context.size?.width ?? 0),
+      onHorizontalDragUpdate: onSelect == null
+        ? null
+        : (details) => _select(details.localPosition.dx, context.size?.width ?? 0),
+      child: SizedBox(
+        height: height,
+        width: double.infinity,
+        child: CustomPaint(
+          painter: _AppleTrendPainter(
+            queries: queries,
+            blocked: blocked,
+            labels: labels,
+            selectedIndex: selectedIndex,
+            line: p.tint,
+            blockColor: p.red,
+            gridColor: p.separatorSoft,
+            labelColor: p.label3,
+            cardColor: p.card,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _select(double dx, double width) {
+    final onSelect = this.onSelect;
+    if (onSelect == null || width <= 0 || queries.length < 2) return;
+
+    const padding = _AppleTrendMetrics.sidePadding;
+    final step = (width - padding * 2) / (queries.length - 1);
+    final index = ((dx - padding) / step).round().clamp(0, queries.length - 1);
+    onSelect(index);
+  }
+}
+
+/// The box the trend chart draws in, shared by the widget and its painter.
+class _AppleTrendMetrics {
+  static const double sidePadding = 6;
+  static const double topPadding = 14;
+  static const double bottomPadding = 24;
+}
+
+class _AppleTrendPainter extends CustomPainter {
+  final List<double> queries;
+  final List<double> blocked;
+  final List<String>? labels;
+  final int selectedIndex;
+  final Color line;
+  final Color blockColor;
+  final Color gridColor;
+  final Color labelColor;
+  final Color cardColor;
+
+  _AppleTrendPainter({
+    required this.queries,
+    required this.blocked,
+    required this.labels,
+    required this.selectedIndex,
+    required this.line,
+    required this.blockColor,
+    required this.gridColor,
+    required this.labelColor,
+    required this.cardColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const pl = _AppleTrendMetrics.sidePadding;
+    const pr = _AppleTrendMetrics.sidePadding;
+    const pt = _AppleTrendMetrics.topPadding;
+    const pb = _AppleTrendMetrics.bottomPadding;
+
+    final base = size.height - pb;
+    final plot = base - pt;
+
+    if (queries.length < 2) return;
+
+    // The design layer leaves 12% of headroom over the busiest bucket.
+    final maxV = queries.fold<double>(0, math.max) * 1.12;
+    if (maxV <= 0) return;
+
+    final step = (size.width - pl - pr) / (queries.length - 1);
+    double xOf(int i) => pl + i * step;
+    double yOf(double v) => pt + (1 - v / maxV) * plot;
+
+    final grid = Paint()
+      ..color = gridColor
+      ..strokeWidth = 1;
+    for (final f in <double>[0, 0.5, 1]) {
+      final y = pt + f * plot;
+      canvas.drawLine(Offset(pl, y), Offset(size.width - pr, y), grid);
+    }
+
+    final qPath = _smooth(_points(queries, xOf, yOf));
+    final area = Path.from(qPath)
+      ..lineTo(xOf(queries.length - 1), base)
+      ..lineTo(xOf(0), base)
+      ..close();
+
+    canvas.drawPath(
+      area,
+      Paint()
+        ..shader = ui.Gradient.linear(
+          Offset(0, pt),
+          Offset(0, base),
+          [line.withValues(alpha: 0.28), line.withValues(alpha: 0)],
+        ),
+    );
+
+    canvas.drawPath(
+      qPath,
+      Paint()
+        ..color = line
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.2
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+
+    if (blocked.length == queries.length) {
+      final bPath = _smooth(_points(blocked, xOf, yOf));
+      canvas.drawPath(
+        _dashed(bPath, const [1, 5]),
+        Paint()
+          ..color = blockColor.withValues(alpha: 0.9)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.2
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+
+    final texts = labels;
+    if (texts != null && texts.length == queries.length) {
+      final style = TextStyle(fontSize: 10, color: labelColor, height: 1);
+      // Show a handful of buckets, always including the newest one.
+      final every = (texts.length / 8).ceil();
+      for (var i = 0; i < texts.length; i++) {
+        if (i % every != 0 && i != texts.length - 1) continue;
+        final tp = TextPainter(
+          text: TextSpan(text: texts[i], style: style),
+          textDirection: ui.TextDirection.ltr,
+        )..layout();
+        final dx = (xOf(i) - tp.width / 2).clamp(0.0, size.width - tp.width);
+        tp.paint(canvas, Offset(dx, size.height - 15));
+        tp.dispose();
+      }
+    }
+
+    if (selectedIndex >= 0 && selectedIndex < queries.length) {
+      final x = xOf(selectedIndex);
+      canvas.drawLine(
+        Offset(x, pt),
+        Offset(x, base),
+        Paint()
+          ..color = labelColor.withValues(alpha: 0.55)
+          ..strokeWidth = 1,
+      );
+      _dot(canvas, Offset(x, yOf(queries[selectedIndex])), line);
+      if (blocked.length == queries.length) {
+        _dot(canvas, Offset(x, yOf(blocked[selectedIndex])), blockColor);
+      }
+    }
+  }
+
+  void _dot(Canvas canvas, Offset center, Color color) {
+    canvas.drawCircle(
+      center,
+      4.5,
+      Paint()..color = color,
+    );
+    canvas.drawCircle(
+      center,
+      4.5,
+      Paint()
+        ..color = cardColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5,
+    );
+  }
+
+  /// Catmull-Rom through the points, the same curve the design layer uses.
+  Path _smooth(List<Offset> pts) {
+    final path = Path()..moveTo(pts.first.dx, pts.first.dy);
+    for (var i = 0; i < pts.length - 1; i++) {
+      final p0 = i == 0 ? pts[i] : pts[i - 1];
+      final p1 = pts[i];
+      final p2 = pts[i + 1];
+      final p3 = i + 2 < pts.length ? pts[i + 2] : p2;
+      final c1 = Offset(p1.dx + (p2.dx - p0.dx) / 6, p1.dy + (p2.dy - p0.dy) / 6);
+      final c2 = Offset(p2.dx - (p3.dx - p1.dx) / 6, p2.dy - (p3.dy - p1.dy) / 6);
+      path.cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, p2.dx, p2.dy);
+    }
+    return path;
+  }
+
+  /// Turns a path into a dashed one, for `stroke-dasharray="1 5"`.
+  Path _dashed(Path source, List<double> pattern) {
+    final dashed = Path();
+    var index = 0;
+    var dash = pattern[index];
+
+    for (final metric in source.computeMetrics()) {
+      var distance = 0.0;
+      while (distance < metric.length) {
+        final next = math.min(distance + dash, metric.length);
+        // Even entries of the pattern are drawn, odd ones are left empty.
+        if (index.isEven) {
+          dashed.addPath(metric.extractPath(distance, next), Offset.zero);
+        }
+        distance = next;
+        index = (index + 1) % pattern.length;
+        dash = pattern[index];
+      }
+    }
+    return dashed;
+  }
+
+  List<Offset> _points(
+    List<double> values,
+    double Function(int index) xOf,
+    double Function(double value) yOf,
+  ) {
+    return <Offset>[
+      for (var i = 0; i < values.length; i++) Offset(xOf(i), yOf(values[i])),
+    ];
+  }
+
+  @override
+  bool shouldRepaint(_AppleTrendPainter old) =>
+      old.queries != queries ||
+      old.blocked != blocked ||
+      old.labels != labels ||
+      old.selectedIndex != selectedIndex ||
+      old.line != line ||
+      old.blockColor != blockColor;
+}
+
 /// Thin inline chart for stat rows.
 class AppleSparkline extends StatelessWidget {
   final List<double> values;

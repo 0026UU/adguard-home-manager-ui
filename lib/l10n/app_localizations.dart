@@ -5334,6 +5334,175 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Theme color'**
   String get themeColorForStatus;
+
+  /// No description provided for @protectionRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection running'**
+  String get protectionRunning;
+
+  /// No description provided for @protectionPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection paused'**
+  String get protectionPaused;
+
+  /// No description provided for @protectionOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection is on'**
+  String get protectionOn;
+
+  /// No description provided for @manageProtection.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage protection'**
+  String get manageProtection;
+
+  /// No description provided for @viewLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'View logs'**
+  String get viewLogs;
+
+  /// No description provided for @totalQueries.
+  ///
+  /// In en, this message translates to:
+  /// **'Total queries'**
+  String get totalQueries;
+
+  /// No description provided for @vsYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'{delta} vs yesterday'**
+  String vsYesterday(Object delta);
+
+  /// No description provided for @blockRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Block rate {percent}'**
+  String blockRate(Object percent);
+
+  /// No description provided for @avgProcessingTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Average processing time'**
+  String get avgProcessingTime;
+
+  /// No description provided for @belowReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Under the {reference} ms reference'**
+  String belowReference(Object reference);
+
+  /// No description provided for @aboveReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Over the {reference} ms reference'**
+  String aboveReference(Object reference);
+
+  /// No description provided for @activeRules.
+  ///
+  /// In en, this message translates to:
+  /// **'Active rules'**
+  String get activeRules;
+
+  /// No description provided for @filterListsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} filter lists'**
+  String filterListsCount(Object count);
+
+  /// No description provided for @trafficTrend.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic trend'**
+  String get trafficTrend;
+
+  /// No description provided for @queriesTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total {count}'**
+  String queriesTotal(Object count);
+
+  /// No description provided for @chartTipHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the chart for every point'**
+  String get chartTipHint;
+
+  /// No description provided for @chartTipPoint.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} - {queries} queries - {blocked} blocked ({percent})'**
+  String chartTipPoint(
+      Object blocked, Object label, Object percent, Object queries);
+
+  /// No description provided for @topRanking.
+  ///
+  /// In en, this message translates to:
+  /// **'Top ranking'**
+  String get topRanking;
+
+  /// No description provided for @blockedDomainsShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked domains'**
+  String get blockedDomainsShort;
+
+  /// No description provided for @queriedDomainsShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Queried domains'**
+  String get queriedDomainsShort;
+
+  /// No description provided for @activeDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Active devices'**
+  String get activeDevices;
+
+  /// No description provided for @dnsOverTls.
+  ///
+  /// In en, this message translates to:
+  /// **'DNS-over-TLS'**
+  String get dnsOverTls;
+
+  /// No description provided for @dhcp.
+  ///
+  /// In en, this message translates to:
+  /// **'DHCP'**
+  String get dhcp;
+
+  /// No description provided for @protectionRunningNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection running - {blocked} queries blocked'**
+  String protectionRunningNote(Object blocked);
+
+  /// No description provided for @pauseForever.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause indefinitely'**
+  String get pauseForever;
+
+  /// No description provided for @nowLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Now'**
+  String get nowLabel;
+
+  /// No description provided for @todayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get todayLabel;
+
+  /// No description provided for @configured.
+  ///
+  /// In en, this message translates to:
+  /// **'Configured'**
+  String get configured;
 }
 
 class _AppLocalizationsDelegate

@@ -2007,12 +2007,16 @@ class AppleButton extends StatelessWidget {
                       Icon(icon, size: 19, color: foreground),
                       const SizedBox(width: 7),
                     ],
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: foreground,
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: foreground,
+                        ),
                       ),
                     ),
                   ],

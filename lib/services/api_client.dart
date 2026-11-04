@@ -18,6 +18,7 @@ import 'package:adguard_home_manager/models/clients.dart';
 import 'package:adguard_home_manager/models/clients_allowed_blocked.dart';
 import 'package:adguard_home_manager/models/server.dart';
 import 'package:adguard_home_manager/models/server_status.dart';
+import 'package:adguard_home_manager/models/dns_statistics.dart';
 import 'package:adguard_home_manager/classes/http_client.dart';
 
 class ApiResponse {
@@ -102,6 +103,36 @@ class ApiClientV2 {
         );
       } on FormatException {
         return const ApiResponse(successful: false);
+      } catch (e, stackTrace) {
+        Sentry.captureException(e, stackTrace: stackTrace);
+        return const ApiResponse(successful: false);
+      }
+    }
+    else {
+      return const ApiResponse(successful: false);
+    }
+  }
+
+  /// Statistics for one lookback window.
+  ///
+  /// `GET /control/stats` takes a single optional query, `recent`, which is
+  /// the lookback period in milliseconds. AdGuard Home rejects the request
+  /// with 400 when it is not a whole number of hours or when it is longer
+  /// than the interval the server keeps (`GET /control/stats/config`), so the
+  /// caller has to clamp it before asking.
+  Future<ApiResponse> getStatistics({
+    int? recentMs,
+  }) async {
+    final result = await HttpRequestClient.get(
+      urlPath: recentMs != null ? '/stats?recent=$recentMs' : '/stats',
+      server: server,
+    );
+    if (result.successful == true) {
+      try {
+        return ApiResponse(
+          successful: true,
+          content: DnsStatistics.fromJson(jsonDecode(result.body!))
+        );
       } catch (e, stackTrace) {
         Sentry.captureException(e, stackTrace: stackTrace);
         return const ApiResponse(successful: false);

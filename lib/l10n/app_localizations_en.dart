@@ -2776,4 +2776,105 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get themeColorForStatus => 'Theme color';
+
+  @override
+  String get protectionRunning => 'Protection running';
+
+  @override
+  String get protectionPaused => 'Protection paused';
+
+  @override
+  String get protectionOn => 'Protection is on';
+
+  @override
+  String get manageProtection => 'Manage protection';
+
+  @override
+  String get viewLogs => 'View logs';
+
+  @override
+  String get totalQueries => 'Total queries';
+
+  @override
+  String vsYesterday(Object delta) {
+    return '$delta vs yesterday';
+  }
+
+  @override
+  String blockRate(Object percent) {
+    return 'Block rate $percent';
+  }
+
+  @override
+  String get avgProcessingTime => 'Average processing time';
+
+  @override
+  String belowReference(Object reference) {
+    return 'Under the $reference ms reference';
+  }
+
+  @override
+  String aboveReference(Object reference) {
+    return 'Over the $reference ms reference';
+  }
+
+  @override
+  String get activeRules => 'Active rules';
+
+  @override
+  String filterListsCount(Object count) {
+    return '$count filter lists';
+  }
+
+  @override
+  String get trafficTrend => 'Traffic trend';
+
+  @override
+  String queriesTotal(Object count) {
+    return 'Total $count';
+  }
+
+  @override
+  String get chartTipHint => 'Tap the chart for every point';
+
+  @override
+  String chartTipPoint(
+      Object blocked, Object label, Object percent, Object queries) {
+    return '$label - $queries queries - $blocked blocked ($percent)';
+  }
+
+  @override
+  String get topRanking => 'Top ranking';
+
+  @override
+  String get blockedDomainsShort => 'Blocked domains';
+
+  @override
+  String get queriedDomainsShort => 'Queried domains';
+
+  @override
+  String get activeDevices => 'Active devices';
+
+  @override
+  String get dnsOverTls => 'DNS-over-TLS';
+
+  @override
+  String get dhcp => 'DHCP';
+
+  @override
+  String protectionRunningNote(Object blocked) {
+    return 'Protection running - $blocked queries blocked';
+  }
+
+  @override
+  String get pauseForever => 'Pause indefinitely';
+
+  @override
+  String get nowLabel => 'Now';
+
+  @override
+  String get todayLabel => 'Today';
+
+  @override
+  String get configured => 'Configured';
 }
