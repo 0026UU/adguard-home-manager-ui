@@ -13,6 +13,7 @@ import 'package:adguard_home_manager/classes/process_modal.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/providers/filtering_provider.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 class BlockedServicesScreen extends StatefulWidget {
   final bool fullScreen;
@@ -94,8 +95,14 @@ class _BlockedServicesScreenStateWidget extends State<BlockedServicesScreen> {
                 sliver: SliverAppBar.large(
                   pinned: true,
                   floating: true,
-                  centerTitle: false,
+                  centerTitle: true,
                   forceElevated: innerBoxIsScrolled,
+                  backgroundColor: Colors.transparent,
+                  surfaceTintColor: Colors.transparent,
+                  scrolledUnderElevation: 0,
+                  flexibleSpace: AppleLargeTitle(
+                    title: AppLocalizations.of(context)!.blockedServices,
+                  ),
                   leading: CloseButton(onPressed: () => Navigator.pop(context)),
                   title: Text(AppLocalizations.of(context)!.blockedServices),
                   actions: [

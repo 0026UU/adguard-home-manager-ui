@@ -4,6 +4,7 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
 import 'package:adguard_home_manager/screens/filters/modals/custom_rules/custom_rule_docs.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/providers/filtering_provider.dart';
 
@@ -46,8 +47,14 @@ class _EditCustomRulesState extends State<EditCustomRules> {
                 sliver: SliverAppBar.large(
                   pinned: true,
                   floating: true,
-                  centerTitle: false,
+                  centerTitle: true,
                   forceElevated: innerBoxIsScrolled,
+                  backgroundColor: Colors.transparent,
+                  surfaceTintColor: Colors.transparent,
+                  scrolledUnderElevation: 0,
+                  flexibleSpace: AppleLargeTitle(
+                    title: AppLocalizations.of(context)!.editCustomRules,
+                  ),
                   leading: CloseButton(onPressed: () => Navigator.pop(context)),
                   title: Text(AppLocalizations.of(context)!.editCustomRules),
                   actions: [

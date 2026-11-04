@@ -10,6 +10,7 @@ import 'package:adguard_home_manager/screens/clients/client/client_screen_functi
 import 'package:adguard_home_manager/models/safe_search.dart';
 import 'package:adguard_home_manager/providers/clients_provider.dart';
 import 'package:adguard_home_manager/models/clients.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 class ClientInitialData {
   final String name;
@@ -245,8 +246,16 @@ class _ClientScreenState extends State<ClientScreen> {
               sliver: SliverAppBar.large(
                 pinned: true,
                 floating: true,
-                centerTitle: false,
+                centerTitle: true,
                 forceElevated: innerBoxIsScrolled,
+                backgroundColor: Colors.transparent,
+                surfaceTintColor: Colors.transparent,
+                scrolledUnderElevation: 0,
+                flexibleSpace: AppleLargeTitle(
+                  title: widget.client != null
+                      ? AppLocalizations.of(context)!.client
+                      : AppLocalizations.of(context)!.addClient,
+                ),
                 leading: IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.close)

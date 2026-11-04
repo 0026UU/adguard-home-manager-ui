@@ -16,6 +16,7 @@ import 'package:adguard_home_manager/models/menu_option.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/functions/number_format.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 enum _SortingOptions { highestToLowest, lowestToHighest }
 final GlobalKey _searchButtonKey = GlobalKey();
@@ -106,6 +107,11 @@ class _TopItemsScreenState extends State<TopItemsScreen> {
             SliverOverlapAbsorber(
               handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
               sliver: SliverAppBar.large(
+                centerTitle: true,
+                backgroundColor: Colors.transparent,
+                surfaceTintColor: Colors.transparent,
+                scrolledUnderElevation: 0,
+                flexibleSpace: AppleLargeTitle(title: widget.title),
                 title: Text(widget.title),
                 actions: [
                   IconButton(
