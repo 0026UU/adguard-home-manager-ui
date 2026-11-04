@@ -1,5 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +11,7 @@ import 'package:adguard_home_manager/screens/filters/add_button.dart';
 import 'package:adguard_home_manager/screens/filters/modals/custom_rules/sort_rules.dart';
 import 'package:adguard_home_manager/widgets/tab_content_list.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
@@ -39,30 +41,41 @@ class _CustomRulesListState extends State<CustomRulesList> {
   CustomRulesSorting _sortingMethod = CustomRulesSorting.topBottom;
 
   @override
-  initState(){
+  void initState(){
     super.initState();
     
     isVisible = true;
-    widget.scrollController.addListener(() {
-      if (widget.scrollController.position.userScrollDirection == ScrollDirection.reverse) {
-        if (mounted && isVisible == true) {
-          setState(() => isVisible = false);
-        }
-      } 
-      else {
-        if (widget.scrollController.position.userScrollDirection == ScrollDirection.forward) {
-          if (mounted && isVisible == false) {
-            setState(() => isVisible = true);
-          }
+    widget.scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (widget.scrollController.position.userScrollDirection == ScrollDirection.reverse) {
+      if (mounted && isVisible == true) {
+        setState(() => isVisible = false);
+      }
+    } 
+    else {
+      if (widget.scrollController.position.userScrollDirection == ScrollDirection.forward) {
+        if (mounted && isVisible == false) {
+          setState(() => isVisible = true);
         }
       }
-    });
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.scrollController.removeListener(_onScroll);
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final filteringProvider = Provider.of<FilteringProvider>(context);
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
+
+    final palette = ApplePalette.of(context);
 
     final renderData = _sortingMethod == CustomRulesSorting.bottomTop ? widget.data.reversed.toList() : widget.data.toList();
 
@@ -82,28 +95,13 @@ class _CustomRulesListState extends State<CustomRulesList> {
       final commentRegex = RegExp(r'^(#|!).*$');
 
       if (allowRegex.hasMatch(rule)) {
-        return Text(
-          AppLocalizations.of(context)!.allowed,
-          style: const TextStyle(
-            color: Colors.green
-          ),
-        );
+        return ApplePill(label: l.allowed, color: palette.green);
       }
       else if (blockRegex.hasMatch(rule)) {
-        return Text(
-          AppLocalizations.of(context)!.blocked,
-          style: const TextStyle(
-            color: Colors.red
-          ),
-        );
+        return ApplePill(label: l.blocked, color: palette.red);
       }
       else if (commentRegex.hasMatch(rule)) {
-        return Text(
-          AppLocalizations.of(context)!.comment,
-          style: const TextStyle(
-            color: Colors.grey
-          ),
-        );
+        return ApplePill(label: l.comment, color: palette.label3);
       }
       else {
         return null;
@@ -120,132 +118,99 @@ class _CustomRulesListState extends State<CustomRulesList> {
       );
     }
 
-    return CustomTabContentList(
-      loadingGenerator: () => SizedBox(
-        width: double.maxFinite,
-        height: MediaQuery.of(context).size.height-171,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 30),
-            Text(
-              AppLocalizations.of(context)!.loadingFilters,
-              style: TextStyle(
-                fontSize: 22,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            )
-          ],
+    void refresh() async {
+      final result = await filteringProvider.fetchFilters();
+      if (result == false && mounted) {
+        showSnackbar(
+          appConfigProvider: appConfigProvider,
+          label: l.errorLoadFilters, 
+          color: palette.red
+        );
+      }
+    }
+
+    Widget row(int index) {
+      final rule = renderData[index];
+      final tile = AppleListTile(
+        title: rule,
+        subtitleWidget: generateSubtitle(rule),
+        showChevron: false,
+        // Commented rules are read-only, so they render as a secondary row.
+        enabled: !checkIfComment(rule),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        trailing: IconButton(
+          onPressed: () => widget.onRemoveCustomRule(rule),
+          icon: Icon(CupertinoIcons.trash, color: palette.red),
+          splashRadius: 18,
+          tooltip: l.delete,
         ),
-      ), 
+      );
+
+      return Column(
+        children: [
+          tile,
+          if (index != renderData.length - 1)
+            AppleSeparator(indent: tile.separatorIndent),
+        ],
+      );
+    }
+
+    return CustomTabContentList(
+      loadingGenerator: () => AppleLoading(label: l.loadingFilters), 
       itemsCount: renderData.length, 
-      contentWidget: (index) => ListTile(
-        title: Text(
-          renderData[index],
-          style: TextStyle(
-            color: checkIfComment(widget.data[index]) == true
-              ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)
-              : Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.normal,
+      contentWidget: row, 
+      noData: Center(
+        child: AppleEmptyState(
+          icon: CupertinoIcons.textformat,
+          title: l.noCustomFilters,
+          color: palette.label3,
+          action: SizedBox(
+            width: 180,
+            child: AppleButton.secondary(
+              label: l.refresh,
+              icon: CupertinoIcons.arrow_2_circlepath,
+              onPressed: refresh,
+            ),
           ),
         ),
-        subtitle: generateSubtitle(renderData[index]),
-        trailing: IconButton(
-          onPressed: () => widget.onRemoveCustomRule(renderData[index]),
-          icon: const Icon(Icons.delete)
-        ),
       ), 
-      noData: Container(
-        width: double.maxFinite,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Flexible(
-              child: Text(
-                AppLocalizations.of(context)!.noCustomFilters,
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 24,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-            const SizedBox(height: 30),
-            TextButton.icon(
-              onPressed: () async {
-                final result = await filteringProvider.fetchFilters();
-                if (result == false && context.mounted) {
-                  showSnackbar(
-                    appConfigProvider: appConfigProvider,
-                    label: AppLocalizations.of(context)!.errorLoadFilters, 
-                    color: Colors.red
-                  );
-                }
-              }, 
-              icon: const Icon(Icons.refresh_rounded), 
-              label: Text(AppLocalizations.of(context)!.refresh),
-            )
-          ],
-        ),
-      ), 
-      errorGenerator: () => SizedBox(
-        width: double.maxFinite,
-        height: MediaQuery.of(context).size.height-171,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error,
-              color: Colors.red,
-              size: 50,
-            ),
-            const SizedBox(height: 30),
-            Text(
-              AppLocalizations.of(context)!.filtersNotLoaded,
-              style: TextStyle(
-                fontSize: 22,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            )
-          ],
+      errorGenerator: () => Center(
+        child: AppleEmptyState(
+          icon: CupertinoIcons.exclamationmark_triangle,
+          title: l.filtersNotLoaded,
+          color: palette.orange,
         ),
       ), 
       loadStatus: widget.loadStatus, 
-      onRefresh: () async {
-        final result = await filteringProvider.fetchFilters();
-        if (result == false && context.mounted) {
-          showSnackbar(
-            appConfigProvider: appConfigProvider,
-            label: AppLocalizations.of(context)!.errorLoadFilters, 
-            color: Colors.red
-          );
-        }
-      }, 
+      onRefresh: () async => refresh(), 
       fab: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          FloatingActionButton.small(
+          _AppleFab(
+            icon: CupertinoIcons.arrow_up_arrow_down,
+            tooltip: l.sortingOptions,
+            small: true,
             onPressed: showSortingMethodModal,
-            child: Icon(Icons.sort_rounded),
+            palette: palette,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           AddFiltersButton(
             type: 'edit_custom_rule', 
-            widget: (fn) => FloatingActionButton.small(
+            widget: (fn) => _AppleFab(
+              icon: CupertinoIcons.pencil,
+              tooltip: l.editCustomRules,
+              small: true,
               onPressed: fn,
-              child: const Icon(Icons.edit_rounded),
+              palette: palette,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           AddFiltersButton(
             type: 'add_custom_rule',
-            widget: (fn) => FloatingActionButton(
+            widget: (fn) => _AppleFab(
+              icon: CupertinoIcons.plus,
               onPressed: fn,
-              child: const Icon(Icons.add),
+              palette: palette,
             ),
           ),
         ],
@@ -253,5 +218,45 @@ class _CustomRulesListState extends State<CustomRulesList> {
       heightFabHidden: -180,
       fabVisible: isVisible,
     );
+  }
+}
+
+/// Circular tinted button, matching the floating actions elsewhere in the app.
+class _AppleFab extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final bool small;
+  final String? tooltip;
+  final ApplePalette palette;
+
+  const _AppleFab({
+    required this.icon,
+    required this.palette,
+    this.onPressed,
+    this.small = false,
+    this.tooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return small
+      ? FloatingActionButton.small(
+          heroTag: tooltip ?? icon.codePoint.toString(),
+          onPressed: onPressed,
+          tooltip: tooltip,
+          backgroundColor: palette.tint,
+          foregroundColor: Colors.white,
+          shape: const CircleBorder(),
+          child: Icon(icon, size: 18),
+        )
+      : FloatingActionButton(
+          heroTag: tooltip ?? icon.codePoint.toString(),
+          onPressed: onPressed,
+          tooltip: tooltip,
+          backgroundColor: palette.tint,
+          foregroundColor: Colors.white,
+          shape: const CircleBorder(),
+          child: Icon(icon, size: 24),
+        );
   }
 }

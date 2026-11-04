@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
 class DeleteListModal extends StatelessWidget {
   final void Function() onConfirm;
 
@@ -12,42 +14,14 @@ class DeleteListModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Column(
-        children: [
-          Icon(
-            Icons.delete_rounded,
-            size: 24,
-            color: Theme.of(context).listTileTheme.iconColor
-          ),
-          const SizedBox(height: 16),
-          Text(
-            AppLocalizations.of(context)!.deleteList,
-            style: TextStyle(
-              fontSize: 24,
-              color: Theme.of(context).colorScheme.onSurface
-            ),
-          )
-        ],
-      ),
-      content: Text(
-        AppLocalizations.of(context)!.deleteListMessage,
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurface
-        ),
-      ),
+    final l = AppLocalizations.of(context)!;
+
+    return AppleAlertDialog(
+      title: l.deleteList,
+      message: l.deleteListMessage,
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context), 
-          child: Text(AppLocalizations.of(context)!.cancel)
-        ),
-        TextButton(
-          onPressed: () {
-            onConfirm();
-            Navigator.pop(context);
-          }, 
-          child: Text(AppLocalizations.of(context)!.confirm)
-        ),
+        AppleSheetAction(label: l.cancel),
+        AppleSheetAction(label: l.confirm, destructive: true, onTap: onConfirm),
       ],
     );
   }

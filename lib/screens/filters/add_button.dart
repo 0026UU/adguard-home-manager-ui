@@ -11,6 +11,7 @@ import 'package:adguard_home_manager/screens/filters/modals/custom_rules/edit_cu
 import 'package:adguard_home_manager/screens/filters/modals/custom_rules/add_custom_rule.dart';
 import 'package:adguard_home_manager/screens/filters/details/add_list_modal.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/providers/filtering_provider.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/classes/process_modal.dart';
@@ -32,6 +33,7 @@ class AddFiltersButton extends StatelessWidget {
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
 
     final width = MediaQuery.of(context).size.width;
+    final palette = ApplePalette.of(context);
 
     void confirmAddRule(String rule) async {
       if (!context.mounted) return;
@@ -48,14 +50,14 @@ class AddFiltersButton extends StatelessWidget {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.ruleAddedSuccessfully, 
-          color: Colors.green
+          color: palette.green
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.ruleNotAdded, 
-          color: Colors.red
+          color: palette.red
         );
       }
     }
@@ -75,14 +77,14 @@ class AddFiltersButton extends StatelessWidget {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.customRulesUpdatedSuccessfully, 
-          color: Colors.green
+          color: palette.green
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.customRulesNotUpdated, 
-          color: Colors.red
+          color: palette.red
         );
       }
     }
@@ -156,28 +158,28 @@ class AddFiltersButton extends StatelessWidget {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: "${AppLocalizations.of(context)!.listAdded} ${result['data']}.", 
-          color: Colors.green
+          color: palette.green
         );
       }
       else if (result['success'] == false && result['error'] == 'invalid_url') {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.listUrlInvalid, 
-          color: Colors.red
+          color: palette.red
         );
       }
       else if (result['success'] == false && result['error'] == 'url_exists') {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.listAlreadyAdded, 
-          color: Colors.red
+          color: palette.red
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.listNotAdded, 
-          color: Colors.red
+          color: palette.red
         );
       }
     }

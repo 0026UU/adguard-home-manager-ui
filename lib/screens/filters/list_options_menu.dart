@@ -2,13 +2,12 @@
 
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:contextmenu/contextmenu.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
-import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
 import 'package:adguard_home_manager/widgets/options_menu.dart';
 import 'package:adguard_home_manager/screens/filters/selection/selection_screen.dart';
 
@@ -20,6 +19,7 @@ import 'package:adguard_home_manager/providers/filtering_provider.dart';
 import 'package:adguard_home_manager/functions/copy_clipboard.dart';
 import 'package:adguard_home_manager/models/menu_option.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 class ListOptionsMenu extends StatelessWidget {
   final Filter list;
@@ -35,6 +35,7 @@ class ListOptionsMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final filteringProvider = Provider.of<FilteringProvider>(context);
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
 
@@ -44,8 +45,8 @@ class ListOptionsMenu extends StatelessWidget {
       ProcessModal processModal = ProcessModal();
       processModal.open(
         list.enabled == true
-          ? AppLocalizations.of(context)!.disablingList
-          : AppLocalizations.of(context)!.enablingList
+          ? l.disablingList
+          : l.enablingList
       );
 
       final result = await filteringProvider.updateList(
@@ -62,15 +63,15 @@ class ListOptionsMenu extends StatelessWidget {
       if (result == true) {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.listDataUpdated, 
-          color: Colors.green
+          label: l.listDataUpdated, 
+          color: ApplePalette.of(context).green
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.listDataNotUpdated, 
-          color: Colors.red
+          label: l.listDataNotUpdated, 
+          color: ApplePalette.of(context).red
         );
       }
     }
@@ -101,88 +102,38 @@ class ListOptionsMenu extends StatelessWidget {
       );
     }
 
-    return ContextMenuArea(
-      builder: (context) => [
-        CustomListTile(
-          title: list.enabled == true
-            ? AppLocalizations.of(context)!.disable
-            : AppLocalizations.of(context)!.enable,
+    return OptionsMenu(
+      options: (_) => [
+        MenuOption(
+          title: list.enabled == true ? l.disable : l.enable,
           icon: list.enabled == true
-            ? Icons.gpp_bad_rounded
-            : Icons.verified_user_rounded,
-          onTap: () {
-            Navigator.pop(context);  // Closes the context menu
-            enableDisable();
-          }
+            ? CupertinoIcons.nosign
+            : CupertinoIcons.checkmark_shield,
+          action: () => enableDisable()
         ),
-        CustomListTile(
-          title: AppLocalizations.of(context)!.copyListUrl,
-          icon: Icons.copy_rounded,
-          onTap: () {
-            Navigator.pop(context);  // Closes the context menu
-            copyToClipboard(
-              value: list.url, 
-              successMessage: AppLocalizations.of(context)!.listUrlCopied
-            );
-          }
-        ),
-        CustomListTile(
-          title: AppLocalizations.of(context)!.openListUrl,
-          icon: Icons.open_in_browser_rounded,
-          onTap: () {
-            Navigator.pop(context);  // Closes the context menu
-            openUrl(list.url);
-          }
-        ),
-        CustomListTile(
-          title: AppLocalizations.of(context)!.selectionMode,
-          icon: Icons.check_rounded,
-          onTap: () {
-            Navigator.pop(context);  // Closes the context menu
-            openSelectionMode();
-          }
-        ),
-      ],
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          child: OptionsMenu(
-            options: (_) => [
-              MenuOption(
-                title: list.enabled == true
-                  ? AppLocalizations.of(context)!.disable
-                  : AppLocalizations.of(context)!.enable,
-                icon: list.enabled == true
-                  ? Icons.gpp_bad_rounded
-                  : Icons.verified_user_rounded,
-                action: () => enableDisable()
-              ),
-              MenuOption(
-                title: AppLocalizations.of(context)!.copyListUrl,
-                icon: Icons.copy_rounded,
-                action: () => copyToClipboard(
-                  value: list.url, 
-                  successMessage: AppLocalizations.of(context)!.listUrlCopied
-                )
-              ),
-              MenuOption(
-                title: AppLocalizations.of(context)!.openListUrl,
-                icon: Icons.open_in_browser_rounded,
-                action: () => openUrl(list.url)
-              ),
-              MenuOption(
-                title: AppLocalizations.of(context)!.selectionMode,
-                icon: Icons.check_rounded,
-                action: () => Future.delayed(
-                  const Duration(milliseconds: 0), 
-                  () => openSelectionMode()
-                )
-              ),
-            ],
-            child: child
+        MenuOption(
+          title: l.copyListUrl,
+          icon: CupertinoIcons.doc_on_clipboard,
+          action: () => copyToClipboard(
+            value: list.url, 
+            successMessage: l.listUrlCopied
           )
         ),
-      ), 
+        MenuOption(
+          title: l.openListUrl,
+          icon: CupertinoIcons.arrow_up_right,
+          action: () => openUrl(list.url)
+        ),
+        MenuOption(
+          title: l.selectionMode,
+          icon: CupertinoIcons.checkmark,
+          action: () => Future.delayed(
+            const Duration(milliseconds: 0), 
+            () => openSelectionMode()
+          )
+        ),
+      ],
+      child: child
     );
   }
 }

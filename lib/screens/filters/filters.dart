@@ -2,6 +2,7 @@
 
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
@@ -15,6 +16,7 @@ import 'package:adguard_home_manager/screens/filters/modals/remove_custom_rule_m
 import 'package:adguard_home_manager/screens/filters/modals/blocked_services_screen.dart';
 import 'package:adguard_home_manager/screens/filters/modals/update_interval_lists_modal.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
 import 'package:adguard_home_manager/classes/process_modal.dart';
@@ -50,6 +52,7 @@ class _FiltersState extends State<Filters> {
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
 
     final width = MediaQuery.of(context).size.width;
+    final palette = ApplePalette.of(context);
 
     void updateLists() async {
       ProcessModal processModal = ProcessModal();
@@ -61,14 +64,14 @@ class _FiltersState extends State<Filters> {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: "${result['data']['updated']} ${AppLocalizations.of(context)!.listsUpdated}", 
-          color: Colors.green
+          color: palette.green
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.listsNotUpdated, 
-          color: Colors.red
+          color: palette.red
         );
       }
     }
@@ -113,14 +116,14 @@ class _FiltersState extends State<Filters> {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.filteringStatusUpdated, 
-          color: Colors.green
+          color: palette.green
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.filteringStatusNotUpdated, 
-          color: Colors.red
+          color: palette.red
         );
       }
     }
@@ -137,14 +140,14 @@ class _FiltersState extends State<Filters> {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.updateFrequencyChanged, 
-          color: Colors.green
+          color: palette.green
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.updateFrequencyNotChanged, 
-          color: Colors.red
+          color: palette.red
         );
       }
     }
@@ -167,14 +170,14 @@ class _FiltersState extends State<Filters> {
         showSnackbar( 
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.ruleRemovedSuccessfully, 
-          color: Colors.green
+          color: palette.green
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.ruleNotRemoved, 
-          color: Colors.red
+          color: palette.red
         );  
       }
     }
@@ -220,32 +223,28 @@ class _FiltersState extends State<Filters> {
               : AppLocalizations.of(context)!.enableFiltering,
             icon: Stack(
               children: [
-                const Icon(Icons.power_settings_new_rounded),
+                const Icon(CupertinoIcons.power),
                 Positioned(
                   bottom: 0,
                   right: 0,
-                  child: Stack(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(30),
-                          color: Colors.white
-                        ),
-                        child: Icon(
-                          filteringProvider.filtering!.enabled == true
-                            ? Icons.check_circle_rounded
-                            : Icons.cancel,
-                          size: 12,
-                          color: filteringProvider.filtering!.enabled == true
-                            ? appConfigProvider.useThemeColorForStatus == true
-                              ? Theme.of(context).colorScheme.primary
-                              : Colors.green
-                            : appConfigProvider.useThemeColorForStatus == true
-                              ? Colors.grey
-                              : Colors.red
-                        ),
-                      ),
-                    ],
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      color: palette.chromeSolid
+                    ),
+                    child: Icon(
+                      filteringProvider.filtering!.enabled == true
+                        ? CupertinoIcons.checkmark_circle_fill
+                        : CupertinoIcons.circle,
+                      size: 11,
+                      color: filteringProvider.filtering!.enabled == true
+                        ? appConfigProvider.useThemeColorForStatus == true
+                          ? palette.tint
+                          : palette.green
+                        : appConfigProvider.useThemeColorForStatus == true
+                          ? palette.label3
+                          : palette.red
+                    ),
                   ),
                 )
               ],
@@ -277,16 +276,17 @@ class _FiltersState extends State<Filters> {
                 );
               }
             }, 
-            icon: const Icon(Icons.update_rounded),
+            icon: const Icon(CupertinoIcons.clock),
             tooltip:  AppLocalizations.of(context)!.updateFrequency,
           ),
           PopupMenuButton(
+            icon: const Icon(CupertinoIcons.ellipsis),
             itemBuilder: (context) => [
               PopupMenuItem(
                 onTap: updateLists,
                 child: Row(
                   children: [
-                    const Icon(Icons.sync_rounded),
+                    const Icon(CupertinoIcons.arrow_2_circlepath),
                     const SizedBox(width: 10),
                     Text(AppLocalizations.of(context)!.updateLists)
                   ],
@@ -296,7 +296,7 @@ class _FiltersState extends State<Filters> {
                 onTap: openBlockedServices,
                 child: Row(
                   children: [
-                    const Icon(Icons.block),
+                    const Icon(CupertinoIcons.nosign),
                     const SizedBox(width: 10),
                     Text(AppLocalizations.of(context)!.blockedServices)
                   ],
@@ -306,7 +306,7 @@ class _FiltersState extends State<Filters> {
                 onTap: showCheckHostModal,
                 child: Row(
                   children: [
-                    const Icon(Icons.shield_rounded),
+                    const Icon(CupertinoIcons.shield),
                     const SizedBox(width: 10),
                     Text(AppLocalizations.of(context)!.checkHostFiltered)
                   ],

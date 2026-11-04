@@ -130,6 +130,10 @@ class AppleScreen extends StatelessWidget {
   /// [slivers] is ignored.
   final Widget? body;
 
+  /// Controller for the [NestedScrollView] used by [body], so screens can keep
+  /// scroll-driven behaviour (e.g. hiding a button while scrolling down).
+  final ScrollController? scrollController;
+
   const AppleScreen({
     super.key,
     required this.title,
@@ -141,6 +145,7 @@ class AppleScreen extends StatelessWidget {
     this.bottomSpacer = 24,
     this.header,
     this.body,
+    this.scrollController,
   });
 
   @override
@@ -169,6 +174,7 @@ class AppleScreen extends StatelessWidget {
         backgroundColor: p.window,
         floatingActionButton: floatingActionButton,
         body: NestedScrollView(
+          controller: scrollController,
           headerSliverBuilder: (context, innerBoxIsScrolled) => [
             SliverOverlapAbsorber(
               handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
@@ -673,47 +679,49 @@ class AppleSegmented extends StatelessWidget {
     final children = <Widget>[];
     for (var i = 0; i < labels.length; i++) {
       final selected = i == selectedIndex;
-      children.add(
-        Expanded(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => onChanged(i),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              margin: EdgeInsets.symmetric(
-                horizontal: selected ? 0 : 2,
-                vertical: 2,
-              ),
-              decoration: BoxDecoration(
-                color: selected ? p.card : Colors.transparent,
-                borderRadius: BorderRadius.circular(height / 2 - 2),
-                boxShadow: selected
-                  ? [
-                      BoxShadow(
-                        color: const Color(0x0F000000).withValues(alpha: 0.08),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      )
-                    ]
-                  : null,
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                labels[i],
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  color: selected ? p.label : p.label2,
-                ),
-              ),
+      final segment = GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onChanged(i),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          margin: EdgeInsets.symmetric(
+            horizontal: selected ? 0 : 2,
+            vertical: 2,
+          ),
+          // A scrollable control shrink-wraps its segments, so each one needs
+          // its own breathing room.
+          padding: EdgeInsets.symmetric(horizontal: scrollable ? 14 : 0),
+          decoration: BoxDecoration(
+            color: selected ? p.card : Colors.transparent,
+            borderRadius: BorderRadius.circular(height / 2 - 2),
+            boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: const Color(0x0F000000).withValues(alpha: 0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : null,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            labels[i],
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              color: selected ? p.label : p.label2,
             ),
           ),
         ),
       );
+
+      // Expanded is illegal inside an unbounded horizontal viewport.
+      children.add(scrollable ? segment : Expanded(child: segment));
     }
 
     final control = AnimatedContainer(

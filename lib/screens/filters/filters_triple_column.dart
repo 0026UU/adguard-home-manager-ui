@@ -2,8 +2,8 @@
 
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:contextmenu/contextmenu.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
@@ -11,10 +11,9 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/widgets/options_menu.dart';
 import 'package:adguard_home_manager/screens/filters/add_button.dart';
 import 'package:adguard_home_manager/screens/filters/list_options_menu.dart';
-import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
-import 'package:adguard_home_manager/functions/desktop_mode.dart';
 import 'package:adguard_home_manager/models/menu_option.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/functions/copy_clipboard.dart';
@@ -37,49 +36,158 @@ class FiltersTripleColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final filteringProvider = Provider.of<FilteringProvider>(context);
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
 
-    final width = MediaQuery.of(context).size.width;
-    
-    Widget? generateSubtitle(String rule) {
+    final palette = ApplePalette.of(context);
+
+    Widget? ruleSubtitle(String rule) {
       final allowRegex = RegExp(r'^@@.*$');
       final blockRegex = RegExp(r'^\|\|.*$');
       final commentRegex = RegExp(r'^(#|!).*$');
 
       if (allowRegex.hasMatch(rule)) {
-        return Text(
-          AppLocalizations.of(context)!.allowed,
-          style: const TextStyle(
-            color: Colors.green
-          ),
-        );
+        return ApplePill(label: l.allowed, color: palette.green);
       }
       else if (blockRegex.hasMatch(rule)) {
-        return Text(
-          AppLocalizations.of(context)!.blocked,
-          style: const TextStyle(
-            color: Colors.red
-          ),
-        );
+        return ApplePill(label: l.blocked, color: palette.red);
       }
       else if (commentRegex.hasMatch(rule)) {
-        return Text(
-          AppLocalizations.of(context)!.comment,
-          style: const TextStyle(
-            color: Colors.grey
-          ),
-        );
+        return ApplePill(label: l.comment, color: palette.label3);
       }
       else {
         return null;
       }
-    } 
+    }
+
+    /// Hairline between two panes, like a split view divider.
+    Widget divider() => SizedBox(
+      width: 0.5,
+      child: ColoredBox(color: palette.separator),
+    );
+
+    /// Column header: section name plus its trailing actions.
+    Widget paneHeader({
+      required String title,
+      required List<Widget> trailing,
+    }) => Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 12, 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: palette.label,
+              ),
+            ),
+          ),
+          ...trailing,
+        ],
+      ),
+    );
+
+    Widget paneActionButton({
+      required VoidCallback? onPressed,
+      required IconData icon,
+      required String tooltip,
+    }) => IconButton(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      color: palette.tint,
+      tooltip: tooltip,
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.transparent,
+        highlightColor: palette.fill3,
+      ),
+    );
+
+    AppleListTile listTile({
+      required String title,
+      required String subtitle,
+      required bool enabled,
+      required VoidCallback onTap,
+    }) {      final statusColor = enabled
+        ? (appConfigProvider.useThemeColorForStatus == true ? palette.tint : palette.green)
+        : (appConfigProvider.useThemeColorForStatus == true ? palette.label3 : palette.red);
+
+      return AppleListTile(
+        title: title,
+        subtitle: subtitle,
+        trailing: ApplePill(
+          label: enabled ? l.enabled : l.disabled,
+          color: statusColor,
+        ),
+        showChevron: true,
+        onTap: onTap,
+      );
+    }
+
+    Widget listPane({
+      required String title,
+      required List<Filter> data,
+      required String type,
+      required String addTooltip,
+    }) => Expanded(
+      flex: 1,
+      child: ColoredBox(
+        color: palette.card,
+        child: Column(
+          children: [
+            paneHeader(
+              title: title,
+              trailing: [
+                AddFiltersButton(
+                  type: type,
+                  widget: (fn) => paneActionButton(
+                    onPressed: fn,
+                    icon: CupertinoIcons.plus,
+                    tooltip: addTooltip,
+                  ),
+                )
+              ],
+            ),
+            Expanded(
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                itemCount: data.length,
+                itemBuilder: (context, index) {
+                  final filter = data[index];
+                  final tile = listTile(
+                    title: filter.name,
+                    subtitle: "${intFormat(filter.rulesCount, Platform.localeName)} ${l.enabledRules}",
+                    enabled: filter.enabled == true,
+                    onTap: () => onOpenDetailsModal(filter, type),
+                  );
+
+                  return ListOptionsMenu(
+                    list: filter,
+                    listType: type,
+                    child: Column(
+                      children: [
+                        tile,
+                        if (index != data.length - 1)
+                          AppleSeparator(indent: tile.separatorIndent),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
 
     return Scaffold(
-      appBar: AppBar(
-        surfaceTintColor: isDesktop(width) ? Colors.transparent : null,
-        title: Text(AppLocalizations.of(context)!.filters),
+      backgroundColor: palette.card,
+      appBar: AppleTopBar(
+        title: l.filters,
         actions: [
           IconButton(
             onPressed: () async {
@@ -87,13 +195,13 @@ class FiltersTripleColumn extends StatelessWidget {
               if (result == false && context.mounted) {
                 showSnackbar(
                   appConfigProvider: appConfigProvider,
-                  label: AppLocalizations.of(context)!.errorLoadFilters, 
-                  color: Colors.red
+                  label: l.errorLoadFilters, 
+                  color: palette.red
                 );
               }
             }, 
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: AppLocalizations.of(context)!.refresh,
+            icon: const Icon(CupertinoIcons.arrow_clockwise),
+            tooltip: l.refresh,
           ),
           ...actions
         ],
@@ -102,256 +210,107 @@ class FiltersTripleColumn extends StatelessWidget {
         builder: (context) {
           switch (filteringProvider.loadStatus) {
             case LoadStatus.loading:
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 30),
-                      Text(
-                        AppLocalizations.of(context)!.loadingFilters,
-                        style: TextStyle(
-                          fontSize: 22,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      )
-                    ],
-                  ),
-                ],
-              );
+              return AppleLoading(label: l.loadingFilters);
 
             case LoadStatus.loaded:
               return Row(
                 children: [
-                  Expanded(
-                    flex: 1,
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                AppLocalizations.of(context)!.whitelists,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w500
-                                ),
-                              ),
-                              AddFiltersButton(
-                                type: 'whitelist', 
-                                widget: (fn) => IconButton(
-                                  onPressed: fn, 
-                                  icon: const Icon(Icons.add_rounded),
-                                  tooltip: AppLocalizations.of(context)!.addWhitelist,
-                                ),
-                              )
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: filteringProvider.filtering!.whitelistFilters.length,
-                            itemBuilder: (context, index) => ListOptionsMenu(
-                              list: filteringProvider.filtering!.whitelistFilters[index],
-                              listType: 'whitelist',
-                              child: CustomListTile(
-                                title: filteringProvider.filtering!.whitelistFilters[index].name,
-                                subtitle: "${intFormat(filteringProvider.filtering!.whitelistFilters[index].rulesCount, Platform.localeName)} ${AppLocalizations.of(context)!.enabledRules}",
-                                trailing: Icon(
-                                  filteringProvider.filtering!.whitelistFilters[index].enabled == true
-                                    ? Icons.check_circle_rounded
-                                    : Icons.cancel,
-                                  color: filteringProvider.filtering!.whitelistFilters[index].enabled == true
-                                    ? appConfigProvider.useThemeColorForStatus == true
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Colors.green
-                                    : appConfigProvider.useThemeColorForStatus == true
-                                      ? Colors.grey
-                                      : Colors.red
-                                ),
-                                onTap: () => onOpenDetailsModal(filteringProvider.filtering!.whitelistFilters[index], 'whitelist'),
-                              ),
-                            ), 
-                          ),
-                        )
-                      ],
-                    ),
+                  listPane(
+                    title: l.whitelists,
+                    data: filteringProvider.filtering!.whitelistFilters,
+                    type: 'whitelist',
+                    addTooltip: l.addWhitelist,
                   ),
-                  Expanded(
-                    flex: 1,
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                AppLocalizations.of(context)!.blacklists,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w500
-                                ),
-                              ),
-                              AddFiltersButton(
-                                type: 'blacklist', 
-                                widget: (fn) => IconButton(
-                                  onPressed: fn, 
-                                  icon: const Icon(Icons.add_rounded),
-                                  tooltip: AppLocalizations.of(context)!.addBlacklist,
-                                )
-                              )
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: filteringProvider.filtering!.filters.length,
-                            itemBuilder: (context, index) => ListOptionsMenu(
-                              list: filteringProvider.filtering!.filters[index],
-                              listType: 'blacklist',
-                              child: CustomListTile(
-                                title: filteringProvider.filtering!.filters[index].name,
-                                subtitle: "${intFormat(filteringProvider.filtering!.filters[index].rulesCount, Platform.localeName)} ${AppLocalizations.of(context)!.enabledRules}",
-                                trailing: Icon(
-                                  filteringProvider.filtering!.filters[index].enabled == true
-                                    ? Icons.check_circle_rounded
-                                    : Icons.cancel,
-                                  color: filteringProvider.filtering!.filters[index].enabled == true
-                                    ? appConfigProvider.useThemeColorForStatus == true
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Colors.green
-                                    : appConfigProvider.useThemeColorForStatus == true
-                                      ? Colors.grey
-                                      : Colors.red
-                                ),
-                                onTap: () => onOpenDetailsModal(filteringProvider.filtering!.filters[index], 'blacklist'),
-                              ),
-                            ), 
-                          ),
-                        )
-                      ],
-                    ),
+                  divider(),
+                  listPane(
+                    title: l.blacklists,
+                    data: filteringProvider.filtering!.filters,
+                    type: 'blacklist',
+                    addTooltip: l.addBlacklist,
                   ),
+                  divider(),
                   Expanded(
                     flex: 1,
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  AppLocalizations.of(context)!.customRules,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w500
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
+                    child: ColoredBox(
+                      color: palette.card,
+                      child: Column(
+                        children: [
+                          paneHeader(
+                            title: l.customRules,
+                            trailing: [
                               AddFiltersButton(
                                 type: 'edit_custom_rule', 
-                                widget: (fn) => IconButton(
-                                  onPressed: fn, 
-                                  icon: const Icon(Icons.edit_rounded),
-                                  tooltip: AppLocalizations.of(context)!.editCustomRules,
+                                widget: (fn) => paneActionButton(
+                                  onPressed: fn,
+                                  icon: CupertinoIcons.pencil,
+                                  tooltip: l.editCustomRules,
                                 )
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 4),
                               AddFiltersButton(
                                 type: 'add_custom_rule', 
-                                widget: (fn) => IconButton(
-                                  onPressed: fn, 
-                                  icon: const Icon(Icons.add_rounded),
-                                  tooltip: AppLocalizations.of(context)!.addCustomRule,
+                                widget: (fn) => paneActionButton(
+                                  onPressed: fn,
+                                  icon: CupertinoIcons.plus,
+                                  tooltip: l.addCustomRule,
                                 )
                               ),
                             ],
                           ),
-                        ),
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: filteringProvider.filtering!.userRules.length,
-                            itemBuilder: (context, index) => ContextMenuArea(
-                              builder: (context) => [
-                                CustomListTile(
-                                  title: AppLocalizations.of(context)!.copyClipboard,
-                                  icon: Icons.copy_rounded,
-                                  onTap: () {
-                                    copyToClipboard(
-                                      value: filteringProvider.filtering!.userRules[index],
-                                      successMessage: AppLocalizations.of(context)!.copiedClipboard,
-                                    );
-                                    Navigator.pop(context);
-                                  }
-                                ),
-                              ],
-                              child: OptionsMenu(
-                                options: (_) => [
-                                  MenuOption(
-                                    title: AppLocalizations.of(context)!.copyClipboard,
-                                    icon: Icons.copy_rounded,
-                                    action: () => copyToClipboard(
-                                      value: filteringProvider.filtering!.userRules[index],
-                                      successMessage: AppLocalizations.of(context)!.copiedClipboard,
-                                    )
-                                  )
-                                ],
-                                child: CustomListTile(
-                                  title: filteringProvider.filtering!.userRules[index],
-                                  subtitleWidget: generateSubtitle(filteringProvider.filtering!.userRules[index]),
+                          Expanded(
+                            child: ListView.builder(
+                              padding: EdgeInsets.zero,
+                              itemCount: filteringProvider.filtering!.userRules.length,
+                              itemBuilder: (context, index) {
+                                final rule = filteringProvider.filtering!.userRules[index];
+                                final tile = AppleListTile(
+                                  title: rule,
+                                  subtitleWidget: ruleSubtitle(rule),
+                                  showChevron: false,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
                                   trailing: IconButton(
-                                    onPressed: () => onRemoveCustomRule(filteringProvider.filtering!.userRules[index]),
-                                    icon: const Icon(Icons.delete),
-                                    tooltip: AppLocalizations.of(context)!.delete,
+                                    onPressed: () => onRemoveCustomRule(rule),
+                                    icon: const Icon(CupertinoIcons.trash, size: 18),
+                                    color: palette.red,
+                                    tooltip: l.delete,
                                   ),
-                                ),
-                              ),
-                            ),  
-                          ),
-                        )
-                      ],
+                                );
+
+                                return OptionsMenu(
+                                  options: (_) => [
+                                    MenuOption(
+                                      title: l.copyClipboard,
+                                      icon: CupertinoIcons.doc_on_clipboard,
+                                      action: () => copyToClipboard(
+                                        value: rule,
+                                        successMessage: l.copiedClipboard,
+                                      )
+                                    )
+                                  ],
+                                  child: Column(
+                                    children: [
+                                      tile,
+                                      if (index != filteringProvider.filtering!.userRules.length - 1)
+                                        AppleSeparator(indent: tile.separatorIndent),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          )
+                        ],
+                      ),
                     ),
                   ),
                 ],
               );
               
             case LoadStatus.error:
-              return SizedBox.expand(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.error,
-                          color: Colors.red,
-                          size: 50,
-                        ),
-                        const SizedBox(height: 30),
-                        Text(
-                          AppLocalizations.of(context)!.filtersNotLoaded,
-                          style: TextStyle(
-                            fontSize: 22,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                        )
-                      ],
-                    ),
-                  ],
+              return Center(
+                child: AppleEmptyState(
+                  icon: CupertinoIcons.exclamationmark_triangle,
+                  title: l.filtersNotLoaded,
+                  color: palette.orange,
                 ),
               );
 
