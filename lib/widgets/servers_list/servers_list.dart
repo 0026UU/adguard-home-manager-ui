@@ -1,10 +1,11 @@
 // ignore_for_file: use_build_context_synchronously
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:expandable/expandable.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/widgets/servers_list/servers_tile_item.dart';
 
 import 'package:adguard_home_manager/providers/servers_provider.dart';
@@ -46,20 +47,13 @@ class ServersList extends StatelessWidget {
         ],
       );
     }
-    else {
-      return SizedBox(
-        height: double.maxFinite,
-        child: Center(
-          child: Text(
-            AppLocalizations.of(context)!.noSavedConnections,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 24,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-      );
-    }
+
+    return Center(
+      child: AppleEmptyState(
+        icon: CupertinoIcons.desktopcomputer,
+        title: AppLocalizations.of(context)!.noSavedConnections,
+        color: ApplePalette.of(context).label3,
+      ),
+    );
   }
 }
