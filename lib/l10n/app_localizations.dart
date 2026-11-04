@@ -493,6 +493,18 @@ abstract class AppLocalizations {
   /// **'Theme'**
   String get theme;
 
+  /// No description provided for @appleStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple style'**
+  String get appleStyle;
+
+  /// No description provided for @appleStyleDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Translucent bars, large titles and grouped lists. Turn it off to restore the Material interface.'**
+  String get appleStyleDescription;
+
   /// No description provided for @light.
   ///
   /// In en, this message translates to:

@@ -63,6 +63,8 @@
     "topBlockedDomains": "Blocked domains",
     "appSettings": "App settings",
     "theme": "Theme",
+    "appleStyle": "Apple style",
+    "appleStyleDescription": "Translucent bars, large titles and grouped lists. Turn it off to restore the Material interface.",
     "light": "Light",
     "dark": "Dark",
     "systemDefined": "System defined",

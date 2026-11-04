@@ -10,6 +10,7 @@ import 'package:adguard_home_manager/providers/app_config_provider.dart';
 import 'package:adguard_home_manager/config/app_screens.dart';
 import 'package:adguard_home_manager/config/sizes.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 class Layout extends StatefulWidget {
   const Layout({
@@ -90,7 +91,59 @@ class _LayoutState extends State<Layout> with WidgetsBindingObserver {
       }
     }
 
+    final bool apple = appConfigProvider.useAppleStyle;
+
+    final bool updateAvailable = serversProvider.updateAvailable.data != null
+      && serversProvider.updateAvailable.data!.canAutoupdate == true;
+
     if (width > desktopBreakpoint) {
+      if (apple) {
+        return OverlayStyle(
+          child: Row(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.ease,
+                width: _drawerExpanded ? 240 : 84,
+                child: AppleSidebar(
+                  compact: !_drawerExpanded,
+                  currentIndex: appConfigProvider.selectedScreen < screens.length
+                    ? appConfigProvider.selectedScreen
+                    : 0,
+                  onChanged: _goBranch,
+                  header: _AppleSidebarHeader(
+                    expanded: _drawerExpanded,
+                    onToggle: () => setState(() => _drawerExpanded = !_drawerExpanded),
+                    closeTooltip: AppLocalizations.of(context)!.closeMenu,
+                    openTooltip: AppLocalizations.of(context)!.openMenu,
+                  ),
+                  items: screens.asMap().entries.map((s) => AppleSidebarItem(
+                    icon: s.value.appleIcon ?? s.value.icon,
+                    label: translatedName(s.value.name),
+                    badge: s.value.name == 'settings' && updateAvailable,
+                  )).toList(),
+                ),
+              ),
+              Expanded(
+                child: PageTransitionSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  transitionBuilder: (
+                    (child, primaryAnimation, secondaryAnimation) => FadeThroughTransition(
+                      animation: primaryAnimation,
+                      secondaryAnimation: secondaryAnimation,
+                      child: child,
+                    )
+                  ),
+                  child: appConfigProvider.selectedScreen < screens.length
+                    ? screens[appConfigProvider.selectedScreen].child
+                    : screens[0].child,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
       return OverlayStyle(
         child: Material(
           child: Row(
@@ -155,6 +208,41 @@ class _LayoutState extends State<Layout> with WidgetsBindingObserver {
       final screens = serversProvider.selectedServer != null && serversProvider.apiClient2 != null
         ? screensServerConnected 
         : screensSelectServer;
+
+      if (apple) {
+        final currentIndex = (serversProvider.selectedServer == null || serversProvider.apiClient2 == null)
+            && appConfigProvider.selectedScreen > 1
+          ? 0
+          : appConfigProvider.selectedScreen;
+
+        return OverlayStyle(
+          child: Scaffold(
+            body: PageTransitionSwitcher(
+              duration: const Duration(milliseconds: 200),
+              transitionBuilder: (
+                (child, primaryAnimation, secondaryAnimation) => FadeThroughTransition(
+                  animation: primaryAnimation,
+                  secondaryAnimation: secondaryAnimation,
+                  child: child,
+                )
+              ),
+              child: appConfigProvider.selectedScreen < screens.length
+                ? screens[appConfigProvider.selectedScreen].child
+                : screens[0].child,
+            ),
+            bottomNavigationBar: AppleTabBar(
+              currentIndex: currentIndex < screens.length ? currentIndex : 0,
+              onChanged: _goBranch,
+              items: screens.asMap().entries.map((screen) => AppleTabItem(
+                icon: screen.value.appleIcon ?? screen.value.icon,
+                activeIcon: screen.value.appleSelectedIcon ?? screen.value.appleIcon ?? screen.value.icon,
+                label: translatedName(screen.value.name),
+                badge: screen.value.name == 'settings' && updateAvailable,
+              )).toList(),
+            ),
+          ),
+        );
+      }
 
       return OverlayStyle(
         child: Scaffold(
@@ -288,6 +376,56 @@ class DrawerTile extends StatelessWidget {
             ]),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Collapse control shown at the top of the desktop Apple sidebar.
+class _AppleSidebarHeader extends StatelessWidget {
+  final bool expanded;
+  final VoidCallback onToggle;
+  final String closeTooltip;
+  final String openTooltip;
+
+  const _AppleSidebarHeader({
+    required this.expanded,
+    required this.onToggle,
+    required this.closeTooltip,
+    required this.openTooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 2),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: onToggle,
+            tooltip: expanded ? closeTooltip : openTooltip,
+            icon: Icon(
+              expanded ? Icons.menu_open_rounded : Icons.menu_rounded,
+              color: p.label2,
+            ),
+          ),
+          if (expanded)
+            Expanded(
+              child: Text(
+                'AdGuard Home',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
+                  color: p.label,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

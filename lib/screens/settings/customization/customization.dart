@@ -73,9 +73,18 @@ class _CustomizationWidgetState extends State<CustomizationWidget> {
       body: SafeArea(
         child: ListView(
           children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: CustomSwitchListTile(
+                value: appConfigProvider.useAppleStyle,
+                onChanged: (value) => appConfigProvider.setUseAppleStyle(value),
+                title: AppLocalizations.of(context)!.appleStyle,
+                subtitle: AppLocalizations.of(context)!.appleStyleDescription,
+              ),
+            ),
             SectionLabel(
               label: AppLocalizations.of(context)!.theme,
-              padding: const EdgeInsets.only(top: 10, left: 16, right: 16, bottom: 5),
+              padding: const EdgeInsets.only(top: 24, left: 16, right: 16, bottom: 5),
             ),
             Column(
               children: [

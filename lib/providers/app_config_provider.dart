@@ -34,6 +34,10 @@ class AppConfigProvider with ChangeNotifier {
   int _selectedTheme = 0;
   bool _useDynamicColor = true;
 
+  /// Apple (iOS) design language. On by default; turning it off restores the
+  /// previous Material 3 theme and navigation chrome.
+  bool _useAppleStyle = true;
+
   /// BCP 47 tag, or null to follow the system language.
   String? _selectedLanguage;
   int _staticColor = 0;
@@ -139,6 +143,10 @@ class AppConfigProvider with ChangeNotifier {
 
   bool get useDynamicColor {
     return _useDynamicColor;
+  }
+
+  bool get useAppleStyle {
+    return _useAppleStyle;
   }
 
   int get staticColor {
@@ -335,6 +343,18 @@ class AppConfigProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> setUseAppleStyle(bool value) async {
+    try {
+      sharedPreferencesInstance.setBool('useAppleStyle', value);
+      _useAppleStyle = value;
+      notifyListeners();
+      return true;
+    } catch (e, stackTrace) {
+      Sentry.captureException(e, stackTrace: stackTrace);
+      return false;
+    }
+  }
+
   Future<bool> setUseDynamicColor(bool value) async {
     try {
       sharedPreferencesInstance.setBool('useDynamicColor', value);
@@ -406,6 +426,7 @@ class AppConfigProvider with ChangeNotifier {
     _overrideSslCheck = sharedPreferencesInstance.getBool('overrideSslCheck') ?? false;
     _hideZeroValues = sharedPreferencesInstance.getBool('hideZeroValues') ?? false;
     _useDynamicColor = sharedPreferencesInstance.getBool('useDynamicColor') ?? true;
+    _useAppleStyle = sharedPreferencesInstance.getBool('useAppleStyle') ?? true;
     _staticColor = sharedPreferencesInstance.getInt('staticColor') ?? 0;
     _showTimeLogs = sharedPreferencesInstance.getBool('showTimeLogs') ?? false;
     _doNotRememberVersion = sharedPreferencesInstance.getString('doNotRememberVersion');

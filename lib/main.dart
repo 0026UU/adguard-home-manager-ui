@@ -31,6 +31,7 @@ import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/constants/colors.dart';
 import 'package:adguard_home_manager/config/globals.dart';
 import 'package:adguard_home_manager/config/theme.dart';
+import 'package:adguard_home_manager/config/apple_theme.dart';
 import 'package:adguard_home_manager/services/db/database.dart';
 import 'package:adguard_home_manager/classes/http_override.dart';
 
@@ -209,18 +210,24 @@ class Main extends StatelessWidget {
     return DynamicColorBuilder(
       builder: (lightDynamic, darkDynamic) {
         appConfigProvider.setSupportsDynamicTheme(lightDynamic != null && darkDynamic != null);
+        final bool apple = appConfigProvider.useAppleStyle;
+
         return MaterialApp(
           title: 'AdGuard Home Manager',
-          theme: lightDynamic != null
-            ? appConfigProvider.useDynamicColor == true
-              ? lightTheme(lightDynamic)
-              : lightThemeOldVersions(colors[appConfigProvider.staticColor])
-            : lightThemeOldVersions(colors[appConfigProvider.staticColor]),
-          darkTheme: darkDynamic != null
-            ? appConfigProvider.useDynamicColor == true
-              ? darkTheme(darkDynamic)
-              : darkThemeOldVersions(colors[appConfigProvider.staticColor])
-            : darkThemeOldVersions(colors[appConfigProvider.staticColor]),
+          theme: apple
+            ? appleLightTheme()
+            : (lightDynamic != null
+                ? appConfigProvider.useDynamicColor == true
+                  ? lightTheme(lightDynamic)
+                  : lightThemeOldVersions(colors[appConfigProvider.staticColor])
+                : lightThemeOldVersions(colors[appConfigProvider.staticColor])),
+          darkTheme: apple
+            ? appleDarkTheme()
+            : (darkDynamic != null
+                ? appConfigProvider.useDynamicColor == true
+                  ? darkTheme(darkDynamic)
+                  : darkThemeOldVersions(colors[appConfigProvider.staticColor])
+                : darkThemeOldVersions(colors[appConfigProvider.staticColor])),
           themeMode: appConfigProvider.selectedTheme,
           locale: appConfigProvider.selectedLocale,
           debugShowCheckedModeBanner: false,

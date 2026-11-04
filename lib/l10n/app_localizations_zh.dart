@@ -201,6 +201,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get theme => '主题';
 
   @override
+  String get appleStyle => 'Apple 风格';
+
+  @override
+  String get appleStyleDescription => '半透明导航栏、大标题与分组列表。关闭后可恢复 Material 界面。';
+
+  @override
   String get light => '明亮';
 
   @override

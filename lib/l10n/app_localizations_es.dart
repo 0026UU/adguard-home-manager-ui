@@ -209,6 +209,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get theme => 'Tema';
 
   @override
+  String get appleStyle => 'Apple style';
+
+  @override
+  String get appleStyleDescription =>
+      'Translucent bars, large titles and grouped lists. Turn it off to restore the Material interface.';
+
+  @override
   String get light => 'Claro';
 
   @override

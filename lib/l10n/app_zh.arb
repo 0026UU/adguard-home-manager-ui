@@ -62,6 +62,8 @@
     "topBlockedDomains": "被拦截域名排行",
     "appSettings": "App 设置",
     "theme": "主题",
+    "appleStyle": "Apple 风格",
+    "appleStyleDescription": "半透明导航栏、大标题与分组列表。关闭后可恢复 Material 界面。",
     "light": "明亮",
     "dark": "暗夜",
     "systemDefined": "跟随系统",
