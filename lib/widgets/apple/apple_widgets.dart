@@ -435,6 +435,7 @@ class AppleListTile extends StatelessWidget {
   final Color? iconColor;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+  final ValueChanged<bool>? onHover;
 
   /// Set false to hide the disclosure indicator on tappable rows.
   final bool showChevron;
@@ -458,6 +459,7 @@ class AppleListTile extends StatelessWidget {
     this.iconColor,
     this.onTap,
     this.onLongPress,
+    this.onHover,
     this.showChevron = true,
     this.enabled = true,
     this.selected = false,
@@ -549,6 +551,7 @@ class AppleListTile extends StatelessWidget {
     return InkWell(
       onTap: enabled ? onTap : null,
       onLongPress: enabled ? onLongPress : null,
+      onHover: onHover,
       splashColor: Colors.transparent,
       highlightColor: p.fill3,
       child: Container(

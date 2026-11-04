@@ -1,8 +1,7 @@
-
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
-
 
 import 'package:adguard_home_manager/screens/settings/server_info/server_info.dart';
 import 'package:adguard_home_manager/screens/settings/encryption/encryption.dart';
@@ -20,11 +19,7 @@ import 'package:adguard_home_manager/screens/servers/servers.dart';
 import 'package:adguard_home_manager/screens/settings/advanced_setings.dart';
 import 'package:adguard_home_manager/screens/settings/general_settings/general_settings.dart';
 
-import 'package:adguard_home_manager/widgets/custom_settings_tile.dart';
-import 'package:adguard_home_manager/widgets/section_label.dart';
-import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
-
-import 'package:adguard_home_manager/functions/desktop_mode.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/functions/open_url.dart';
 import 'package:adguard_home_manager/constants/urls.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
@@ -44,22 +39,21 @@ class Settings extends StatelessWidget {
           return Row(
             children: [
               const Expanded(
-                flex: 1,
-                child: _SettingsWidget(
-                  twoColumns: true,
-                )
-              ),
+                  flex: 1,
+                  child: _SettingsWidget(
+                    twoColumns: true,
+                  )),
               Expanded(
                 flex: 2,
                 child: Navigator(
                   key: settingsNavigatorKey,
-                  onGenerateRoute: (settings) => MaterialPageRoute(builder: (ctx) => const SizedBox()),
+                  onGenerateRoute: (settings) =>
+                      MaterialPageRoute(builder: (ctx) => const SizedBox()),
                 ),
               )
             ],
           );
-        }
-        else {
+        } else {
           return const _SettingsWidget(
             twoColumns: false,
           );
@@ -68,6 +62,7 @@ class Settings extends StatelessWidget {
     );
   }
 }
+
 class _SettingsWidget extends StatefulWidget {
   final bool twoColumns;
 
@@ -84,281 +79,253 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
 
   @override
   void initState() {
-    Provider.of<AppConfigProvider>(context, listen: false).setSelectedSettingsScreen(screen: null);
+    Provider.of<AppConfigProvider>(context, listen: false)
+        .setSelectedSettingsScreen(screen: null);
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final serversProvider = Provider.of<ServersProvider>(context);
     final statusProvider = Provider.of<StatusProvider>(context);
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
 
-    final width = MediaQuery.of(context).size.width;
+    final palette = ApplePalette.of(context);
 
-    if (!widget.twoColumns && appConfigProvider.selectedSettingsScreen != null) {
+    if (!widget.twoColumns &&
+        appConfigProvider.selectedSettingsScreen != null) {
       appConfigProvider.setSelectedSettingsScreen(screen: null);
     }
 
-    return ScaffoldMessenger(
-      key: widget.twoColumns ? _scaffoldMessengerKey : null,
-      child: Scaffold(
-        body: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) => [
-            SliverOverlapAbsorber(
-              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-              sliver: SliverAppBar.large(
-                pinned: true,
-                floating: true,
-                centerTitle: false,
-                forceElevated: innerBoxIsScrolled,
-                surfaceTintColor: isDesktop(width) ? Colors.transparent : null,
-                title: Text(AppLocalizations.of(context)!.settings),
-              )
-            )
-          ], 
-          body: SafeArea(
-            top: false,
-            bottom: false,
-            child: Builder(
-              builder: (context) => CustomScrollView(
-                slivers: [
-                  SliverOverlapInjector(
-                    handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-                  ),
-                  SliverList.list(
-                    children: [
-                      if (
-                        serversProvider.selectedServer != null && 
-                        statusProvider.serverStatus != null && 
-                        serversProvider.apiClient2 != null
-                      ) ...[
-                        SectionLabel(label: AppLocalizations.of(context)!.serverSettings),
-                        _SettingsTile(
-                          icon: Icons.search_rounded,
-                          title: AppLocalizations.of(context)!.safeSearch,
-                          subtitle: AppLocalizations.of(context)!.safeSearchSettings,
-                          thisItem: 0,
-                          screenToNavigate: const SafeSearchSettingsScreen(),
-                          twoColumns: widget.twoColumns,
-                        ),
-                        _SettingsTile(
-                          icon: Icons.list_alt_rounded,
-                          title: AppLocalizations.of(context)!.logsSettings,
-                          subtitle: AppLocalizations.of(context)!.logsSettingsDescription,
-                          thisItem: 1,
-                          screenToNavigate: const LogsSettings(),
-                          twoColumns: widget.twoColumns,
-                        ),
-                        _SettingsTile(
-                          icon: Icons.analytics_rounded,
-                          title: AppLocalizations.of(context)!.statisticsSettings,
-                          subtitle: AppLocalizations.of(context)!.statisticsSettingsDescription,
-                          thisItem: 2,
-                          screenToNavigate: const StatisticsSettings(),
-                          twoColumns: widget.twoColumns,
-                        ),
-                        _SettingsTile(
-                          icon: Icons.lock_rounded,
-                          title: AppLocalizations.of(context)!.accessSettings,
-                          subtitle: AppLocalizations.of(context)!.accessSettingsDescription,
-                          thisItem: 3,
-                          screenToNavigate: const AccessSettings(),
-                          twoColumns: widget.twoColumns,
-                        ),
-                        _SettingsTile(
-                          icon: Icons.install_desktop_rounded,
-                          title: AppLocalizations.of(context)!.dhcpSettings,
-                          subtitle: AppLocalizations.of(context)!.dhcpSettingsDescription,
-                          thisItem: 4,
-                          screenToNavigate: const DhcpScreen(),
-                          twoColumns: widget.twoColumns,
-                        ),
-                        _SettingsTile(
-                          icon: Icons.dns_rounded,
-                          title: AppLocalizations.of(context)!.dnsSettings,
-                          subtitle: AppLocalizations.of(context)!.dnsSettingsDescription,
-                          thisItem: 5,
-                          screenToNavigate: DnsSettings(
-                            splitView: widget.twoColumns,
-                          ),
-                          twoColumns: widget.twoColumns,
-                        ),
-                        _SettingsTile(
-                          icon: Icons.security_rounded,
-                          title: AppLocalizations.of(context)!.encryptionSettings,
-                          subtitle: AppLocalizations.of(context)!.encryptionSettingsDescription,
-                          thisItem: 6,
-                          screenToNavigate: const EncryptionSettings(),
-                          twoColumns: widget.twoColumns,
-                        ),
-                        _SettingsTile(
-                          icon: Icons.route_rounded,
-                          title: AppLocalizations.of(context)!.dnsRewrites,
-                          subtitle: AppLocalizations.of(context)!.dnsRewritesDescription,
-                          thisItem: 7,
-                          screenToNavigate: const DnsRewritesScreen(),
-                          twoColumns: widget.twoColumns,
-                        ),
-                        if (serversProvider.updateAvailable.data != null) _SettingsTile(
-                          icon: Icons.system_update_rounded,
-                          title: AppLocalizations.of(context)!.updates,
-                          subtitle: AppLocalizations.of(context)!.updatesDescription,
-                          trailing: serversProvider.updateAvailable.data != null &&
-                            serversProvider.updateAvailable.data!.canAutoupdate == true
-                              ? Container(
-                                  width: 10,
-                                  height: 10,
-                                  margin: const EdgeInsets.only(right: 12),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(20),
-                                    color: Colors.red
-                                  ),
-                                )
-                              : null,
-                          thisItem: 8,
-                          screenToNavigate: const UpdateScreen(),
-                          twoColumns: widget.twoColumns,
-                        ),
-                        _SettingsTile(
-                          icon: Icons.info_rounded,
-                          title: AppLocalizations.of(context)!.serverInformation,
-                          subtitle: AppLocalizations.of(context)!.serverInformationDescription,
-                          thisItem: 9,
-                          screenToNavigate: const ServerInformation(),
-                          twoColumns: widget.twoColumns,
-                        ),
-                      ],
-                      SectionLabel(label: AppLocalizations.of(context)!.appSettings),
-                      _SettingsTile(
-                        icon: Icons.palette_rounded,
-                        title: AppLocalizations.of(context)!.customization, 
-                        subtitle: AppLocalizations.of(context)!.customizationDescription,
-                        thisItem: 10,
-                        screenToNavigate: const Customization(),
-                        twoColumns: widget.twoColumns,
-                      ),
-                      _SettingsTile(
-                        icon: Icons.translate_rounded,
-                        title: AppLocalizations.of(context)!.language,
-                        subtitle: AppLocalizations.of(context)!.languageDescription,
-                        thisItem: 11,
-                        screenToNavigate: const LanguageSettings(),
-                        twoColumns: widget.twoColumns,
-                      ),
-                      _SettingsTile(
-                        icon: Icons.storage_rounded,
-                        title: AppLocalizations.of(context)!.servers,
-                        subtitle: serversProvider.selectedServer != null
-                          ? statusProvider.serverStatus != null
-                            ? "${AppLocalizations.of(context)!.connectedTo} ${serversProvider.selectedServer!.name}"
-                            : "${AppLocalizations.of(context)!.selectedServer} ${serversProvider.selectedServer!.name}"
-                          : AppLocalizations.of(context)!.noServerSelected,
-                        thisItem: 12,
-                        screenToNavigate: const Servers(),
-                        twoColumns: widget.twoColumns,
-                      ),
-                      _SettingsTile(
-                        icon: Icons.settings,
-                        title: AppLocalizations.of(context)!.generalSettings,
-                        subtitle: AppLocalizations.of(context)!.generalSettingsDescription,
-                        thisItem: 13,
-                        screenToNavigate: GeneralSettings(splitView: widget.twoColumns),
-                        twoColumns: widget.twoColumns,
-                      ),
-                      _SettingsTile(
-                        icon: Icons.build_outlined,
-                        title: AppLocalizations.of(context)!.advancedSettings,
-                        subtitle: AppLocalizations.of(context)!.advancedSetupDescription,
-                        thisItem: 14,
-                        screenToNavigate: const AdvancedSettings(),
-                        twoColumns: widget.twoColumns,
-                      ),
-                      SectionLabel(label: AppLocalizations.of(context)!.aboutApp),
-                      CustomListTile(
-                        title: AppLocalizations.of(context)!.appVersion, 
-                        subtitle: appConfigProvider.getAppInfo!.version,
-                      ),
-                      CustomListTile(
-                        title: AppLocalizations.of(context)!.applicationDetails, 
-                        subtitle: AppLocalizations.of(context)!.applicationDetailsDescription,
-                        trailing: Icon(Icons.open_in_new_rounded),
-                        onTap: () => openUrl(Urls.appDetailsWebpage),
-                      ),
-                      CustomListTile(
-                        title: AppLocalizations.of(context)!.myOtherApps, 
-                        subtitle: AppLocalizations.of(context)!.myOtherAppsDescription,
-                        trailing: Icon(Icons.open_in_new_rounded),
-                        onTap: () => openUrl(Urls.jgeek00AppsWebpage),
-                      ),
-                      SizedBox(height: 16)
-                    ],
-                  )
-                ],
-              )
-            ),
-          ),
-        )
-      ),
-    );
-  }
-}
-
-class _SettingsTile extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Widget? trailing;
-  final Widget screenToNavigate;
-  final int thisItem;
-  final bool twoColumns;
-
-  const _SettingsTile({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    this.trailing,
-    required this.screenToNavigate,
-    required this.thisItem,
-    required this.twoColumns
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final appConfigProvider = Provider.of<AppConfigProvider>(context);
-
-    if (twoColumns) {
-      return CustomSettingsTile(
-        title: title, 
-        subtitle: subtitle,
+    /// One settings section row: pushes on phones, selects in the master pane.
+    Widget row({
+      required int thisItem,
+      required IconData icon,
+      required Color iconColor,
+      required String title,
+      required String subtitle,
+      required Widget screenToNavigate,
+      Widget? trailing,
+    }) {
+      return AppleListTile(
         icon: icon,
-        trailing: trailing,
-        thisItem: thisItem, 
-        selectedItem: appConfigProvider.selectedSettingsScreen,
-        onTap: () {
-          appConfigProvider.setSelectedSettingsScreen(screen: thisItem, notify: true);
-          Navigator.of(settingsNavigatorKey.currentContext!).pushReplacement(
-            PageRouteBuilder(
-              pageBuilder: (context, animation1, animation2) => screenToNavigate,
-              transitionDuration: Duration.zero,
-              reverseTransitionDuration: Duration.zero,
-            ),
-          );
-        },
-      );
-    }
-    else {
-      return CustomListTile(
+        iconColor: iconColor,
         title: title,
         subtitle: subtitle,
-        icon: icon,
         trailing: trailing,
+        selected: widget.twoColumns &&
+            appConfigProvider.selectedSettingsScreen == thisItem,
+        showChevron: !widget.twoColumns,
         onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => screenToNavigate)
-          );
+          if (widget.twoColumns) {
+            appConfigProvider.setSelectedSettingsScreen(
+                screen: thisItem, notify: true);
+            Navigator.of(settingsNavigatorKey.currentContext!).pushReplacement(
+              PageRouteBuilder(
+                pageBuilder: (context, animation1, animation2) =>
+                    screenToNavigate,
+                transitionDuration: Duration.zero,
+                reverseTransitionDuration: Duration.zero,
+              ),
+            );
+          } else {
+            Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => screenToNavigate));
+          }
         },
       );
     }
+
+    final updateAvailable = serversProvider.updateAvailable.data != null;
+
+    final serverRows = <Widget>[
+      row(
+        thisItem: 0,
+        icon: CupertinoIcons.search,
+        iconColor: palette.indigo,
+        title: l.safeSearch,
+        subtitle: l.safeSearchSettings,
+        screenToNavigate: const SafeSearchSettingsScreen(),
+      ),
+      row(
+        thisItem: 1,
+        icon: CupertinoIcons.list_bullet,
+        iconColor: palette.teal,
+        title: l.logsSettings,
+        subtitle: l.logsSettingsDescription,
+        screenToNavigate: const LogsSettings(),
+      ),
+      row(
+        thisItem: 2,
+        icon: CupertinoIcons.chart_bar,
+        iconColor: palette.green,
+        title: l.statisticsSettings,
+        subtitle: l.statisticsSettingsDescription,
+        screenToNavigate: const StatisticsSettings(),
+      ),
+      row(
+        thisItem: 3,
+        icon: CupertinoIcons.lock,
+        iconColor: palette.orange,
+        title: l.accessSettings,
+        subtitle: l.accessSettingsDescription,
+        screenToNavigate: const AccessSettings(),
+      ),
+      row(
+        thisItem: 4,
+        icon: CupertinoIcons.antenna_radiowaves_left_right,
+        iconColor: palette.tint,
+        title: l.dhcpSettings,
+        subtitle: l.dhcpSettingsDescription,
+        screenToNavigate: const DhcpScreen(),
+      ),
+      row(
+        thisItem: 5,
+        icon: CupertinoIcons.wifi,
+        iconColor: palette.purple,
+        title: l.dnsSettings,
+        subtitle: l.dnsSettingsDescription,
+        screenToNavigate: DnsSettings(
+          splitView: widget.twoColumns,
+        ),
+      ),
+      row(
+        thisItem: 6,
+        icon: CupertinoIcons.lock_shield,
+        iconColor: palette.green,
+        title: l.encryptionSettings,
+        subtitle: l.encryptionSettingsDescription,
+        screenToNavigate: const EncryptionSettings(),
+      ),
+      row(
+        thisItem: 7,
+        icon: CupertinoIcons.arrow_2_circlepath,
+        iconColor: palette.tint,
+        title: l.dnsRewrites,
+        subtitle: l.dnsRewritesDescription,
+        screenToNavigate: const DnsRewritesScreen(),
+      ),
+      if (updateAvailable)
+        row(
+          thisItem: 8,
+          icon: CupertinoIcons.arrow_down_circle,
+          iconColor: palette.red,
+          title: l.updates,
+          subtitle: l.updatesDescription,
+          trailing: serversProvider.updateAvailable.data!.canAutoupdate == true
+              ? Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: palette.red),
+                )
+              : null,
+          screenToNavigate: const UpdateScreen(),
+        ),
+      row(
+        thisItem: 9,
+        icon: CupertinoIcons.info_circle,
+        iconColor: palette.gray,
+        title: l.serverInformation,
+        subtitle: l.serverInformationDescription,
+        screenToNavigate: const ServerInformation(),
+      ),
+    ];
+
+    return ScaffoldMessenger(
+        key: widget.twoColumns ? _scaffoldMessengerKey : null,
+        child: AppleScreen(
+          title: l.settings,
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.only(top: 10),
+              sliver: SliverList.list(
+                children: [
+                  if (serversProvider.selectedServer != null &&
+                      statusProvider.serverStatus != null &&
+                      serversProvider.apiClient2 != null)
+                    AppleListSection(
+                        title: l.serverSettings, children: serverRows),
+                  AppleListSection(
+                    title: l.appSettings,
+                    children: [
+                      row(
+                        thisItem: 10,
+                        icon: CupertinoIcons.paintbrush,
+                        iconColor: palette.pink,
+                        title: l.customization,
+                        subtitle: l.customizationDescription,
+                        screenToNavigate: const Customization(),
+                      ),
+                      row(
+                        thisItem: 11,
+                        icon: CupertinoIcons.globe,
+                        iconColor: palette.tint,
+                        title: l.language,
+                        subtitle: l.languageDescription,
+                        screenToNavigate: const LanguageSettings(),
+                      ),
+                      row(
+                        thisItem: 12,
+                        icon: CupertinoIcons.desktopcomputer,
+                        iconColor: palette.teal,
+                        title: l.servers,
+                        subtitle: serversProvider.selectedServer != null
+                            ? statusProvider.serverStatus != null
+                                ? "${l.connectedTo} ${serversProvider.selectedServer!.name}"
+                                : "${l.selectedServer} ${serversProvider.selectedServer!.name}"
+                            : l.noServerSelected,
+                        screenToNavigate: const Servers(),
+                      ),
+                      row(
+                        thisItem: 13,
+                        icon: CupertinoIcons.gear,
+                        iconColor: palette.gray,
+                        title: l.generalSettings,
+                        subtitle: l.generalSettingsDescription,
+                        screenToNavigate:
+                            GeneralSettings(splitView: widget.twoColumns),
+                      ),
+                      row(
+                        thisItem: 14,
+                        icon: CupertinoIcons.wrench,
+                        iconColor: palette.gray,
+                        title: l.advancedSettings,
+                        subtitle: l.advancedSetupDescription,
+                        screenToNavigate: const AdvancedSettings(),
+                      ),
+                    ],
+                  ),
+                  AppleListSection(
+                    title: l.aboutApp,
+                    children: [
+                      AppleListTile(
+                        title: l.appVersion,
+                        value: appConfigProvider.getAppInfo?.version,
+                        showChevron: false,
+                      ),
+                      AppleListTile(
+                        title: l.applicationDetails,
+                        subtitle: l.applicationDetailsDescription,
+                        trailing: Icon(CupertinoIcons.arrow_up_right,
+                            color: palette.label3),
+                        onTap: () => openUrl(Urls.appDetailsWebpage),
+                      ),
+                      AppleListTile(
+                        title: l.myOtherApps,
+                        subtitle: l.myOtherAppsDescription,
+                        trailing: Icon(CupertinoIcons.arrow_up_right,
+                            color: palette.label3),
+                        onTap: () => openUrl(Urls.jgeek00AppsWebpage),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ));
   }
 }

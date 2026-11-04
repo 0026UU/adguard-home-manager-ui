@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
+/// Title above a group of rows, like a grouped-table section header.
 class SectionLabel extends StatelessWidget {
   final String label;
   final EdgeInsets? padding;
@@ -12,21 +15,20 @@ class SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
-        Padding(
-          padding: padding ?? const EdgeInsets.all(16),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontWeight: FontWeight.w500,
-              fontSize: 16,
-              color: Theme.of(context).colorScheme.primary
-            ),
-          ),
+    final p = ApplePalette.of(context);
+
+    return Padding(
+      padding: padding ?? const EdgeInsets.fromLTRB(16, 8, 16, 7),
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.08,
+          height: 1.25,
+          color: p.label2,
         ),
-      ],
+      ),
     );
   }
 }

@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
+/// List row used across menus and detail screens.
+///
+/// Kept as a thin wrapper so existing call sites stay untouched while the
+/// visuals come from the Apple layer.
 class CustomListTile extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -30,73 +36,22 @@ class CustomListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: color ?? Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        onHover: onHover,
-        onLongPress: onLongPress,
-        child: Padding(
-          padding: padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (icon != null) ...[
-                      Icon(
-                        icon,
-                        size: 24,
-                        color: disabled == true
-                          ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38)
-                          : Theme.of(context).listTileTheme.iconColor,
-                      ),
-                      const SizedBox(width: 16),
-                    ],
-                    Flexible(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w400,
-                              color: disabled == true
-                                ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38)
-                                : Theme.of(context).colorScheme.onSurface,
-                            ),
-                          ),
-                          if (subtitle != null || subtitleWidget != null) ...[
-                            const SizedBox(height: 5),
-                            if (subtitle == null && subtitleWidget != null) subtitleWidget!,
-                            if (subtitle != null && subtitleWidget == null) Text(
-                              subtitle!,
-                              style: TextStyle(
-                                color:  disabled == true
-                                  ? Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.38)
-                                  : Theme.of(context).colorScheme.onSurfaceVariant,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400
-                              ),
-                            ),
-                          ]
-                        ],
-                      ),
-                    )
-                  ],
-                ),
-              ),
-              if (trailing != null) ...[
-                const SizedBox(width: 16),
-                trailing!
-              ]
-            ],
-          ),
-        ),
-      ),
+    final tile = AppleListTile(
+      title: title,
+      subtitle: subtitle,
+      subtitleWidget: subtitleWidget,
+      icon: icon,
+      iconColor: disabled == true ? ApplePalette.of(context).label4 : null,
+      trailing: trailing,
+      onTap: disabled == true ? null : onTap,
+      onLongPress: onLongPress,
+      onHover: onHover,
+      showChevron: false,
+      padding: padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
+
+    if (color == null) return tile;
+
+    return ColoredBox(color: color!, child: tile);
   }
 }

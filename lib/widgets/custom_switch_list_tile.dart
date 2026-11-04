@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
+/// Setting row with an iOS switch.
 class CustomSwitchListTile extends StatelessWidget {
   final bool value;
   final void Function(bool) onChanged;
@@ -22,67 +25,23 @@ class CustomSwitchListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDisabled = disabled == true;
+
+    final row = AppleSwitchListTile(
+      title: title,
+      subtitle: subtitle,
+      icon: leadingIcon,
+      value: value,
+      onChanged: isDisabled ? null : onChanged,
+      padding: padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+    );
+
+    // iOS toggles from anywhere on the row, not just the control itself.
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: disabled != null && disabled == true
-          ? null
-          : () => onChanged(!value),
-        child: Padding(
-          padding: padding ?? const EdgeInsets.only(
-            top: 12, left: 16, right: 18, bottom: 16
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              if (leadingIcon != null) ...[
-                Icon(
-                  leadingIcon,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 16),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: disabled != null && disabled == true
-                            ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38)
-                            : Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    if (subtitle != null) ... [
-                      const SizedBox(height: 5),
-                      SizedBox(
-                        width: MediaQuery.of(context).size.width-110,
-                        child: Text(
-                          subtitle!,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: disabled != null && disabled == true
-                              ? Theme.of(context).listTileTheme.textColor!.withValues(alpha: 0.38)
-                              : Theme.of(context).listTileTheme.textColor
-                          ),
-                        ),
-                      ),
-                    ]
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              Switch(
-                value: value, 
-                onChanged: disabled != null && disabled == true
-                  ? null
-                  : onChanged,
-              )
-            ],
-          ),
-        ),
+        onTap: isDisabled ? null : () => onChanged(!value),
+        child: row,
       ),
     );
   }
