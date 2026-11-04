@@ -3017,4 +3017,54 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get logReason => 'Reason';
+
+  @override
+  String get statisticsAndDashboard => 'Statistics and dashboard';
+
+  @override
+  String get statisticsAndDashboardHelper => 'Time range and units';
+
+  @override
+  String get queryLogSettings => 'Query log settings';
+
+  @override
+  String get autoRefreshLiveLogs => 'Auto refresh live logs';
+
+  @override
+  String get statusColorUseThemeColor => 'Status colors use the theme color';
+
+  @override
+  String get statusColorUseThemeColorHelper =>
+      'The Apple style recommends semantic colors';
+
+  @override
+  String get dnsSettingsSummary => 'Upstreams, bootstrap and rate limits';
+
+  @override
+  String get encryptionSettingsSummary => 'DNSCrypt certificates · DoT / DoQ';
+
+  @override
+  String dhcpAddressPool(Object from, Object to) {
+    return 'Pool $from – $to';
+  }
+
+  @override
+  String updateAvailableToVersion(Object version) {
+    return 'Update to $version';
+  }
+
+  @override
+  String get switchOrManageServers => 'Switch / manage servers';
+
+  @override
+  String get openSourceLicenses => 'Open-source licenses';
+
+  @override
+  String get diagnosticsLog => 'Diagnostics log';
+
+  @override
+  String get noDiagnosticsLog => 'No diagnostics have been recorded';
+
+  @override
+  String get unofficialClient => 'Unofficial client';
 }

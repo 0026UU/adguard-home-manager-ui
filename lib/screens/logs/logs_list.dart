@@ -128,12 +128,21 @@ class _LogsListWidgetState extends State<LogsListWidget> {
     if (_view == index) return;
     setState(() => _view = index);
 
-    if (_live) {
-      _liveLogsProvider.clearLogs();
-      _liveLogsProvider.startFetchLogs();
-    }
-    else {
+    if (!_live) {
       _liveLogsProvider.stopFetchLogs();
+      return;
+    }
+
+    // The stream either keeps asking on its own, which is what the settings
+    // page calls auto refresh, or it shows the queries up to now and waits
+    // for a pull.
+    _liveLogsProvider.clearLogs();
+
+    if (Provider.of<AppConfigProvider>(context, listen: false)
+        .autoRefreshLiveLogs) {
+      _liveLogsProvider.startFetchLogs();
+    } else {
+      _liveLogsProvider.fetchOnce();
     }
   }
 
@@ -344,10 +353,18 @@ class _LogsListWidgetState extends State<LogsListWidget> {
       ),
     );
 
-    if (!_live) {
+    // Only the stored log is paginated, and the stream needs a pull only when
+    // it is not refreshing on its own.
+    if (!_live ||
+        !Provider.of<AppConfigProvider>(context, listen: false)
+            .autoRefreshLiveLogs) {
       scroll = RefreshIndicator(
         onRefresh: () async {
-          await logsProvider.fetchLogs(inOffset: 0);
+          if (_live) {
+            await _liveLogsProvider.fetchOnce();
+          } else {
+            await logsProvider.fetchLogs(inOffset: 0);
+          }
         },
         displacement: 110,
         child: NotificationListener(

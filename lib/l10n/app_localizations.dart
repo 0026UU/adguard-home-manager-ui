@@ -5713,6 +5713,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reason'**
   String get logReason;
+
+  /// No description provided for @statisticsAndDashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics and dashboard'**
+  String get statisticsAndDashboard;
+
+  /// No description provided for @statisticsAndDashboardHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Time range and units'**
+  String get statisticsAndDashboardHelper;
+
+  /// No description provided for @queryLogSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Query log settings'**
+  String get queryLogSettings;
+
+  /// No description provided for @autoRefreshLiveLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto refresh live logs'**
+  String get autoRefreshLiveLogs;
+
+  /// No description provided for @statusColorUseThemeColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Status colors use the theme color'**
+  String get statusColorUseThemeColor;
+
+  /// No description provided for @statusColorUseThemeColorHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'The Apple style recommends semantic colors'**
+  String get statusColorUseThemeColorHelper;
+
+  /// No description provided for @dnsSettingsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Upstreams, bootstrap and rate limits'**
+  String get dnsSettingsSummary;
+
+  /// No description provided for @encryptionSettingsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'DNSCrypt certificates · DoT / DoQ'**
+  String get encryptionSettingsSummary;
+
+  /// No description provided for @dhcpAddressPool.
+  ///
+  /// In en, this message translates to:
+  /// **'Pool {from} – {to}'**
+  String dhcpAddressPool(Object from, Object to);
+
+  /// No description provided for @updateAvailableToVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Update to {version}'**
+  String updateAvailableToVersion(Object version);
+
+  /// No description provided for @switchOrManageServers.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch / manage servers'**
+  String get switchOrManageServers;
+
+  /// No description provided for @openSourceLicenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Open-source licenses'**
+  String get openSourceLicenses;
+
+  /// No description provided for @diagnosticsLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostics log'**
+  String get diagnosticsLog;
+
+  /// No description provided for @noDiagnosticsLog.
+  ///
+  /// In en, this message translates to:
+  /// **'No diagnostics have been recorded'**
+  String get noDiagnosticsLog;
+
+  /// No description provided for @unofficialClient.
+  ///
+  /// In en, this message translates to:
+  /// **'Unofficial client'**
+  String get unofficialClient;
 }
 
 class _AppLocalizationsDelegate

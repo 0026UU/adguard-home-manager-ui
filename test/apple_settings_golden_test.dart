@@ -91,4 +91,22 @@ void main() {
       matchesGoldenFile('goldens/settings_appearance_dark.png'),
     );
   });
+
+  // The whole page at once: the look group, the app group with its switches
+  // and the about group, which is everything a phone shows before a server
+  // has answered.
+  testWidgets('the groups are drawn in the order the design gives them',
+      (tester) async {
+    await _pump(tester, const Size(390, 1180));
+
+    expect(find.text(l.appSettings.toUpperCase()), findsOneWidget);
+    expect(find.text(l.aboutApp.toUpperCase()), findsOneWidget);
+    expect(find.text(l.unofficialClient), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/settings_page.png'),
+    );
+  });
 }

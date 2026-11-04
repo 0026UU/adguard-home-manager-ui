@@ -934,4 +934,19 @@
     "deviceQueries": "{count} queries",
     "searchDevicesHint": "Search a name, an IP or a MAC address",
     "logReason": "Reason"
-}
+,
+    "statisticsAndDashboard": "Statistics and dashboard",
+    "statisticsAndDashboardHelper": "Time range and units",
+    "queryLogSettings": "Query log settings",
+    "autoRefreshLiveLogs": "Auto refresh live logs",
+    "statusColorUseThemeColor": "Status colors use the theme color",
+    "statusColorUseThemeColorHelper": "The Apple style recommends semantic colors",
+    "dnsSettingsSummary": "Upstreams, bootstrap and rate limits",
+    "encryptionSettingsSummary": "DNSCrypt certificates · DoT / DoQ",
+    "dhcpAddressPool": "Pool {from} – {to}",
+    "updateAvailableToVersion": "Update to {version}",
+    "switchOrManageServers": "Switch / manage servers",
+    "openSourceLicenses": "Open-source licenses",
+    "diagnosticsLog": "Diagnostics log",
+    "noDiagnosticsLog": "No diagnostics have been recorded",
+    "unofficialClient": "Unofficial client"}

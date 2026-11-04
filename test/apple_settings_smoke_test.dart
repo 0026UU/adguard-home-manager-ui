@@ -11,6 +11,8 @@ import 'package:adguard_home_manager/providers/app_config_provider.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
 import 'package:adguard_home_manager/screens/settings/settings.dart';
+import 'package:adguard_home_manager/screens/settings/diagnostics/diagnostics_log_screen.dart';
+import 'package:adguard_home_manager/models/app_log.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
 import 'package:adguard_home_manager/widgets/custom_switch_list_tile.dart';
@@ -57,13 +59,34 @@ void main() {
     await _pump(tester, const Settings());
 
     expect(tester.takeException(), isNull);
-    // The look of the app is a group of its own, above the server one.
+    // The look of the app is a group of its own, above the app and the about
+    // ones; the server group only appears with a server that answers.
     expect(find.byType(AppleListSection), findsNWidgets(3));
     expect(find.text(l.appSettings.toUpperCase()), findsOneWidget);
     expect(find.text(l.appearance.toUpperCase()), findsOneWidget);
-    expect(find.text(l.customization), findsOneWidget);
-    // App settings rows carry the tinted glyphs; the appearance rows do not.
-    expect(find.byType(AppleIconBadge), findsNWidgets(5));
+    expect(find.text(l.aboutApp.toUpperCase()), findsOneWidget);
+    expect(find.text(l.serverSettings.toUpperCase()), findsNothing);
+    // The rows the design puts in the app group and the about one, and
+    // nothing else.
+    expect(find.text(l.language), findsOneWidget);
+    expect(find.text(l.statisticsAndDashboard), findsOneWidget);
+    expect(find.text(l.queryLogSettings), findsOneWidget);
+    expect(find.text(l.autoRefreshLiveLogs), findsOneWidget);
+    expect(find.text(l.statusColorUseThemeColor), findsOneWidget);
+    expect(find.text(l.openSourceLicenses), findsOneWidget);
+    expect(find.text(l.diagnosticsLog), findsOneWidget);
+    expect(find.text(l.customization), findsNothing);
+    expect(find.text(l.generalSettings), findsNothing);
+    expect(find.text(l.advancedSettings), findsNothing);
+    // App settings and about rows carry the tinted glyphs; the appearance
+    // rows do not.
+    expect(find.byType(AppleIconBadge), findsNWidgets(7));
+    // The page signs itself with the app and the version it runs; the note
+    // sits under the last group, out of the phone's first screen.
+    expect(
+      find.text(l.unofficialClient, skipOffstage: false),
+      findsOneWidget,
+    );
   });
 
   testWidgets('the appearance group switches the theme from inside its card',
@@ -183,14 +206,110 @@ void main() {
 
     final context = tester.element(find.byType(Settings));
     Provider.of<AppConfigProvider>(context, listen: false)
-        .setSelectedSettingsScreen(screen: 13, notify: true);
+        .setSelectedSettingsScreen(screen: 1, notify: true);
     await tester.pumpAndSettle();
 
     final tile = tester.widget<AppleListTile>(find.ancestor(
-      of: find.text(l.generalSettings),
+      of: find.text(l.statisticsAndDashboard),
       matching: find.byType(AppleListTile),
     ));
     expect(tile.selected, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the app group keeps the switches the app owns', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(420, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await _pump(tester, const Settings());
+
+    final context = tester.element(find.byType(Settings));
+    final appConfigProvider =
+        Provider.of<AppConfigProvider>(context, listen: false);
+
+    Finder switchFor(String title) => find.descendant(
+          of: find.ancestor(
+            of: find.text(title),
+            matching: find.byType(AppleSwitchListTile),
+          ),
+          matching: find.byType(CupertinoSwitch),
+        );
+
+    expect(appConfigProvider.autoRefreshLiveLogs, isTrue);
+    expect(appConfigProvider.useThemeColorForStatus, isFalse);
+
+    await tester.tap(switchFor(l.autoRefreshLiveLogs));
+    await tester.pumpAndSettle();
+    expect(appConfigProvider.autoRefreshLiveLogs, isFalse);
+
+    await tester.tap(switchFor(l.statusColorUseThemeColor));
+    await tester.pumpAndSettle();
+    expect(appConfigProvider.useThemeColorForStatus, isTrue);
+
+    // The two rows read the one pref the appearance sheet writes as well.
+    final statusRow = tester.widget<AppleListTile>(find.ancestor(
+      of: find.text(l.statusColors),
+      matching: find.byType(AppleListTile),
+    ));
+    expect(statusRow.value, l.themeColorForStatus);
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('autoRefreshLiveLogs'), isFalse);
+    expect(prefs.getBool('useThemeColorForStatus'), isTrue);
+  });
+
+  testWidgets('the rows that read the server wait for one', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(420, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await _pump(tester, const Settings());
+
+    // Nothing is known about the query log until a server answers, so its
+    // switch is drawn but cannot write; DHCP, which belongs to the server
+    // group, is not on this page at all yet.
+    final queryLogRow = tester.widget<AppleListTile>(find.ancestor(
+      of: find.text(l.queryLogSettings),
+      matching: find.byType(AppleListTile),
+    ));
+    final control = queryLogRow.trailing as AppleSwitch;
+    expect(control.value, isFalse);
+    expect(control.onChanged, isNull);
+
+    expect(find.text(l.dhcpSettings), findsNothing);
+    expect(find.byType(CupertinoSwitch), findsNWidgets(3));
+    // There is nothing to read again until a server is connected.
+    expect(find.byIcon(CupertinoIcons.arrow_clockwise), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the diagnostics page shows what the app wrote down',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(420, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await _pump(tester, const DiagnosticsLogScreen());
+
+    final context = tester.element(find.byType(DiagnosticsLogScreen));
+    final appConfigProvider =
+        Provider.of<AppConfigProvider>(context, listen: false);
+
+    // Nothing has gone wrong, so nothing is listed.
+    expect(find.text(l.noDiagnosticsLog), findsOneWidget);
+
+    appConfigProvider.addLog(
+      AppLog(
+        type: 'get_status',
+        dateTime: DateTime(2026, 1, 1, 12),
+        message: 'SocketException',
+        statusCode: '500',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(l.noDiagnosticsLog), findsNothing);
+    expect(find.text('SocketException'), findsOneWidget);
+    expect(find.textContaining('get_status'), findsOneWidget);
+    expect(find.text('500'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

@@ -44,11 +44,18 @@ class LiveLogsProvider with ChangeNotifier {
 
     _isFetching = true;
     _lastTime = DateTime.now();
-    _fetchLogs();
+    _keepFetching();
   }
 
   void stopFetchLogs() {
     _isFetching = false;
+  }
+
+  /// One pass of the stream, for the live view when it is not refreshing on
+  /// its own: the queries up to now, and then it waits for a pull.
+  Future<void> fetchOnce() async {
+    _lastTime ??= DateTime.now();
+    await _fetchLogs();
   }
 
   void clearLogs() {
@@ -56,8 +63,16 @@ class LiveLogsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void _fetchLogs() async {
-    if (_isDisposed || !_isFetching || _lastTime == null) return;
+  void _keepFetching() async {
+    await _fetchLogs();
+
+    await Future.delayed(const Duration(seconds: 2));
+    if (_isDisposed || !_isFetching) return;
+    _keepFetching();
+  }
+
+  Future<void> _fetchLogs() async {
+    if (_isDisposed || _lastTime == null) return;
 
     final api = _serversProvider?.apiClient2;
     final result = api == null ? null : await api.getLogs(
@@ -72,9 +87,5 @@ class LiveLogsProvider with ChangeNotifier {
       _lastTime = DateTime.now();
       notifyListeners();
     }
-
-    await Future.delayed(const Duration(seconds: 2));
-    if (_isDisposed || !_isFetching) return;
-    _fetchLogs();
   }
 }

@@ -195,7 +195,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get topBlockedDomains => '被拦截域名排行';
 
   @override
-  String get appSettings => 'App 设置';
+  String get appSettings => '应用设置';
 
   @override
   String get theme => '主题';
@@ -246,7 +246,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get helperPath => '如果使用反向代理，可填写路径';
 
   @override
-  String get aboutApp => '关于本应用';
+  String get aboutApp => '关于';
 
   @override
   String get appVersion => 'App 版本';
@@ -792,7 +792,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deleteListMessage => '您确定要删除此订阅规则吗？此操作无法撤消';
 
   @override
-  String get serverSettings => '服务器设置';
+  String get serverSettings => '服务器配置';
 
   @override
   String get serverInformation => '服务器信息';
@@ -1032,7 +1032,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get insertDomain => '输入要检查的域名以查看其状态';
 
   @override
-  String get dhcpSettings => 'DHCP 设置';
+  String get dhcpSettings => 'DHCP';
 
   @override
   String get dhcpSettingsDescription => '配置 DHCP 服务器';
@@ -1520,7 +1520,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commentsDescription => '注释始终以 # 开头 您无需添加它，系统将自动添加';
 
   @override
-  String get encryptionSettings => '加密设置';
+  String get encryptionSettings => '加密';
 
   @override
   String get encryptionSettingsDescription => '加密（HTTPS/QUIC/TLS）支持';
@@ -1649,7 +1649,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get customizationDescription => '自定义此应用程序';
 
   @override
-  String get language => 'Language';
+  String get language => '语言';
 
   @override
   String get languageDescription => 'Change the language of the app';
@@ -2914,6 +2914,55 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get logReason => '原因';
+
+  @override
+  String get statisticsAndDashboard => '统计与仪表盘';
+
+  @override
+  String get statisticsAndDashboardHelper => '时间范围、单位';
+
+  @override
+  String get queryLogSettings => '查询日志设置';
+
+  @override
+  String get autoRefreshLiveLogs => '自动刷新实时日志';
+
+  @override
+  String get statusColorUseThemeColor => '状态色使用主题色';
+
+  @override
+  String get statusColorUseThemeColorHelper => 'Apple 风格建议使用语义色';
+
+  @override
+  String get dnsSettingsSummary => '上游、引导、速率限制';
+
+  @override
+  String get encryptionSettingsSummary => 'DNSCrypt 证书 · DoT / DoQ';
+
+  @override
+  String dhcpAddressPool(Object from, Object to) {
+    return '地址池 $from – $to';
+  }
+
+  @override
+  String updateAvailableToVersion(Object version) {
+    return '可更新至 $version';
+  }
+
+  @override
+  String get switchOrManageServers => '切换 / 管理服务器';
+
+  @override
+  String get openSourceLicenses => '开源许可';
+
+  @override
+  String get diagnosticsLog => '诊断日志';
+
+  @override
+  String get noDiagnosticsLog => '暂无诊断日志';
+
+  @override
+  String get unofficialClient => '非官方客户端';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -3104,7 +3153,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get topBlockedDomains => '被拦截域名排行';
 
   @override
-  String get appSettings => 'App 设置';
+  String get appSettings => '应用设置';
 
   @override
   String get theme => '主题';
@@ -3155,7 +3204,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get helperPath => '如果使用反向代理，可填写路径';
 
   @override
-  String get aboutApp => '关于本应用';
+  String get aboutApp => '关于';
 
   @override
   String get appVersion => 'App 版本';
@@ -3701,7 +3750,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get deleteListMessage => '您确定要删除此订阅规则吗？此操作无法撤消';
 
   @override
-  String get serverSettings => '服务器设置';
+  String get serverSettings => '服务器配置';
 
   @override
   String get serverInformation => '服务器信息';
@@ -3938,7 +3987,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get insertDomain => '输入要检查的域名以查看其状态';
 
   @override
-  String get dhcpSettings => 'DHCP 设置';
+  String get dhcpSettings => 'DHCP';
 
   @override
   String get dhcpSettingsDescription => '配置 DHCP 服务器';
@@ -4426,7 +4475,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get commentsDescription => '注释始终以 # 开头 您无需添加它，系统将自动添加';
 
   @override
-  String get encryptionSettings => '加密设置';
+  String get encryptionSettings => '加密';
 
   @override
   String get encryptionSettingsDescription => '加密（HTTPS/QUIC/TLS）支持';
@@ -4553,6 +4602,9 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get customizationDescription => '自定义此应用程序';
+
+  @override
+  String get language => '语言';
 
   @override
   String get color => '颜色';
@@ -5734,4 +5786,53 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get logReason => '原因';
+
+  @override
+  String get statisticsAndDashboard => '统计与仪表盘';
+
+  @override
+  String get statisticsAndDashboardHelper => '时间范围、单位';
+
+  @override
+  String get queryLogSettings => '查询日志设置';
+
+  @override
+  String get autoRefreshLiveLogs => '自动刷新实时日志';
+
+  @override
+  String get statusColorUseThemeColor => '状态色使用主题色';
+
+  @override
+  String get statusColorUseThemeColorHelper => 'Apple 风格建议使用语义色';
+
+  @override
+  String get dnsSettingsSummary => '上游、引导、速率限制';
+
+  @override
+  String get encryptionSettingsSummary => 'DNSCrypt 证书 · DoT / DoQ';
+
+  @override
+  String dhcpAddressPool(Object from, Object to) {
+    return '地址池 $from – $to';
+  }
+
+  @override
+  String updateAvailableToVersion(Object version) {
+    return '可更新至 $version';
+  }
+
+  @override
+  String get switchOrManageServers => '切换 / 管理服务器';
+
+  @override
+  String get openSourceLicenses => '开源许可';
+
+  @override
+  String get diagnosticsLog => '诊断日志';
+
+  @override
+  String get noDiagnosticsLog => '暂无诊断日志';
+
+  @override
+  String get unofficialClient => '非官方客户端';
 }

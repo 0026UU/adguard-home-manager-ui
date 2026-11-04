@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
@@ -6,27 +9,28 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/screens/settings/server_info/server_info.dart';
 import 'package:adguard_home_manager/screens/settings/encryption/encryption.dart';
 import 'package:adguard_home_manager/screens/settings/logs_settings/logs_settings.dart';
-import 'package:adguard_home_manager/screens/settings/access_settings/access_settings.dart';
-import 'package:adguard_home_manager/screens/settings/customization/customization.dart';
 import 'package:adguard_home_manager/screens/settings/language/language_settings.dart';
 import 'package:adguard_home_manager/screens/settings/dhcp/dhcp.dart';
 import 'package:adguard_home_manager/screens/settings/statistics_settings/statistics_settings.dart';
-import 'package:adguard_home_manager/screens/settings/safe_search_settings.dart';
 import 'package:adguard_home_manager/screens/settings/update_server/update_screen.dart';
 import 'package:adguard_home_manager/screens/settings/dns/dns.dart';
 import 'package:adguard_home_manager/screens/settings/dns_rewrites/dns_rewrites.dart';
+import 'package:adguard_home_manager/screens/settings/diagnostics/diagnostics_log_screen.dart';
 import 'package:adguard_home_manager/screens/servers/servers.dart';
-import 'package:adguard_home_manager/screens/settings/advanced_setings.dart';
-import 'package:adguard_home_manager/screens/settings/general_settings/general_settings.dart';
 
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
-import 'package:adguard_home_manager/functions/open_url.dart';
 import 'package:adguard_home_manager/functions/generate_color_translation.dart';
+import 'package:adguard_home_manager/functions/number_format.dart';
+import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/constants/colors.dart';
-import 'package:adguard_home_manager/constants/urls.dart';
+import 'package:adguard_home_manager/constants/languages.dart';
+import 'package:adguard_home_manager/models/dhcp.dart';
+import 'package:adguard_home_manager/models/querylog_config.dart';
+import 'package:adguard_home_manager/models/rewrite_rules.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
+import 'package:adguard_home_manager/services/api_client.dart';
 
 final settingsNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -79,11 +83,180 @@ class _SettingsWidget extends StatefulWidget {
 class _SettingsWidgetState extends State<_SettingsWidget> {
   final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
+  /// What the server says about itself, read once per connection: whether the
+  /// query log is on and for how long, whether DHCP is serving and which pool
+  /// it hands out, and how many DNS rewrites are written.
+  QueryLogConfig? _queryLog;
+  DhcpStatus? _dhcp;
+  int? _rewrites;
+
+  /// The licences Flutter registers while the app runs, so the number on the
+  /// last group is the one the page below really lists.
+  int? _licenses;
+
+  String? _loadedFor;
+  bool _savingQueryLog = false;
+  bool _savingDhcp = false;
+
   @override
   void initState() {
     Provider.of<AppConfigProvider>(context, listen: false)
         .setSelectedSettingsScreen(screen: null);
+
+    LicenseRegistry.licenses.toList().then((value) {
+      if (mounted) setState(() => _licenses = value.length);
+    });
+
     super.initState();
+  }
+
+  Future<void> loadServerValues(ApiClientV2 api, {required bool dhcpAvailable}) async {
+    final queryLog = await api.getQueryLogInfo();
+    final rewrites = await api.getDnsRewriteRules();
+    DhcpStatus? dhcp;
+
+    if (dhcpAvailable) {
+      final result = await api.getDhcpData();
+      if (result.successful == true) {
+        dhcp = (result.content as DhcpModel).dhcpStatus;
+      }
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _queryLog = queryLog.successful == true
+          ? queryLog.content as QueryLogConfig
+          : null;
+      _rewrites = rewrites.successful == true
+          ? (rewrites.content as List<RewriteRules>).length
+          : null;
+      _dhcp = dhcp;
+    });
+  }
+
+  /// The server has no switch of its own: the whole configuration it already
+  /// has is written back with only `enabled` changed, and `/dhcp/status` is
+  /// read again to keep the row honest.
+  Future<void> saveDhcp(bool value) async {
+    final api = Provider.of<ServersProvider>(context, listen: false).apiClient2;
+    final status = _dhcp;
+
+    if (api == null || status == null || _savingDhcp) return;
+
+    setState(() => _savingDhcp = true);
+
+    final saved = await api.saveDhcpConfig(
+      data: {
+        "enabled": value,
+        "interface_name": status.interfaceName,
+        if (status.v4 != null) "v4": {
+          "gateway_ip": status.v4!.gatewayIp,
+          "subnet_mask": status.v4!.subnetMask,
+          "range_start": status.v4!.rangeStart,
+          "range_end": status.v4!.rangeEnd,
+          "lease_duration": status.v4!.leaseDuration,
+        },
+        if (status.v6 != null) "v6": {
+          "range_start": status.v6!.rangeStart,
+          "range_end": status.v6!.rangeEnd,
+          "lease_duration": status.v6!.leaseDuration,
+        },
+      },
+    );
+
+    final echo = saved.successful == true ? await api.getDhcpData() : null;
+
+    if (!mounted) return;
+
+    setState(() {
+      _savingDhcp = false;
+      if (echo?.successful == true) {
+        _dhcp = (echo!.content as DhcpModel).dhcpStatus;
+      }
+    });
+
+    if (saved.successful != true) {
+      showSnackbar(
+        appConfigProvider:
+            Provider.of<AppConfigProvider>(context, listen: false),
+        label: AppLocalizations.of(context)!.settingsNotSaved,
+        color: Colors.red,
+      );
+    }
+  }
+
+  /// Same here: the retention, the anonymising and the ignored domains the
+  /// server already uses are sent back untouched.
+  Future<void> saveQueryLog(bool value) async {
+    final api = Provider.of<ServersProvider>(context, listen: false).apiClient2;
+    final config = _queryLog;
+
+    if (api == null || config == null || _savingQueryLog) return;
+
+    setState(() => _savingQueryLog = true);
+
+    final result = await api.updateQueryLogParameters(
+      data: {
+        "enabled": value,
+        "interval": config.interval,
+        "anonymize_client_ip": config.anonymizeClientIp,
+        "ignored": config.ignored ?? const <String>[],
+      },
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _savingQueryLog = false;
+      if (result.successful == true) {
+        _queryLog = QueryLogConfig(
+          ignored: config.ignored,
+          interval: config.interval,
+          enabled: value,
+          anonymizeClientIp: config.anonymizeClientIp,
+        );
+      }
+    });
+
+    if (result.successful != true) {
+      showSnackbar(
+        appConfigProvider:
+            Provider.of<AppConfigProvider>(context, listen: false),
+        label: AppLocalizations.of(context)!.logsConfigNotUpdated,
+        color: Colors.red,
+      );
+    }
+  }
+
+  /// The header action reads the server again: its status, and with it the
+  /// values the rows show. Only a server that does not answer says so.
+  Future<void> refresh() async {
+    final serversProvider =
+        Provider.of<ServersProvider>(context, listen: false);
+    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
+    final appConfigProvider =
+        Provider.of<AppConfigProvider>(context, listen: false);
+    final localizations = AppLocalizations.of(context)!;
+
+    final api = serversProvider.apiClient2;
+    if (api == null) return;
+
+    final refreshed =
+        await statusProvider.getServerStatus(withLoadingIndicator: false);
+    if (refreshed != true) {
+      showSnackbar(
+        appConfigProvider: appConfigProvider,
+        label: localizations.serverStatusNotRefreshed,
+        color: Colors.red,
+      );
+      return;
+    }
+
+    await loadServerValues(
+      api,
+      dhcpAvailable: statusProvider.serverStatus?.dhcpAvailable == true,
+    );
   }
 
   @override
@@ -120,14 +293,16 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
       }
     }
 
-    /// One settings section row: pushes on phones, selects in the master pane.
+    /// One settings row: pushes on phones, selects in the master pane.
     Widget row({
       required int thisItem,
       required IconData icon,
       required Color iconColor,
       required String title,
-      required String subtitle,
       required Widget screenToNavigate,
+      String? subtitle,
+      String? value,
+      Color? valueColor,
       Widget? trailing,
     }) {
       return AppleListTile(
@@ -135,11 +310,40 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
         iconColor: iconColor,
         title: title,
         subtitle: subtitle,
+        value: value,
+        valueColor: valueColor,
         trailing: trailing,
         selected: widget.twoColumns &&
             appConfigProvider.selectedSettingsScreen == thisItem,
         showChevron: !widget.twoColumns,
         onTap: () => open(thisItem: thisItem, screen: screenToNavigate),
+      );
+    }
+
+    /// A count the design layer puts in a capsule before the disclosure.
+    Widget? countTrailing(Object? count) {
+      if (count == null) return null;
+
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ApplePill(label: '$count', color: palette.label2),
+          if (!widget.twoColumns) ...[
+            const SizedBox(width: 6),
+            const AppleChevron(),
+          ],
+        ],
+      );
+    }
+
+    // The values the rows read are asked for once per server.
+    final api = serversProvider.apiClient2;
+    final server = serversProvider.selectedServer;
+    if (api != null && server != null && _loadedFor != server.id) {
+      _loadedFor = server.id;
+      loadServerValues(
+        api,
+        dhcpAvailable: statusProvider.serverStatus?.dhcpAvailable == true,
       );
     }
 
@@ -237,7 +441,6 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
       );
     }
 
-    final server = serversProvider.selectedServer;
     final serverStatus = statusProvider.serverStatus;
     final appInfo = appConfigProvider.getAppInfo;
 
@@ -252,98 +455,176 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
       if (serverStatus != null) serverStatus.serverVersion,
     ].whereType<String>().where((part) => part.isNotEmpty).join(' · ');
 
-    final serverRows = <Widget>[
+    // The name the language list itself shows for the language in use.
+    final languageName = languageFromTag(
+      appConfigProvider.selectedLanguage ??
+          Localizations.localeOf(context).toLanguageTag(),
+    )?.name;
+
+    String? queryLogRetention() {
+      final interval = _queryLog?.interval;
+      if (interval == null || interval <= 0) return null;
+
+      final hours = interval ~/ Duration.millisecondsPerHour;
+      return l.retainedFor(hours > 0 ? l.hours(hours) : l.minutes(1));
+    }
+
+    String? dhcpPool() {
+      final v4 = _dhcp?.v4;
+      if (v4 == null || v4.rangeStart.isEmpty || v4.rangeEnd == null) {
+        return null;
+      }
+
+      return l.dhcpAddressPool(v4.rangeStart, v4.rangeEnd!);
+    }
+
+    // The switch writes back a pool the server already has; a DHCP server with
+    // no interface picked yet is set up on its own page.
+    final dhcpConfigured =
+        (_dhcp?.interfaceName?.isNotEmpty ?? false) && _dhcp?.v4 != null;
+
+    final appRows = <Widget>[
       row(
         thisItem: 0,
-        icon: CupertinoIcons.search,
-        iconColor: palette.indigo,
-        title: l.safeSearch,
-        subtitle: l.safeSearchSettings,
-        screenToNavigate: const SafeSearchSettingsScreen(),
+        icon: CupertinoIcons.textformat_abc,
+        iconColor: palette.tint,
+        title: l.language,
+        value: languageName,
+        screenToNavigate: const LanguageSettings(),
       ),
       row(
         thisItem: 1,
-        icon: CupertinoIcons.list_bullet,
-        iconColor: palette.teal,
-        title: l.logsSettings,
-        subtitle: l.logsSettingsDescription,
-        screenToNavigate: const LogsSettings(),
-      ),
-      row(
-        thisItem: 2,
         icon: CupertinoIcons.chart_bar,
-        iconColor: palette.green,
-        title: l.statisticsSettings,
-        subtitle: l.statisticsSettingsDescription,
+        iconColor: palette.indigo,
+        title: l.statisticsAndDashboard,
+        subtitle: l.statisticsAndDashboardHelper,
         screenToNavigate: const StatisticsSettings(),
       ),
+      AppleListTile(
+        icon: CupertinoIcons.doc_text,
+        iconColor: palette.orange,
+        title: l.queryLogSettings,
+        subtitle: queryLogRetention(),
+        selected: widget.twoColumns &&
+            appConfigProvider.selectedSettingsScreen == 2,
+        showChevron: false,
+        trailing: AppleSwitch(
+          value: _queryLog?.enabled == true,
+          onChanged: _queryLog == null || _savingQueryLog
+              ? null
+              : () => saveQueryLog(_queryLog?.enabled != true),
+        ),
+        onTap: () => open(thisItem: 2, screen: const LogsSettings()),
+      ),
+      AppleSwitchListTile(
+        icon: CupertinoIcons.bolt,
+        iconColor: palette.green,
+        title: l.autoRefreshLiveLogs,
+        value: appConfigProvider.autoRefreshLiveLogs,
+        onChanged: (value) => appConfigProvider.setAutoRefreshLiveLogs(value),
+      ),
+      AppleSwitchListTile(
+        icon: CupertinoIcons.paintbrush,
+        iconColor: palette.pink,
+        title: l.statusColorUseThemeColor,
+        subtitle: l.statusColorUseThemeColorHelper,
+        value: appConfigProvider.useThemeColorForStatus == true,
+        onChanged: (value) => appConfigProvider.setUseThemeColorForStatus(value),
+      ),
+    ];
+
+    final serverRows = <Widget>[
       row(
         thisItem: 3,
-        icon: CupertinoIcons.lock,
-        iconColor: palette.orange,
-        title: l.accessSettings,
-        subtitle: l.accessSettingsDescription,
-        screenToNavigate: const AccessSettings(),
-      ),
-      row(
-        thisItem: 4,
-        icon: CupertinoIcons.antenna_radiowaves_left_right,
+        icon: CupertinoIcons.globe,
         iconColor: palette.tint,
-        title: l.dhcpSettings,
-        subtitle: l.dhcpSettingsDescription,
-        screenToNavigate: const DhcpScreen(),
-      ),
-      row(
-        thisItem: 5,
-        icon: CupertinoIcons.wifi,
-        iconColor: palette.purple,
         title: l.dnsSettings,
-        subtitle: l.dnsSettingsDescription,
+        subtitle: l.dnsSettingsSummary,
         screenToNavigate: DnsSettings(
           splitView: widget.twoColumns,
         ),
       ),
       row(
-        thisItem: 6,
-        icon: CupertinoIcons.lock_shield,
+        thisItem: 4,
+        icon: CupertinoIcons.lock,
         iconColor: palette.green,
         title: l.encryptionSettings,
-        subtitle: l.encryptionSettingsDescription,
+        subtitle: l.encryptionSettingsSummary,
         screenToNavigate: const EncryptionSettings(),
+      ),
+      AppleListTile(
+        icon: CupertinoIcons.wifi,
+        iconColor: palette.indigo,
+        title: l.dhcpSettings,
+        subtitle: dhcpPool(),
+        selected: widget.twoColumns &&
+            appConfigProvider.selectedSettingsScreen == 5,
+        showChevron: false,
+        trailing: AppleSwitch(
+          value: _dhcp?.enabled == true,
+          onChanged: !dhcpConfigured || _savingDhcp
+              ? null
+              : () => saveDhcp(_dhcp?.enabled != true),
+        ),
+        onTap: () => open(thisItem: 5, screen: const DhcpScreen()),
+      ),
+      row(
+        thisItem: 6,
+        icon: CupertinoIcons.list_bullet,
+        iconColor: palette.purple,
+        title: l.dnsRewrites,
+        trailing: countTrailing(
+          _rewrites == null ? null : intFormat(_rewrites!, Platform.localeName),
+        ),
+        screenToNavigate: const DnsRewritesScreen(),
       ),
       row(
         thisItem: 7,
-        icon: CupertinoIcons.arrow_2_circlepath,
-        iconColor: palette.tint,
-        title: l.dnsRewrites,
-        subtitle: l.dnsRewritesDescription,
-        screenToNavigate: const DnsRewritesScreen(),
-      ),
-      if (updateAvailable)
-        row(
-          thisItem: 8,
-          icon: CupertinoIcons.arrow_down_circle,
-          iconColor: palette.red,
-          title: l.updates,
-          subtitle: l.updatesDescription,
-          trailing: serversProvider.updateAvailable.data!.canAutoupdate == true
-              ? Container(
-                  width: 9,
-                  height: 9,
-                  decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      color: palette.red),
-                )
-              : null,
-          screenToNavigate: const UpdateScreen(),
-        ),
-      row(
-        thisItem: 9,
-        icon: CupertinoIcons.info_circle,
-        iconColor: palette.gray,
+        icon: CupertinoIcons.desktopcomputer,
+        iconColor: palette.orange,
         title: l.serverInformation,
-        subtitle: l.serverInformationDescription,
+        subtitle: serverStatus?.serverVersion,
         screenToNavigate: const ServerInformation(),
+      ),
+      row(
+        thisItem: 8,
+        icon: CupertinoIcons.refresh,
+        iconColor: palette.teal,
+        title: l.checkUpdates,
+        value: serversProvider.updateAvailable.data?.newVersion == null
+            ? null
+            : l.updateAvailableToVersion(
+                serversProvider.updateAvailable.data!.newVersion!),
+        valueColor: updateAvailable ? palette.tint : null,
+        screenToNavigate: const UpdateScreen(),
+      ),
+    ];
+
+    final aboutRows = <Widget>[
+      AppleListTile(
+        icon: CupertinoIcons.doc,
+        iconColor: palette.gray,
+        title: l.openSourceLicenses,
+        selected: widget.twoColumns &&
+            appConfigProvider.selectedSettingsScreen == 9,
+        showChevron: !widget.twoColumns,
+        trailing: countTrailing(_licenses),
+        onTap: () => open(
+          thisItem: 9,
+          screen: LicensePage(
+            applicationName: 'AdGuard Home Manager',
+            applicationVersion: appInfo == null
+                ? null
+                : '${appInfo.version} (${appInfo.buildNumber})',
+          ),
+        ),
+      ),
+      row(
+        thisItem: 10,
+        icon: CupertinoIcons.bolt,
+        iconColor: palette.gray,
+        title: l.diagnosticsLog,
+        screenToNavigate: const DiagnosticsLogScreen(),
       ),
     ];
 
@@ -351,9 +632,17 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
         key: widget.twoColumns ? _scaffoldMessengerKey : null,
         child: AppleScreen(
           title: l.settings,
+          actions: [
+            if (api != null) IconButton(
+              onPressed: refresh,
+              icon: const Icon(CupertinoIcons.arrow_clockwise),
+              tooltip: l.refresh,
+            ),
+            const SizedBox(width: 8),
+          ],
           subtitle: appInfo == null
             ? null
-            : "${l.appVersion} ${appInfo.version} (${appInfo.buildNumber})",
+            : 'AdGuard Home Manager · ${appInfo.version} (${appInfo.buildNumber})',
           slivers: [
             SliverPadding(
               padding: const EdgeInsets.only(top: 10),
@@ -369,90 +658,30 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
                         title: server.name,
                         details: details.isEmpty ? null : details,
                         status: serverStatus != null ? l.connected : null,
-                        actionLabel: l.servers,
+                        actionLabel: l.switchOrManageServers,
                         onAction: () =>
-                            open(thisItem: 12, screen: const Servers()),
+                            open(thisItem: 11, screen: const Servers()),
                       ),
                     ),
                   appearanceSection(),
-                  if (serversProvider.selectedServer != null &&
-                      statusProvider.serverStatus != null &&
+                  AppleListSection(title: l.appSettings, children: appRows),
+                  if (server != null &&
+                      serverStatus != null &&
                       serversProvider.apiClient2 != null)
                     AppleListSection(
                         title: l.serverSettings, children: serverRows),
-                  AppleListSection(
-                    title: l.appSettings,
-                    children: [
-                      row(
-                        thisItem: 10,
-                        icon: CupertinoIcons.paintbrush,
-                        iconColor: palette.pink,
-                        title: l.customization,
-                        subtitle: l.customizationDescription,
-                        screenToNavigate: const Customization(),
+                  AppleListSection(title: l.aboutApp, children: aboutRows),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+                    child: Text(
+                      l.unofficialClient,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.6,
+                        color: palette.label3,
                       ),
-                      row(
-                        thisItem: 11,
-                        icon: CupertinoIcons.globe,
-                        iconColor: palette.tint,
-                        title: l.language,
-                        subtitle: l.languageDescription,
-                        screenToNavigate: const LanguageSettings(),
-                      ),
-                      row(
-                        thisItem: 12,
-                        icon: CupertinoIcons.desktopcomputer,
-                        iconColor: palette.teal,
-                        title: l.servers,
-                        subtitle: serversProvider.selectedServer != null
-                            ? statusProvider.serverStatus != null
-                                ? "${l.connectedTo} ${serversProvider.selectedServer!.name}"
-                                : "${l.selectedServer} ${serversProvider.selectedServer!.name}"
-                            : l.noServerSelected,
-                        screenToNavigate: const Servers(),
-                      ),
-                      row(
-                        thisItem: 13,
-                        icon: CupertinoIcons.gear,
-                        iconColor: palette.gray,
-                        title: l.generalSettings,
-                        subtitle: l.generalSettingsDescription,
-                        screenToNavigate:
-                            GeneralSettings(splitView: widget.twoColumns),
-                      ),
-                      row(
-                        thisItem: 14,
-                        icon: CupertinoIcons.wrench,
-                        iconColor: palette.gray,
-                        title: l.advancedSettings,
-                        subtitle: l.advancedSetupDescription,
-                        screenToNavigate: const AdvancedSettings(),
-                      ),
-                    ],
-                  ),
-                  AppleListSection(
-                    title: l.aboutApp,
-                    children: [
-                      AppleListTile(
-                        title: l.appVersion,
-                        value: appConfigProvider.getAppInfo?.version,
-                        showChevron: false,
-                      ),
-                      AppleListTile(
-                        title: l.applicationDetails,
-                        subtitle: l.applicationDetailsDescription,
-                        trailing: Icon(CupertinoIcons.arrow_up_right,
-                            color: palette.label3),
-                        onTap: () => openUrl(Urls.appDetailsWebpage),
-                      ),
-                      AppleListTile(
-                        title: l.myOtherApps,
-                        subtitle: l.myOtherAppsDescription,
-                        trailing: Icon(CupertinoIcons.arrow_up_right,
-                            color: palette.label3),
-                        onTap: () => openUrl(Urls.jgeek00AppsWebpage),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),

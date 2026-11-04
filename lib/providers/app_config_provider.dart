@@ -57,6 +57,9 @@ class AppConfigProvider with ChangeNotifier {
 
   bool _combinedChartHome = false;
 
+  /// Whether the live view keeps pulling the query log on its own.
+  bool _autoRefreshLiveLogs = true;
+
   String? _doNotRememberVersion;
 
   GitHubRelease? _appUpdatesAvailable;
@@ -150,6 +153,10 @@ class AppConfigProvider with ChangeNotifier {
 
   bool get combinedChartHome {
     return _combinedChartHome;
+  }
+
+  bool get autoRefreshLiveLogs {
+    return _autoRefreshLiveLogs;
   }
 
   String? get doNotRememberVersion {
@@ -333,6 +340,18 @@ class AppConfigProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> setAutoRefreshLiveLogs(bool value) async {
+    try {
+      sharedPreferencesInstance.setBool('autoRefreshLiveLogs', value);
+      _autoRefreshLiveLogs = value;
+      notifyListeners();
+      return true;
+    } catch (e, stackTrace) {
+      Sentry.captureException(e, stackTrace: stackTrace);
+      return false;
+    }
+  }
+
   Future<bool> setStaticColor(int value) async {
     try {
       sharedPreferencesInstance.setInt('staticColor', value);
@@ -398,6 +417,8 @@ class AppConfigProvider with ChangeNotifier {
         sharedPreferencesInstance.getBool('useThemeColorForStatus') ?? false;
     _doNotRememberVersion = sharedPreferencesInstance.getString('doNotRememberVersion');
     _combinedChartHome = sharedPreferencesInstance.getBool('combinedChart') ?? false;
+    _autoRefreshLiveLogs =
+        sharedPreferencesInstance.getBool('autoRefreshLiveLogs') ?? true;
     _hideServerAddress = sharedPreferencesInstance.getBool('hideServerAddress') ?? false;
     if (sharedPreferencesInstance.getStringList('homeTopItemsOrder') != null) {
       try {
