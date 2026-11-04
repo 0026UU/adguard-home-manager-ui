@@ -2901,4 +2901,34 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get back => 'Back';
+
+  @override
+  String get clientSettings => 'Client settings';
+
+  @override
+  String get useGlobalSettingsHelper =>
+      'Turn this off to configure the device on its own';
+
+  @override
+  String get dnsFiltering => 'DNS filtering';
+
+  @override
+  String get dnsFilteringHelper => 'Uses the filter lists you have enabled';
+
+  @override
+  String get parentalControl => 'Parental control';
+
+  @override
+  String get identity => 'Identity';
+
+  @override
+  String blockedServicesCount(Object count) {
+    return '$count services blocked';
+  }
+
+  @override
+  String get servicesSameAsServer => 'Same as server';
+
+  @override
+  String get deleteThisDevice => 'Delete this device';
 }

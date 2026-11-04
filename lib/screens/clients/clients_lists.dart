@@ -7,6 +7,7 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
 import 'package:adguard_home_manager/screens/clients/clients.dart';
+import 'package:adguard_home_manager/screens/clients/client/client_detail.dart';
 import 'package:adguard_home_manager/screens/clients/client/client_screen_functions.dart';
 import 'package:adguard_home_manager/screens/clients/client/device_tile.dart';
 import 'package:adguard_home_manager/screens/clients/client/logs_list_client.dart';
@@ -96,18 +97,23 @@ class _ClientsListsState extends State<ClientsLists> {
     void openDevice(DeviceRow row) {
       setState(() => _selectedAddress = row.logKey);
 
-      final w = LogsListClient(
-        ip: row.logKey,
-        name: row.name,
-        serversProvider: serversProvider,
-        appConfigProvider: appConfigProvider,
-        splitView: widget.splitView,
-      );
+      // A device with an entry written for it opens the page that reads that
+      // entry. One the server only knows by address has no settings of its own,
+      // so all there is to show is what it queried.
+      final page = row.configured
+        ? ClientDetailScreen(client: row.client!)
+        : LogsListClient(
+            ip: row.logKey,
+            name: row.name,
+            serversProvider: serversProvider,
+            appConfigProvider: appConfigProvider,
+            splitView: widget.splitView,
+          );
 
       if (widget.splitView) {
         Navigator.of(clientsNavigatorKey.currentContext!).pushReplacement(
           PageRouteBuilder(
-            pageBuilder: (context, animation1, animation2) => w,
+            pageBuilder: (context, animation1, animation2) => page,
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           )
@@ -115,7 +121,7 @@ class _ClientsListsState extends State<ClientsLists> {
       }
       else {
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => w),
+          MaterialPageRoute(builder: (context) => page),
         );
       }
     }

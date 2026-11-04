@@ -2806,6 +2806,35 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get back => '返回';
+
+  @override
+  String get clientSettings => '客户端设置';
+
+  @override
+  String get useGlobalSettingsHelper => '关闭后可单独配置';
+
+  @override
+  String get dnsFiltering => 'DNS 过滤';
+
+  @override
+  String get dnsFilteringHelper => '使用已启用的过滤列表';
+
+  @override
+  String get parentalControl => '家长控制';
+
+  @override
+  String get identity => '标识';
+
+  @override
+  String blockedServicesCount(Object count) {
+    return '已拦截 $count 个服务';
+  }
+
+  @override
+  String get servicesSameAsServer => '与服务器一致';
+
+  @override
+  String get deleteThisDevice => '删除此设备';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -5518,4 +5547,33 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get back => '返回';
+
+  @override
+  String get clientSettings => '客户端设置';
+
+  @override
+  String get useGlobalSettingsHelper => '关闭后可单独配置';
+
+  @override
+  String get dnsFiltering => 'DNS 过滤';
+
+  @override
+  String get dnsFilteringHelper => '使用已启用的过滤列表';
+
+  @override
+  String get parentalControl => '家长控制';
+
+  @override
+  String get identity => '标识';
+
+  @override
+  String blockedServicesCount(Object count) {
+    return '已拦截 $count 个服务';
+  }
+
+  @override
+  String get servicesSameAsServer => '与服务器一致';
+
+  @override
+  String get deleteThisDevice => '删除此设备';
 }

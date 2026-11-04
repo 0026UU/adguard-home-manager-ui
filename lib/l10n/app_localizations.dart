@@ -5521,6 +5521,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Back'**
   String get back;
+
+  /// No description provided for @clientSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Client settings'**
+  String get clientSettings;
+
+  /// No description provided for @useGlobalSettingsHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn this off to configure the device on its own'**
+  String get useGlobalSettingsHelper;
+
+  /// No description provided for @dnsFiltering.
+  ///
+  /// In en, this message translates to:
+  /// **'DNS filtering'**
+  String get dnsFiltering;
+
+  /// No description provided for @dnsFilteringHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses the filter lists you have enabled'**
+  String get dnsFilteringHelper;
+
+  /// No description provided for @parentalControl.
+  ///
+  /// In en, this message translates to:
+  /// **'Parental control'**
+  String get parentalControl;
+
+  /// No description provided for @identity.
+  ///
+  /// In en, this message translates to:
+  /// **'Identity'**
+  String get identity;
+
+  /// No description provided for @blockedServicesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} services blocked'**
+  String blockedServicesCount(Object count);
+
+  /// No description provided for @servicesSameAsServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Same as server'**
+  String get servicesSameAsServer;
+
+  /// No description provided for @deleteThisDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this device'**
+  String get deleteThisDevice;
 }
 
 class _AppLocalizationsDelegate

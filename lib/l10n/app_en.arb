@@ -900,5 +900,14 @@
     "configured": "Configured",
     "add": "Add",
     "dnsRewritesSubtitle": "Point a domain name at an address of your choosing",
-    "back": "Back"
+    "back": "Back",
+    "clientSettings": "Client settings",
+    "useGlobalSettingsHelper": "Turn this off to configure the device on its own",
+    "dnsFiltering": "DNS filtering",
+    "dnsFilteringHelper": "Uses the filter lists you have enabled",
+    "parentalControl": "Parental control",
+    "identity": "Identity",
+    "blockedServicesCount": "{count} services blocked",
+    "servicesSameAsServer": "Same as server",
+    "deleteThisDevice": "Delete this device"
 }

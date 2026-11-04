@@ -872,5 +872,14 @@
     "configured": "已配置",
     "add": "添加",
     "dnsRewritesSubtitle": "把域名解析指向指定地址",
-    "back": "返回"
+    "back": "返回",
+    "clientSettings": "客户端设置",
+    "useGlobalSettingsHelper": "关闭后可单独配置",
+    "dnsFiltering": "DNS 过滤",
+    "dnsFilteringHelper": "使用已启用的过滤列表",
+    "parentalControl": "家长控制",
+    "identity": "标识",
+    "blockedServicesCount": "已拦截 {count} 个服务",
+    "servicesSameAsServer": "与服务器一致",
+    "deleteThisDevice": "删除此设备"
 }
