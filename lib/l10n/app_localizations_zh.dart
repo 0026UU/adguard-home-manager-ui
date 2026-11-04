@@ -2835,6 +2835,51 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get deleteThisDevice => '删除此设备';
+
+  @override
+  String get dnsSettingsSubtitle => '上游服务器、引导与速率限制';
+
+  @override
+  String get dotDoqUpstreams => 'DoT / DoQ 上游';
+
+  @override
+  String get parallelRequestsSubtitle => '同时向所有上游查询';
+
+  @override
+  String queriesPerSecond(Object count) {
+    return '每秒 $count 次查询';
+  }
+
+  @override
+  String bytesCount(Object count) {
+    return '$count 字节';
+  }
+
+  @override
+  String get enabledProtocols => '已启用协议';
+
+  @override
+  String get dnsOverHttps => 'DNS-over-HTTPS';
+
+  @override
+  String get dnsOverQuic => 'DNS-over-QUIC';
+
+  @override
+  String portNumber(Object port) {
+    return '端口 $port';
+  }
+
+  @override
+  String get portNotConfigured => '未设置端口';
+
+  @override
+  String get certificateValid => '证书有效';
+
+  @override
+  String get certificateInvalid => '证书无效';
+
+  @override
+  String get certificateSource => '证书来源';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -5576,4 +5621,49 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get deleteThisDevice => '删除此设备';
+
+  @override
+  String get dnsSettingsSubtitle => '上游服务器、引导与速率限制';
+
+  @override
+  String get dotDoqUpstreams => 'DoT / DoQ 上游';
+
+  @override
+  String get parallelRequestsSubtitle => '同时向所有上游查询';
+
+  @override
+  String queriesPerSecond(Object count) {
+    return '每秒 $count 次查询';
+  }
+
+  @override
+  String bytesCount(Object count) {
+    return '$count 字节';
+  }
+
+  @override
+  String get enabledProtocols => '已启用协议';
+
+  @override
+  String get dnsOverHttps => 'DNS-over-HTTPS';
+
+  @override
+  String get dnsOverQuic => 'DNS-over-QUIC';
+
+  @override
+  String portNumber(Object port) {
+    return '端口 $port';
+  }
+
+  @override
+  String get portNotConfigured => '未设置端口';
+
+  @override
+  String get certificateValid => '证书有效';
+
+  @override
+  String get certificateInvalid => '证书无效';
+
+  @override
+  String get certificateSource => '证书来源';
 }

@@ -1,29 +1,36 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
-import 'package:adguard_home_manager/widgets/custom_checkbox_list_tile.dart';
-import 'package:adguard_home_manager/widgets/section_label.dart';
-import 'package:adguard_home_manager/widgets/custom_switch_list_tile.dart';
-import 'package:adguard_home_manager/screens/settings/encryption/status.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
 import 'package:adguard_home_manager/screens/settings/encryption/reset_settings_modal.dart';
-import 'package:adguard_home_manager/screens/settings/encryption/custom_text_field.dart';
-import 'package:adguard_home_manager/screens/settings/encryption/master_switch.dart';
 import 'package:adguard_home_manager/screens/settings/encryption/encryption_functions.dart';
 import 'package:adguard_home_manager/screens/settings/encryption/error_message.dart';
 
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/models/encryption.dart';
 import 'package:adguard_home_manager/classes/process_modal.dart';
+import 'package:adguard_home_manager/functions/copy_clipboard.dart';
 import 'package:adguard_home_manager/functions/desktop_mode.dart';
 import 'package:adguard_home_manager/functions/base64.dart';
+import 'package:adguard_home_manager/functions/format_time.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
 
+/// The encrypted DNS of the server: which protocols it answers on which ports,
+/// the certificate those ports serve and the key behind it.
+///
+/// The protocols are switched from the page, as the design layer draws them,
+/// and every switch only moves the port it stands for inside the form the page
+/// has always had, so a write still goes through the same validation and the
+/// same save. The certificate rows read what `/tls/status` reported, or what
+/// the server answered when a certificate was typed in, and nothing else.
 class EncryptionSettings extends StatefulWidget {
   const EncryptionSettings({super.key});
 
@@ -34,6 +41,10 @@ class EncryptionSettings extends StatefulWidget {
 
 class _EncryptionSettingsState extends State<EncryptionSettings> {
   LoadStatus loadStatus = LoadStatus.loading;
+
+  /// The settings as `/tls/status` answered them, kept so the summary rows can
+  /// show the installed certificate instead of only what the form holds.
+  EncryptionData? fetched;
 
   bool enabled = false;
 
@@ -94,6 +105,7 @@ class _EncryptionSettingsState extends State<EncryptionSettings> {
       if (!mounted) return;
 
       setState(() {
+        fetched = data;
         enabled = data.enabled;
         domainNameController.text = data.serverName ?? '';
         redirectHttps = data.forceHttps ?? false;
@@ -169,7 +181,7 @@ class _EncryptionSettingsState extends State<EncryptionSettings> {
           showSnackbar(
             appConfigProvider: Provider.of<AppConfigProvider>(context, listen: false),
             label: object.warningValidation!,
-            color: Colors.red,
+            color: ApplePalette.of(context).red,
             duration: const Duration(seconds: 6),
           );
         }
@@ -184,14 +196,13 @@ class _EncryptionSettingsState extends State<EncryptionSettings> {
   }
 
   bool checkcertKeyValid() {
+    // A protocol with no port is not served at all, which is what the switches
+    // of the page write, so an empty port is a valid answer and not an error.
     if (
       domainNameController.text != '' && 
       domainError == null && 
-      httpsPortController.text != '' && 
       httpsPortError == null &&
-      tlsPortController.text != '' &&
       tlsPortError == null &&
-      dnsOverQuicPortController.text != '' &&
       dnsOverQuicPortError == null 
     ) {
       setState(() => localValidationValid = true);
@@ -224,10 +235,12 @@ class _EncryptionSettingsState extends State<EncryptionSettings> {
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
 
     final width = MediaQuery.of(context).size.width;
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
     void saveData() async {
       ProcessModal processModal = ProcessModal();
-      processModal.open(AppLocalizations.of(context)!.savingConfig);
+      processModal.open(l.savingConfig);
 
       final result = await serversProvider.apiClient2!.saveEncryptionSettings(
         data: {
@@ -251,15 +264,15 @@ class _EncryptionSettingsState extends State<EncryptionSettings> {
       if (result.successful == true) {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.encryptionConfigSaved, 
-          color: Colors.green
+          label: l.encryptionConfigSaved, 
+          color: p.green
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.encryptionConfigNotSaved, 
-          color: Colors.red
+          label: l.encryptionConfigNotSaved, 
+          color: p.red
         );
 
         if (result.content != null) {
@@ -275,7 +288,7 @@ class _EncryptionSettingsState extends State<EncryptionSettings> {
 
     void resetSettings() async {
       ProcessModal processModal = ProcessModal();
-      processModal.open(AppLocalizations.of(context)!.resettingConfig);
+      processModal.open(l.resettingConfig);
 
       final result = await serversProvider.apiClient2!.saveEncryptionSettings(
         data: {
@@ -300,446 +313,508 @@ class _EncryptionSettingsState extends State<EncryptionSettings> {
       if (result.successful == true) {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.configurationResetSuccessfully, 
-          color: Colors.green
+          label: l.configurationResetSuccessfully, 
+          color: p.green
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.configurationResetError, 
-          color: Colors.red
+          label: l.configurationResetError, 
+          color: p.red
         );
       }
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.encryptionSettings),
-        surfaceTintColor: isDesktop(width) ? Colors.transparent : null,
-        centerTitle: false,
-        actions: [
-          IconButton(
-            onPressed: () => showDialog(
-              context: context, 
-              builder: (ctx) => ResetSettingsModal(onConfirm: resetSettings)
-            ), 
-            icon: const Icon(Icons.restore_rounded),
-            tooltip: AppLocalizations.of(context)!.resetSettings,
-          ),
-          IconButton(
-            onPressed: localValidationValid ?
-              () => saveData()
-              : null, 
-            icon: const Icon(Icons.save),
-            tooltip: AppLocalizations.of(context)!.save,
-          ),
-          const SizedBox(width: 10),
-        ],
+    // The ports the page draws are the ones the form holds, so a switch shows
+    // what the save would write and the field below it says the same thing.
+    final httpsPort = int.tryParse(httpsPortController.text);
+    final tlsPort = int.tryParse(tlsPortController.text);
+    final quicPort = int.tryParse(dnsOverQuicPortController.text);
+
+    // A protocol without a port is not served. Switching it back on offers the
+    // number the server reported for it, or the one this page already writes
+    // when the configuration is reset, so no port is ever invented.
+    void movePort({
+      required TextEditingController controller,
+      required bool on,
+      required int? reported,
+      required int fallback,
+    }) {
+      setState(() => controller.text = on ? (reported ?? fallback).toString() : '');
+      onEditValidate();
+    }
+
+    String protocolPort(int? port) =>
+        port == null ? l.portNotConfigured : l.portNumber(port);
+
+    // The certificate the page reports: the live answer of the validation call
+    // while something is typed in the form, the installed one the rest of the
+    // time.
+    final typedCertificate = certificateContentController.text != '' ||
+      certificatePathController.text != '';
+    final validation = certKeyValid;
+    final subject = (typedCertificate ? validation?.subject : null) ??
+      fetched?.subject;
+    final issuer = (typedCertificate ? validation?.issuer : null) ??
+      fetched?.issuer;
+    final notAfter = (typedCertificate ? validation?.notAfter : null) ??
+      fetched?.notAfter;
+    final hostNames = (typedCertificate ? validation?.dnsNames : null) ??
+      fetched?.dnsNames ??
+      const <String>[];
+    final keyType = validation?.keyType ?? fetched?.keyType;
+
+    Widget check(bool selected) => selected
+      ? Icon(CupertinoIcons.checkmark, color: p.tint)
+      : const SizedBox.shrink();
+
+    Widget statusRow(bool valid, String label) => AppleListTile(
+      title: label,
+      showChevron: false,
+      trailing: Icon(
+        valid ? CupertinoIcons.checkmark_circle : CupertinoIcons.xmark_circle,
+        color: valid ? p.green : p.red,
       ),
-      body: SafeArea(
-        child: Builder(
-          builder: (context) {
-            switch (loadStatus) {
-              case LoadStatus.loading:
-                return SizedBox(
-                  width: double.maxFinite,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
+    );
+
+    return AppleScreen(
+      title: l.encryptionSettings,
+      subtitle: l.encryptionSettingsDescription,
+      leading: isDesktop(width)
+        ? null
+        : AppleBackButton(
+            label: l.back,
+            onPressed: () => Navigator.pop(context),
+          ),
+      actions: [
+        IconButton(
+          onPressed: localValidationValid ? saveData : null,
+          icon: const Icon(CupertinoIcons.checkmark),
+          tooltip: l.save,
+        ),
+        const SizedBox(width: 6),
+      ],
+      onRefresh: () async => fetchData(),
+      slivers: [
+        if (loadStatus == LoadStatus.loading)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: AppleLoading(label: l.loadingEncryptionSettings),
+          ),
+
+        if (loadStatus == LoadStatus.error)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: AppleEmptyState(
+              icon: CupertinoIcons.exclamationmark_triangle,
+              title: l.encryptionSettingsNotLoaded,
+              color: p.red,
+            ),
+          ),
+
+        if (loadStatus == LoadStatus.loaded) ...[
+          if (_dataValidApi == false && (validDataError != null || encryptionResultMessage != null))
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                child: AppleCard(
+                  color: p.pill(p.red),
+                  child: Row(
                     children: [
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 30),
-                      Text(
-                        AppLocalizations.of(context)!.loadingEncryptionSettings,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 22,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      )
-                    ],
-                  )
-                );
-        
-              case LoadStatus.loaded:
-                return ListView(
-                  children: [
-                    if (_dataValidApi == false && (validDataError != null || encryptionResultMessage != null)) Card(
-                      margin: const EdgeInsets.all(16),
-                      color: Colors.red.withValues(alpha: 0.2),
-                      elevation: 0,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.error_rounded,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Text(validDataError ?? encryptionResultMessage ?? AppLocalizations.of(context)!.unknownError)
-                            )
-                          ],
+                      Icon(
+                        CupertinoIcons.exclamationmark_triangle_fill,
+                        color: p.red,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          validDataError ?? encryptionResultMessage ?? l.unknownError,
+                          style: TextStyle(fontSize: 15, height: 1.3, color: p.label),
                         ),
                       ),
-                    ),
-                    EncryptionMasterSwitch(
-                      value: enabled, 
-                      onChange: (value) {
-                        setState(() => enabled = value);
-                        onEditValidate();
-                      }
-                    ),
-                    if (_plainDns != null) ...[
-                      const SizedBox(height: 8),
-                      CustomCheckboxListTile(
-                        value: _plainDns!, 
-                        onChanged: (v) => setState(() => _plainDns = v), 
-                        title: AppLocalizations.of(context)!.enablePlainDns,
-                        subtitle: AppLocalizations.of(context)!.enablePlainDnsDescription,
-                        disabled: enabled == false,
-                      ),
-                    ],
-                    SectionLabel(
-                      label: AppLocalizations.of(context)!.serverConfiguration,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                    ),
-                    EncryptionTextField(
-                      enabled: enabled, 
-                      controller: domainNameController, 
-                      icon: Icons.link_rounded, 
-                      onChanged: (value) {
-                        setState(() => domainError = validateDomain(context, value));
-                        onEditValidate();
-                      },
-                      errorText: domainError,
-                      label: AppLocalizations.of(context)!.domainName,
-                      helperText: AppLocalizations.of(context)!.domainNameDescription,
-                    ),
-                    const SizedBox(height: 10),
-                    CustomSwitchListTile(
-                      value: redirectHttps, 
-                      onChanged: (value) {
-                        setState(() => redirectHttps = value);
-                        onEditValidate();
-                      }, 
-                      title: AppLocalizations.of(context)!.redirectHttps,
-                      disabled: !enabled,
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      children: [
-                        FractionallySizedBox(
-                          widthFactor: width > 900 ? 0.33 : 1,
-                          child: EncryptionTextField(
-                            enabled: enabled, 
-                            controller: httpsPortController, 
-                            icon: Icons.numbers_rounded, 
-                            onChanged: (value) {
-                              setState(() => httpsPortError = validatePort(context, value));
-                              onEditValidate();
-                            },
-                            errorText: httpsPortError,
-                            label: AppLocalizations.of(context)!.httpsPort,
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                        Padding(
-                          padding: width <= 900
-                            ? const EdgeInsets.symmetric(vertical: 24)
-                            : const EdgeInsets.all(0),
-                          child: FractionallySizedBox(
-                            widthFactor: width > 900 ? 0.33 : 1,
-                            child: EncryptionTextField(
-                              enabled: enabled, 
-                              controller: tlsPortController, 
-                              icon: Icons.numbers_rounded, 
-                              onChanged: (value) {
-                                setState(() => tlsPortError = validatePort(context, value));
-                                onEditValidate();
-                              },
-                              errorText: tlsPortError,
-                              label: AppLocalizations.of(context)!.tlsPort,
-                              keyboardType: TextInputType.number,
-                            ),
-                          ),
-                        ),
-                        FractionallySizedBox(
-                          widthFactor: width > 900 ? 0.33 : 1,
-                          child: EncryptionTextField(
-                            enabled: enabled, 
-                            controller: dnsOverQuicPortController, 
-                            icon: Icons.numbers_rounded, 
-                            onChanged: (value) {
-                              setState(() => dnsOverQuicPortError = validatePort(context, value));
-                              onEditValidate();
-                            },
-                            errorText: dnsOverQuicPortError,
-                            label: AppLocalizations.of(context)!.dnsOverQuicPort,
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SectionLabel(
-                      label: AppLocalizations.of(context)!.certificates,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                    ),
-                    Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.info_rounded,
-                              color: Theme.of(context).listTileTheme.iconColor,
-                            ),
-                            const SizedBox(width: 20),
-                            Flexible(
-                              child: Text(
-                                AppLocalizations.of(context)!.certificatesDescription,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                ),
-                              )
-                            )
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    RadioListTile(
-                      value: 0, 
-                      groupValue: certificateOption,
-                      onChanged: enabled == true
-                        ? (value) {
-                            setState(() => certificateOption = int.parse(value.toString()));
-                            onEditValidate();
-                          }
-                        : null,
-                      title: Text(
-                        AppLocalizations.of(context)!.certificateFilePath,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.normal
-                        ),
-                      ),
-                    ),
-                    RadioListTile(
-                      value: 1, 
-                      groupValue: certificateOption,
-                      onChanged: enabled == true
-                        ? (value) {
-                            setState(() => certificateOption = int.parse(value.toString()));
-                            onEditValidate();
-                          }
-                        : null,
-                      title: Text(
-                        AppLocalizations.of(context)!.pasteCertificateContent,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.normal
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    if (certificateOption == 0) EncryptionTextField(
-                      enabled: enabled, 
-                      controller: certificatePathController, 
-                      icon: Icons.description_rounded, 
-                      onChanged: (value) {
-                        setState(() => certificatePathError = validatePath(context, value));
-                        onEditValidate();
-                      },
-                      label: AppLocalizations.of(context)!.certificatePath,
-                      errorText: certificatePathError,
-                    ),
-                    if (certificateOption == 1) EncryptionTextField(
-                      enabled: enabled, 
-                      controller: certificateContentController, 
-                      icon: Icons.description_rounded, 
-                      onChanged: (value) {
-                        setState(() => certificateContentError = validateCertificate(context, value));
-                        onEditValidate();
-                      }, 
-                      label: AppLocalizations.of(context)!.certificateContent,
-                      errorText: certificateContentError,
-                      multiline: true,
-                      keyboardType: TextInputType.multiline,
-                    ),
-                    if (certKeyValid != null && (certificateContentController.text != '' || certificatePathController.text != '')) ...[
-                      const SizedBox(height: 20),
-                      if (certKeyValid!.validChain != null) ...[
-                        Status(
-                          valid: certKeyValid!.validChain ?? false, 
-                          label: certKeyValid!.validChain == true
-                            ? AppLocalizations.of(context)!.validCertificateChain
-                            : AppLocalizations.of(context)!.invalidCertificateChain,
-                        ),
-                        const SizedBox(height: 10),
-                      ],
-                      if (certKeyValid!.subject != null) ...[
-                        Status(
-                          valid: true, 
-                          label: "${AppLocalizations.of(context)!.subject}: ${certKeyValid?.subject}"
-                        ),
-                        const SizedBox(height: 10),
-                      ],
-                      if (certKeyValid!.issuer != null) ...[
-                        Status(
-                        valid: true, 
-                        label: "${AppLocalizations.of(context)!.issuer}: ${certKeyValid?.issuer}"
-                      ),
-                        const SizedBox(height: 10),
-                      ],
-                      if (certKeyValid!.notAfter != null) ...[
-                        Status(
-                          valid: true, 
-                          label: "${AppLocalizations.of(context)!.expirationDate}: ${certKeyValid?.notAfter}"
-                        ),
-                        const SizedBox(height: 10),
-                      ],
-                      if (certKeyValid!.dnsNames != null) ...[
-                        Status(
-                          valid: true, 
-                          label: "${AppLocalizations.of(context)!.hostNames}: ${certKeyValid?.dnsNames?.join(', ')}"
-                        ),
-                        const SizedBox(height: 10),
-                      ],
-                    ],
-                    SectionLabel(
-                      label: AppLocalizations.of(context)!.privateKey,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                    ),
-                    RadioListTile(
-                      value: 0, 
-                      groupValue: privateKeyOption,
-                      onChanged: enabled == true
-                        ? (value) {
-                            setState(() => privateKeyOption = int.parse(value.toString()));
-                            onEditValidate();
-                          }
-                        : null,
-                      title: Text(
-                        AppLocalizations.of(context)!.privateKeyFile,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.normal
-                        ),
-                      ),
-                    ),
-                    RadioListTile(
-                      value: 1, 
-                      groupValue: privateKeyOption,
-                      onChanged: enabled == true
-                        ? (value) {
-                            setState(() => privateKeyOption = int.parse(value.toString()));
-                            onEditValidate();
-                          }
-                        : null,
-                      title: Text(
-                        AppLocalizations.of(context)!.pastePrivateKey,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.normal
-                        ),
-                      ),
-                    ),
-                    if (privateKeyOption == 0) const SizedBox(height: 10),
-                    if (privateKeyOption == 1) ...[
-                      CustomSwitchListTile(
-                        value: usePreviouslySavedKey, 
-                        onChanged: (value) => setState(() => usePreviouslySavedKey = value), 
-                        title: AppLocalizations.of(context)!.usePreviousKey,
-                      ),
-                      const SizedBox(height: 10)
-                    ],
-                    if (privateKeyOption == 0) EncryptionTextField(
-                      enabled: enabled, 
-                      controller: privateKeyPathController, 
-                      icon: Icons.description_rounded, 
-                      onChanged: (value) {
-                        setState(() => privateKeyPathError = validatePath(context, value));
-                        onEditValidate();
-                      },
-                      label: AppLocalizations.of(context)!.privateKeyPath,
-                      errorText: privateKeyPathError,
-                    ),
-                    if (privateKeyOption == 1) EncryptionTextField(
-                      enabled: enabled == true
-                        ? !usePreviouslySavedKey
-                        : false,
-                      controller: pastePrivateKeyController, 
-                      icon: Icons.description_rounded, 
-                      onChanged: (value) {
-                        setState(() => pastePrivateKeyError = validatePrivateKey(context, value));
-                        onEditValidate();
-                      },
-                      label: AppLocalizations.of(context)!.pastePrivateKey,
-                      errorText: pastePrivateKeyError,
-                      keyboardType: TextInputType.multiline,
-                      multiline: true,
-                    ),
-                    const SizedBox(height: 20),
-                    if (certKeyValid != null && (privateKeyPathController.text != '' || pastePrivateKeyController.text != '' || usePreviouslySavedKey == true)) ...[
-                      if (certKeyValid!.validKey != null) ...[
-                        Status(
-                          valid: certKeyValid!.validKey ?? false, 
-                          label: certKeyValid!.validKey == true
-                            ? AppLocalizations.of(context)!.validPrivateKey
-                            : AppLocalizations.of(context)!.invalidPrivateKey,
-                        ),
-                        const SizedBox(height: 10)
-                      ],
-                      if (certKeyValid!.validPair != null && certKeyValid!.validPair == false) ...[
-                        Status(
-                          valid: false, 
-                          label: AppLocalizations.of(context)!.keysNotMatch,
-                        ),
-                        const SizedBox(height: 10)
-                      ],
-                      if (certKeyValid!.keyType != null) ...[
-                        Status(
-                          valid: true, 
-                          label: "${AppLocalizations.of(context)!.keyType}: ${certKeyValid!.keyType}"
-                        ),
-                        const SizedBox(height: 10),
-                      ],
-                      const SizedBox(height: 10)
-                    ]
-                  ],
-                );
-        
-              case LoadStatus.error:
-                return SizedBox(
-                  width: double.maxFinite,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.error,
-                        color: Colors.red,
-                        size: 50,
-                      ),
-                      const SizedBox(height: 30),
-                      Text(
-                        AppLocalizations.of(context)!.encryptionSettingsNotLoaded,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 22,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      )
                     ],
                   ),
-                );
-        
-              default:
-                return const SizedBox();
-            }
-          },
-        ),
-      )
+                ),
+              ),
+            ),
+
+          SliverToBoxAdapter(
+            child: AppleListSection(
+              title: l.enabledProtocols,
+              margin: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+              children: [
+                AppleSwitchListTile(
+                  icon: CupertinoIcons.lock_shield,
+                  iconColor: p.tint,
+                  title: l.enableEncryption,
+                  subtitle: l.enableEncryptionTypes,
+                  value: enabled,
+                  onChanged: (value) {
+                    setState(() => enabled = value);
+                    onEditValidate();
+                  },
+                ),
+                AppleSwitchListTile(
+                  icon: CupertinoIcons.lock,
+                  iconColor: p.green,
+                  title: l.dnsOverTls,
+                  subtitle: '${protocolPort(tlsPort)} · '
+                    '${fetched?.validCert == true ? l.certificateValid : l.certificateInvalid}',
+                  value: enabled && tlsPort != null,
+                  // A protocol of a server that does not serve anything at all
+                  // cannot be moved, the same rule the fields of the form follow.
+                  onChanged: enabled
+                    ? (value) => movePort(
+                        controller: tlsPortController,
+                        on: value,
+                        reported: fetched?.portDnsOverTls,
+                        fallback: 853,
+                      )
+                    : null,
+                ),
+                AppleSwitchListTile(
+                  icon: CupertinoIcons.lock,
+                  iconColor: p.teal,
+                  title: l.dnsOverHttps,
+                  subtitle: protocolPort(httpsPort),
+                  value: enabled && httpsPort != null,
+                  onChanged: enabled
+                    ? (value) => movePort(
+                        controller: httpsPortController,
+                        on: value,
+                        reported: fetched?.portHttps,
+                        fallback: 443,
+                      )
+                    : null,
+                ),
+                AppleSwitchListTile(
+                  icon: CupertinoIcons.lock,
+                  iconColor: p.indigo,
+                  title: l.dnsOverQuic,
+                  subtitle: protocolPort(quicPort),
+                  value: enabled && quicPort != null,
+                  onChanged: enabled
+                    ? (value) => movePort(
+                        controller: dnsOverQuicPortController,
+                        on: value,
+                        reported: fetched?.portDnsOverQuic,
+                        fallback: 853,
+                      )
+                    : null,
+                ),
+              ],
+            ),
+          ),
+
+          SliverToBoxAdapter(
+            child: AppleListSection(
+              title: l.certificates,
+              children: [
+                if (subject != null)
+                  AppleListTile(
+                    title: l.subject,
+                    value: subject,
+                    showChevron: false,
+                    onTap: () => copyToClipboard(
+                      value: subject,
+                      successMessage: l.copiedClipboard,
+                    ),
+                  ),
+                if (issuer != null)
+                  AppleListTile(
+                    title: l.issuer,
+                    value: issuer,
+                    showChevron: false,
+                    onTap: () => copyToClipboard(
+                      value: issuer,
+                      successMessage: l.copiedClipboard,
+                    ),
+                  ),
+                if (notAfter != null)
+                  AppleListTile(
+                    title: l.expirationDate,
+                    value: convertTimestampLocalTimezone(notAfter, 'yyyy-MM-dd'),
+                    showChevron: false,
+                  ),
+                if (hostNames.isNotEmpty)
+                  AppleListTile(
+                    title: l.hostNames,
+                    value: hostNames.join(' · '),
+                    showChevron: false,
+                  ),
+                if (typedCertificate && validation?.validChain != null)
+                  statusRow(
+                    validation!.validChain ?? false,
+                    validation.validChain == true
+                      ? l.validCertificateChain
+                      : l.invalidCertificateChain,
+                  ),
+                AppleListTile(
+                  title: l.resetSettings,
+                  icon: CupertinoIcons.arrow_2_circlepath,
+                  iconColor: p.orange,
+                  onTap: () => showDialog(
+                    context: context,
+                    builder: (ctx) => ResetSettingsModal(onConfirm: resetSettings),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          SliverToBoxAdapter(child: AppleFormGroupLabel(l.serverConfiguration)),
+          SliverToBoxAdapter(
+            child: AppleTextField(
+              label: l.domainName,
+              helper: l.domainNameDescription,
+              helperMaxLines: 4,
+              icon: CupertinoIcons.link,
+              controller: domainNameController,
+              error: domainError,
+              enabled: enabled,
+              onChanged: (value) {
+                setState(() => domainError = validateDomain(context, value));
+                onEditValidate();
+              },
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: AppleTextField(
+              label: l.httpsPort,
+              icon: CupertinoIcons.number,
+              controller: httpsPortController,
+              error: httpsPortError,
+              enabled: enabled,
+              keyboardType: TextInputType.number,
+              onChanged: (value) {
+                setState(() => httpsPortError = validatePort(context, value));
+                onEditValidate();
+              },
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: AppleTextField(
+              label: l.tlsPort,
+              icon: CupertinoIcons.number,
+              controller: tlsPortController,
+              error: tlsPortError,
+              enabled: enabled,
+              keyboardType: TextInputType.number,
+              onChanged: (value) {
+                setState(() => tlsPortError = validatePort(context, value));
+                onEditValidate();
+              },
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: AppleTextField(
+              label: l.dnsOverQuicPort,
+              icon: CupertinoIcons.number,
+              controller: dnsOverQuicPortController,
+              error: dnsOverQuicPortError,
+              enabled: enabled,
+              keyboardType: TextInputType.number,
+              onChanged: (value) {
+                setState(() => dnsOverQuicPortError = validatePort(context, value));
+                onEditValidate();
+              },
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: AppleListSection(
+              children: [
+                AppleSwitchListTile(
+                  title: l.redirectHttps,
+                  value: redirectHttps,
+                  onChanged: enabled
+                    ? (value) {
+                        setState(() => redirectHttps = value);
+                        onEditValidate();
+                      }
+                    : null,
+                ),
+                if (_plainDns != null)
+                  AppleSwitchListTile(
+                    title: l.enablePlainDns,
+                    subtitle: l.enablePlainDnsDescription,
+                    value: _plainDns!,
+                    onChanged: enabled
+                      ? (value) => setState(() => _plainDns = value)
+                      : null,
+                  ),
+              ],
+            ),
+          ),
+
+          SliverToBoxAdapter(child: AppleFormGroupLabel(l.certificateSource)),
+          SliverToBoxAdapter(
+            child: AppleListSection(
+              footer: l.certificatesDescription,
+              children: [
+                AppleListTile(
+                  title: l.certificateFilePath,
+                  enabled: enabled,
+                  showChevron: false,
+                  onTap: enabled
+                    ? () {
+                        setState(() => certificateOption = 0);
+                        onEditValidate();
+                      }
+                    : null,
+                  trailing: check(certificateOption == 0),
+                ),
+                AppleListTile(
+                  title: l.pasteCertificateContent,
+                  enabled: enabled,
+                  showChevron: false,
+                  onTap: enabled
+                    ? () {
+                        setState(() => certificateOption = 1);
+                        onEditValidate();
+                      }
+                    : null,
+                  trailing: check(certificateOption == 1),
+                ),
+              ],
+            ),
+          ),
+          if (certificateOption == 0)
+            SliverToBoxAdapter(
+              child: AppleTextField(
+                label: l.certificatePath,
+                icon: CupertinoIcons.doc_text,
+                controller: certificatePathController,
+                error: certificatePathError,
+                enabled: enabled,
+                onChanged: (value) {
+                  setState(() => certificatePathError = validatePath(context, value));
+                  onEditValidate();
+                },
+              ),
+            ),
+          if (certificateOption == 1)
+            SliverToBoxAdapter(
+              child: AppleTextField(
+                label: l.certificateContent,
+                helper: l.enterOnlyCertificate,
+                helperMaxLines: 2,
+                icon: CupertinoIcons.doc_text,
+                controller: certificateContentController,
+                error: certificateContentError,
+                enabled: enabled,
+                keyboardType: TextInputType.multiline,
+                maxLines: null,
+                onChanged: (value) {
+                  setState(() =>
+                    certificateContentError = validateCertificate(context, value));
+                  onEditValidate();
+                },
+              ),
+            ),
+
+          SliverToBoxAdapter(child: AppleFormGroupLabel(l.privateKey)),
+          SliverToBoxAdapter(
+            child: AppleListSection(
+              children: [
+                AppleListTile(
+                  title: l.privateKeyFile,
+                  enabled: enabled,
+                  showChevron: false,
+                  onTap: enabled
+                    ? () {
+                        setState(() => privateKeyOption = 0);
+                        onEditValidate();
+                      }
+                    : null,
+                  trailing: check(privateKeyOption == 0),
+                ),
+                AppleListTile(
+                  title: l.pastePrivateKey,
+                  enabled: enabled,
+                  showChevron: false,
+                  onTap: enabled
+                    ? () {
+                        setState(() => privateKeyOption = 1);
+                        onEditValidate();
+                      }
+                    : null,
+                  trailing: check(privateKeyOption == 1),
+                ),
+                if (privateKeyOption == 1)
+                  AppleSwitchListTile(
+                    title: l.usePreviousKey,
+                    value: usePreviouslySavedKey,
+                    onChanged: (value) {
+                      setState(() => usePreviouslySavedKey = value);
+                      onEditValidate();
+                    },
+                  ),
+              ],
+            ),
+          ),
+          if (privateKeyOption == 0)
+            SliverToBoxAdapter(
+              child: AppleTextField(
+                label: l.privateKeyPath,
+                icon: CupertinoIcons.doc_text,
+                controller: privateKeyPathController,
+                error: privateKeyPathError,
+                enabled: enabled,
+                onChanged: (value) {
+                  setState(() => privateKeyPathError = validatePath(context, value));
+                  onEditValidate();
+                },
+              ),
+            ),
+          if (privateKeyOption == 1)
+            SliverToBoxAdapter(
+              child: AppleTextField(
+                label: l.pastePrivateKey,
+                helper: l.enterOnlyPrivateKey,
+                helperMaxLines: 2,
+                icon: CupertinoIcons.doc_text,
+                controller: pastePrivateKeyController,
+                error: pastePrivateKeyError,
+                enabled: enabled ? !usePreviouslySavedKey : false,
+                keyboardType: TextInputType.multiline,
+                maxLines: null,
+                onChanged: (value) {
+                  setState(() =>
+                    pastePrivateKeyError = validatePrivateKey(context, value));
+                  onEditValidate();
+                },
+              ),
+            ),
+          if (certKeyValid != null &&
+            (privateKeyPathController.text != '' ||
+              pastePrivateKeyController.text != '' ||
+              usePreviouslySavedKey == true))
+            SliverToBoxAdapter(
+              child: AppleListSection(
+                children: [
+                  if (certKeyValid!.validKey != null)
+                    statusRow(
+                      certKeyValid!.validKey ?? false,
+                      certKeyValid!.validKey == true
+                        ? l.validPrivateKey
+                        : l.invalidPrivateKey,
+                    ),
+                  if (certKeyValid!.validPair != null &&
+                    certKeyValid!.validPair == false)
+                    statusRow(false, l.keysNotMatch),
+                  if (keyType != null)
+                    AppleListTile(
+                      title: l.keyType,
+                      value: keyType,
+                      showChevron: false,
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ],
     );
   }
 }

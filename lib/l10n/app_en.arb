@@ -909,5 +909,19 @@
     "identity": "Identity",
     "blockedServicesCount": "{count} services blocked",
     "servicesSameAsServer": "Same as server",
-    "deleteThisDevice": "Delete this device"
+    "deleteThisDevice": "Delete this device",
+    "dnsSettingsSubtitle": "Upstreams, bootstrap and rate limits",
+    "dotDoqUpstreams": "DoT / DoQ upstreams",
+    "parallelRequestsSubtitle": "Query every upstream at the same time",
+    "queriesPerSecond": "{count} queries per second",
+    "bytesCount": "{count} bytes",
+    "enabledProtocols": "Enabled protocols",
+    "dnsOverTls": "DNS-over-TLS",
+    "dnsOverHttps": "DNS-over-HTTPS",
+    "dnsOverQuic": "DNS-over-QUIC",
+    "portNumber": "Port {port}",
+    "portNotConfigured": "No port set",
+    "certificateValid": "Certificate valid",
+    "certificateInvalid": "Certificate not valid",
+    "certificateSource": "Certificate source"
 }

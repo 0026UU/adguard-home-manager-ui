@@ -5575,6 +5575,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete this device'**
   String get deleteThisDevice;
+
+  /// No description provided for @dnsSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upstreams, bootstrap and rate limits'**
+  String get dnsSettingsSubtitle;
+
+  /// No description provided for @dotDoqUpstreams.
+  ///
+  /// In en, this message translates to:
+  /// **'DoT / DoQ upstreams'**
+  String get dotDoqUpstreams;
+
+  /// No description provided for @parallelRequestsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Query every upstream at the same time'**
+  String get parallelRequestsSubtitle;
+
+  /// No description provided for @queriesPerSecond.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} queries per second'**
+  String queriesPerSecond(Object count);
+
+  /// No description provided for @bytesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} bytes'**
+  String bytesCount(Object count);
+
+  /// No description provided for @enabledProtocols.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled protocols'**
+  String get enabledProtocols;
+
+  /// No description provided for @dnsOverHttps.
+  ///
+  /// In en, this message translates to:
+  /// **'DNS-over-HTTPS'**
+  String get dnsOverHttps;
+
+  /// No description provided for @dnsOverQuic.
+  ///
+  /// In en, this message translates to:
+  /// **'DNS-over-QUIC'**
+  String get dnsOverQuic;
+
+  /// No description provided for @portNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Port {port}'**
+  String portNumber(Object port);
+
+  /// No description provided for @portNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'No port set'**
+  String get portNotConfigured;
+
+  /// No description provided for @certificateValid.
+  ///
+  /// In en, this message translates to:
+  /// **'Certificate valid'**
+  String get certificateValid;
+
+  /// No description provided for @certificateInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Certificate not valid'**
+  String get certificateInvalid;
+
+  /// No description provided for @certificateSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Certificate source'**
+  String get certificateSource;
 }
 
 class _AppLocalizationsDelegate

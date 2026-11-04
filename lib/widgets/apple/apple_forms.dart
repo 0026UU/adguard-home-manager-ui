@@ -332,6 +332,10 @@ class AppleTextField extends StatelessWidget {
   final bool enabled;
   final EdgeInsetsGeometry padding;
 
+  /// Lines the field may grow to. Left null the box has no limit at all, which
+  /// is what the forms use for a pasted certificate or key.
+  final int? maxLines;
+
   const AppleTextField({
     super.key,
     required this.label,
@@ -346,6 +350,7 @@ class AppleTextField extends StatelessWidget {
     this.obscure = false,
     this.enabled = true,
     this.padding = const EdgeInsets.fromLTRB(16, 0, 16, 12),
+    this.maxLines = 1,
   });
 
   @override
@@ -358,6 +363,7 @@ class AppleTextField extends StatelessWidget {
         enabled: enabled,
         obscureText: obscure,
         keyboardType: keyboardType,
+        maxLines: maxLines,
         onChanged: onChanged,
         decoration: AppleInput.decoration(
           context,

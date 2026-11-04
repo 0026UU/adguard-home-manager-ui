@@ -2984,4 +2984,50 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get deleteThisDevice => 'Delete this device';
+
+  @override
+  String get dnsSettingsSubtitle => 'Upstreams, bootstrap and rate limits';
+
+  @override
+  String get dotDoqUpstreams => 'DoT / DoQ upstreams';
+
+  @override
+  String get parallelRequestsSubtitle =>
+      'Query every upstream at the same time';
+
+  @override
+  String queriesPerSecond(Object count) {
+    return '$count queries per second';
+  }
+
+  @override
+  String bytesCount(Object count) {
+    return '$count bytes';
+  }
+
+  @override
+  String get enabledProtocols => 'Enabled protocols';
+
+  @override
+  String get dnsOverHttps => 'DNS-over-HTTPS';
+
+  @override
+  String get dnsOverQuic => 'DNS-over-QUIC';
+
+  @override
+  String portNumber(Object port) {
+    return 'Port $port';
+  }
+
+  @override
+  String get portNotConfigured => 'No port set';
+
+  @override
+  String get certificateValid => 'Certificate valid';
+
+  @override
+  String get certificateInvalid => 'Certificate not valid';
+
+  @override
+  String get certificateSource => 'Certificate source';
 }

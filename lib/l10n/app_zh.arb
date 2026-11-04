@@ -881,5 +881,19 @@
     "identity": "标识",
     "blockedServicesCount": "已拦截 {count} 个服务",
     "servicesSameAsServer": "与服务器一致",
-    "deleteThisDevice": "删除此设备"
+    "deleteThisDevice": "删除此设备",
+    "dnsSettingsSubtitle": "上游服务器、引导与速率限制",
+    "dotDoqUpstreams": "DoT / DoQ 上游",
+    "parallelRequestsSubtitle": "同时向所有上游查询",
+    "queriesPerSecond": "每秒 {count} 次查询",
+    "bytesCount": "{count} 字节",
+    "enabledProtocols": "已启用协议",
+    "dnsOverTls": "DNS-over-TLS",
+    "dnsOverHttps": "DNS-over-HTTPS",
+    "dnsOverQuic": "DNS-over-QUIC",
+    "portNumber": "端口 {port}",
+    "portNotConfigured": "未设置端口",
+    "certificateValid": "证书有效",
+    "certificateInvalid": "证书无效",
+    "certificateSource": "证书来源"
 }

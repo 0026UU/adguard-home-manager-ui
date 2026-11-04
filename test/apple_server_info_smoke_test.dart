@@ -1,0 +1,149 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:adguard_home_manager/l10n/app_localizations.dart';
+import 'package:adguard_home_manager/screens/settings/server_info/dns_addresses_modal.dart';
+import 'package:adguard_home_manager/screens/settings/server_info/server_info.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
+import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
+
+import 'server_info_harness.dart';
+
+// Server information is a definition list, not a dashboard: the page answers
+// what the box reports about itself and nothing else. The tests below check the
+// header line, the seven values `/status` really carries, the sheet the address
+// row opens, and that the Material chrome the page used to be built from is gone.
+
+void main() {
+  late AppLocalizations l;
+
+  setUpAll(() async {
+    l = await AppLocalizations.delegate.load(const Locale('en'));
+  });
+
+  testWidgets('the values are one Apple group under the page title', (tester) async {
+    final h = await pumpServerInfo(tester);
+
+    expect(tester.takeException(), isNull);
+    // The page asked `/status` exactly once while opening.
+    expect(h.api.calls, 1);
+    expect(find.byType(ServerInformation), findsOneWidget);
+
+    // The collapsing title carries the page name and the address of the server.
+    expect(
+      find.descendant(
+        of: find.byType(AppleLargeTitle),
+        matching: find.text(l.serverInformation),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(AppleLargeTitle),
+        matching: find.text('192.168.1.10'),
+      ),
+      findsOneWidget,
+    );
+
+    // A pushed route draws the back capsule of the design layer.
+    expect(find.byType(AppleBackButton), findsOneWidget);
+
+    // One card of value rows, then the group holding the address row.
+    expect(find.byType(AppleListSection), findsNWidgets(2));
+    expect(find.text(l.dnsAddresses.toUpperCase()), findsOneWidget);
+    expect(find.widgetWithText(AppleListTile, l.serverVersion), findsOneWidget);
+    expect(find.widgetWithText(AppleListTile, l.seeDnsAddresses), findsOneWidget);
+
+    // No Material chrome is left on the page itself.
+    expect(find.byType(ListTile), findsNothing);
+    expect(find.byType(CustomListTile), findsNothing);
+    expect(find.byType(Switch), findsNothing);
+    expect(find.byType(Card), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    // The only bar on screen belongs to the design layer; no Scaffold of the
+    // page carries a Material `appBar` of its own.
+    for (final scaffold in tester.widgetList<Scaffold>(find.byType(Scaffold))) {
+      expect(scaffold.appBar, isNull);
+    }
+  });
+
+  testWidgets('every value comes from the server', (tester) async {
+    await pumpServerInfo(tester);
+
+    String valueOf(String title) =>
+        tester.widget<AppleListTile>(find.widgetWithText(AppleListTile, title)).value!;
+
+    expect(valueOf(l.serverVersion), 'v0.107.53');
+    expect(valueOf(l.httpPort), '3000');
+    expect(valueOf(l.dnsPort), '53');
+    expect(valueOf(l.protectionEnabled), l.yes);
+    expect(valueOf(l.dhcpAvailable), l.no);
+    expect(valueOf(l.serverRunning), l.yes);
+    expect(valueOf(l.serverLanguage), 'en');
+
+    // The address row lists both addresses the server published.
+    expect(
+      tester.widget<AppleListTile>(find.widgetWithText(AppleListTile, l.seeDnsAddresses))
+          .subtitle,
+      '192.168.1.10 · 10.8.0.1',
+    );
+
+    // A value row never lies: it asks for nothing but a state colour.
+    expect(
+      tester.widget<AppleListTile>(find.widgetWithText(AppleListTile, l.protectionEnabled))
+          .valueColor,
+      isNotNull,
+    );
+  });
+
+  testWidgets('a server that publishes no language drops that row', (tester) async {
+    await pumpServerInfo(tester, data: serverInfoFixture(language: '', dnsAddresses: []));
+
+    expect(find.byWidgetPredicate(
+      (w) => w is AppleListTile && w.title == l.serverLanguage,
+    ), findsNothing);
+    // With no address of its own the page says so under the name of the server
+    // it opened, and leaves the row without a list.
+    expect(find.text('192.168.1.10'), findsOneWidget);
+    expect(
+      tester.widget<AppleListTile>(find.widgetWithText(AppleListTile, l.seeDnsAddresses))
+          .subtitle,
+      isNull,
+    );
+  });
+
+  testWidgets('the address row opens the sheet that lists them', (tester) async {
+    await pumpServerInfo(tester);
+
+    await tester.tap(find.widgetWithText(AppleListTile, l.seeDnsAddresses));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DnsAddressesModal), findsOneWidget);
+    expect(find.widgetWithText(ListTile, '10.8.0.1'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a failed read reports the Apple way', (tester) async {
+    await pumpServerInfo(tester, succeeds: false);
+
+    expect(find.byType(AppleEmptyState), findsOneWidget);
+    expect(find.text(l.serverInfoNotLoaded), findsOneWidget);
+    expect(find.byType(AppleListTile), findsNothing);
+    expect(find.byIcon(CupertinoIcons.exclamationmark_triangle), findsOneWidget);
+  });
+
+  testWidgets('the values load behind an Apple spinner', (tester) async {
+    final h = await pumpServerInfo(tester, blocks: true, settle: false);
+
+    expect(find.byType(AppleLoading), findsOneWidget);
+    expect(find.text(l.loadingServerInfo), findsOneWidget);
+    expect(find.byType(AppleListTile), findsNothing);
+
+    h.api.gate.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AppleLoading), findsNothing);
+    expect(find.widgetWithText(AppleListTile, l.serverVersion), findsOneWidget);
+  });
+}
