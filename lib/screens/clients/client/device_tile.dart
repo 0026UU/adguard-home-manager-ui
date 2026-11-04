@@ -1,15 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
-import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
-import 'package:adguard_home_manager/widgets/options_menu.dart';
 
-import 'package:adguard_home_manager/models/menu_option.dart';
-import 'package:adguard_home_manager/functions/copy_clipboard.dart';
+import 'package:adguard_home_manager/functions/number_format.dart';
 import 'package:adguard_home_manager/models/clients.dart';
-import 'package:adguard_home_manager/providers/app_config_provider.dart';
+import 'package:adguard_home_manager/models/dns_statistics.dart';
 
 /// A device as the merged list shows it: an address the server has seen, with
 /// the client entry configured for it when the administrator added one.
@@ -86,15 +85,44 @@ List<DeviceRow> mergeDevices({
   return rows;
 }
 
+/// The queries a device brought to the server inside the statistics window.
+///
+/// `top_clients` names a device either by the label the administrator wrote or
+/// by the address the query came from, so every identifier of the row is asked
+/// for. A null answers that the window does not know this device at all, which
+/// is not the same thing as no queries.
+int? queriesForDevice(DnsStatistics? stats, DeviceRow row) {
+  if (stats == null) return null;
+
+  final names = <String>{
+    row.name,
+    row.address,
+    row.logKey,
+    if (row.client != null) row.client!.name,
+    if (row.client != null) ...row.client!.ids,
+  };
+
+  for (final entry in stats.topClients) {
+    for (final name in names) {
+      if (entry.containsKey(name)) return entry[name];
+    }
+  }
+
+  return null;
+}
+
 /// One row of the devices list, as the design layer draws it: an initial on a
-/// seeded gradient, the address and its configuration state, then the source.
+/// seeded gradient, the address and its configuration state, then how many
+/// queries the device brought to the server.
 class DeviceTile extends StatelessWidget {
   final DeviceRow row;
   final void Function(DeviceRow) onTap;
-  final void Function(Client)? onEdit;
-  final void Function(Client)? onDelete;
   final bool selected;
   final bool splitView;
+
+  /// Queries of the statistics window, or null while the server has none to
+  /// report for this device.
+  final int? queries;
 
   /// Trailing hairline; disabled for the last row of a list.
   final bool showSeparator;
@@ -103,8 +131,7 @@ class DeviceTile extends StatelessWidget {
     super.key,
     required this.row,
     required this.onTap,
-    this.onEdit,
-    this.onDelete,
+    this.queries,
     this.selected = false,
     required this.splitView,
     this.showSeparator = true,
@@ -115,10 +142,16 @@ class DeviceTile extends StatelessWidget {
     final localizations = AppLocalizations.of(context)!;
     final palette = ApplePalette.of(context);
 
-    final configured = row.configured;
-    final state = configured
+    final counted = queries != null;
+    final count = counted ? compactFormat(queries!, Platform.localeName) : null;
+
+    final state = row.configured
       ? localizations.hasCustomSettings
       : localizations.hasDefaultSettings;
+
+    final subtitle = counted
+      ? '${row.address} · $state · ${localizations.deviceQueries(count!)}'
+      : '${row.address} · $state';
 
     final tile = AppleListTile(
       title: row.name,
@@ -128,21 +161,9 @@ class DeviceTile extends StatelessWidget {
         color: palette.seeded(row.name),
         gradientTo: palette.seededAlt(row.name),
       ),
-      subtitleWidget: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "${row.address} · $state",
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (configured) ...[
-            const SizedBox(height: 6),
-            ClientStatusIcons(client: row.client!),
-          ],
-        ],
-      ),
-      value: row.source,
+      subtitle: subtitle,
+      subtitleMaxLines: 1,
+      value: count,
       onTap: () => onTap(row),
       showChevron: !splitView,
       selected: splitView && selected,
@@ -150,78 +171,10 @@ class DeviceTile extends StatelessWidget {
       leadingWidth: 40,
     );
 
-    return OptionsMenu(
-      options: (_) => [
-        if (configured && onEdit != null)
-          MenuOption(
-            title: localizations.seeDetails,
-            icon: CupertinoIcons.pencil,
-            action: () => onEdit!(row.client!),
-          ),
-        if (configured && onDelete != null)
-          MenuOption(
-            title: localizations.removeClient,
-            icon: CupertinoIcons.trash,
-            action: () => onDelete!(row.client!),
-          ),
-        MenuOption(
-          icon: CupertinoIcons.doc_on_clipboard,
-          title: localizations.copyClipboard,
-          action: () => copyToClipboard(
-            value: row.address,
-            successMessage: localizations.copiedClipboard,
-          ),
-        ),
-      ],
-      child: Column(
-        children: [
-          tile,
-          if (showSeparator) AppleSeparator(indent: tile.separatorIndent),
-        ],
-      ),
-    );
-  }
-}
-
-/// Filtering / safe browsing / parental / safe search state of a client.
-class ClientStatusIcons extends StatelessWidget {
-  final Client client;
-
-  const ClientStatusIcons({
-    super.key,
-    required this.client,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final appConfigProvider = Provider.of<AppConfigProvider>(context);
-    final p = ApplePalette.of(context);
-
-    Color colorFor(bool enabled) {
-      if (appConfigProvider.useThemeColorForStatus == true) {
-        return enabled ? p.tint : p.label3;
-      }
-      return enabled ? p.green : p.red;
-    }
-
-    Widget icon(IconData iconData, bool enabled) => Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: Icon(
-        iconData,
-        size: 16,
-        color: colorFor(enabled),
-      ),
-    );
-
-    return Row(
+    return Column(
       children: [
-        icon(CupertinoIcons.line_horizontal_3_decrease, client.filteringEnabled),
-        icon(CupertinoIcons.checkmark_shield, client.safebrowsingEnabled),
-        icon(CupertinoIcons.lock, client.parentalEnabled),
-        icon(
-          CupertinoIcons.search,
-          client.safeSearch != null && client.safeSearch!.enabled == true,
-        ),
+        tile,
+        if (showSeparator) AppleSeparator(indent: tile.separatorIndent),
       ],
     );
   }

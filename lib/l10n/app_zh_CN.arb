@@ -897,5 +897,12 @@
     "certificateInvalid": "证书无效",
     "certificateSource": "证书来源",
     "unknownResult": "未知",
-    "notAvailable": "无"
+    "notAvailable": "无",
+    "actionsGroup": "操作",
+    "addDeviceManually": "手动添加设备",
+    "addDeviceManuallyHelper": "指定 IP 或 MAC 地址",
+    "sortedByQueries": "按查询量排序",
+    "devicesQueriedLastDay": "{count} 台在最近 24 小时发起查询",
+    "deviceQueries": "{count} 查询",
+    "searchDevicesHint": "搜索名称、IP 或 MAC"
 }

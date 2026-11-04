@@ -2983,4 +2983,29 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get notAvailable => 'N/A';
+
+  @override
+  String get actionsGroup => 'Actions';
+
+  @override
+  String get addDeviceManually => 'Add a device by hand';
+
+  @override
+  String get addDeviceManuallyHelper => 'Give an IP or a MAC address';
+
+  @override
+  String get sortedByQueries => 'Sorted by queries';
+
+  @override
+  String devicesQueriedLastDay(Object count) {
+    return '$count devices queried in the last 24 hours';
+  }
+
+  @override
+  String deviceQueries(Object count) {
+    return '$count queries';
+  }
+
+  @override
+  String get searchDevicesHint => 'Search a name, an IP or a MAC address';
 }

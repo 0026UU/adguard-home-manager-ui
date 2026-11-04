@@ -166,7 +166,7 @@ void main() {
               children: [
                 const AppleGroupHeader(
                   title: 'Identified devices',
-                  trailing: '2 devices',
+                  trailing: 'Sorted by queries',
                 ),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
@@ -178,9 +178,8 @@ void main() {
                         for (var i = 0; i < rows.length; i++)
                           DeviceTile(
                             row: rows[i],
+                            queries: rows.length - i == 1 ? 5120 : 384,
                             onTap: (_) {},
-                            onEdit: (_) {},
-                            onDelete: (_) {},
                             splitView: false,
                             showSeparator: i != rows.length - 1,
                           ),

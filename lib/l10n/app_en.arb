@@ -925,5 +925,12 @@
     "certificateInvalid": "Certificate not valid",
     "certificateSource": "Certificate source",
     "unknownResult": "Unknown",
-    "notAvailable": "N/A"
+    "notAvailable": "N/A",
+    "actionsGroup": "Actions",
+    "addDeviceManually": "Add a device by hand",
+    "addDeviceManuallyHelper": "Give an IP or a MAC address",
+    "sortedByQueries": "Sorted by queries",
+    "devicesQueriedLastDay": "{count} devices queried in the last 24 hours",
+    "deviceQueries": "{count} queries",
+    "searchDevicesHint": "Search a name, an IP or a MAC address"
 }

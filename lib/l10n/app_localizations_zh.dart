@@ -2886,6 +2886,31 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get notAvailable => '无';
+
+  @override
+  String get actionsGroup => '操作';
+
+  @override
+  String get addDeviceManually => '手动添加设备';
+
+  @override
+  String get addDeviceManuallyHelper => '指定 IP 或 MAC 地址';
+
+  @override
+  String get sortedByQueries => '按查询量排序';
+
+  @override
+  String devicesQueriedLastDay(Object count) {
+    return '$count 台在最近 24 小时发起查询';
+  }
+
+  @override
+  String deviceQueries(Object count) {
+    return '$count 查询';
+  }
+
+  @override
+  String get searchDevicesHint => '搜索名称、IP 或 MAC';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -5678,4 +5703,29 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get notAvailable => '无';
+
+  @override
+  String get actionsGroup => '操作';
+
+  @override
+  String get addDeviceManually => '手动添加设备';
+
+  @override
+  String get addDeviceManuallyHelper => '指定 IP 或 MAC 地址';
+
+  @override
+  String get sortedByQueries => '按查询量排序';
+
+  @override
+  String devicesQueriedLastDay(Object count) {
+    return '$count 台在最近 24 小时发起查询';
+  }
+
+  @override
+  String deviceQueries(Object count) {
+    return '$count 查询';
+  }
+
+  @override
+  String get searchDevicesHint => '搜索名称、IP 或 MAC';
 }

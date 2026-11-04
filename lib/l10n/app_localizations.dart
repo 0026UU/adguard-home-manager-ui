@@ -5665,6 +5665,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'N/A'**
   String get notAvailable;
+
+  /// No description provided for @actionsGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get actionsGroup;
+
+  /// No description provided for @addDeviceManually.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a device by hand'**
+  String get addDeviceManually;
+
+  /// No description provided for @addDeviceManuallyHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Give an IP or a MAC address'**
+  String get addDeviceManuallyHelper;
+
+  /// No description provided for @sortedByQueries.
+  ///
+  /// In en, this message translates to:
+  /// **'Sorted by queries'**
+  String get sortedByQueries;
+
+  /// No description provided for @devicesQueriedLastDay.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} devices queried in the last 24 hours'**
+  String devicesQueriedLastDay(Object count);
+
+  /// No description provided for @deviceQueries.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} queries'**
+  String deviceQueries(Object count);
+
+  /// No description provided for @searchDevicesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search a name, an IP or a MAC address'**
+  String get searchDevicesHint;
 }
 
 class _AppLocalizationsDelegate

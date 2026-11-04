@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,13 +8,35 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:adguard_home_manager/config/apple_theme.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
+import 'package:adguard_home_manager/functions/number_format.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/models/clients.dart';
+import 'package:adguard_home_manager/models/dns_statistics.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
 import 'package:adguard_home_manager/providers/clients_provider.dart';
 import 'package:adguard_home_manager/screens/clients/client/device_tile.dart';
 import 'package:adguard_home_manager/screens/clients/client/remove_client_modal.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
+/// A statistics window holding nothing but the `top_clients` the rows look
+/// themselves up in.
+DnsStatistics _stats(List<Map<String, int>> topClients) =>
+    DnsStatistics.fromJson({
+      'time_units': 'hour',
+      'top_queried_domains': <Map<String, int>>[],
+      'top_clients': topClients,
+      'top_blocked_domains': <Map<String, int>>[],
+      'dns_queries': <int>[0],
+      'blocked_filtering': <int>[0],
+      'replaced_safebrowsing': <int>[0],
+      'replaced_parental': <int>[0],
+      'num_dns_queries': 0,
+      'num_blocked_filtering': 0,
+      'num_replaced_safebrowsing': 0,
+      'num_replaced_safesearch': 0,
+      'num_replaced_parental': 0,
+      'avg_processing_time': 0,
+    });
 
 AutoClient _auto(int index) => AutoClient(
   whoisInfo: WhoisInfo(country: 'IT', orgname: 'Example'),
@@ -135,12 +159,79 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('MacBook Pro'), findsOneWidget);
     expect(find.text('192.168.1.12 · ${l.hasDefaultSettings}'), findsOneWidget);
-    expect(find.text('dhcp'), findsOneWidget);
+
+    // The row says nothing about queries the server did not report.
+    expect(find.text(l.deviceQueries('0')), findsNothing);
 
     await tester.tap(find.text('MacBook Pro'));
     await tester.pumpAndSettle();
 
     expect(tapped?.logKey, '192.168.1.12');
+  });
+
+  testWidgets('a device row counts the queries of its statistics window',
+      (tester) async {
+    await _pump(
+      tester,
+      DeviceTile(
+        row: DeviceRow(
+          name: 'MacBook Pro',
+          address: '192.168.1.12',
+          logKey: '192.168.1.12',
+          source: 'dhcp',
+        ),
+        queries: 5120,
+        onTap: (_) {},
+        splitView: false,
+      ),
+    );
+
+    final counted = '192.168.1.12 · ${l.hasDefaultSettings} · '
+        '${l.deviceQueries(compactFormat(5120, Platform.localeName))}';
+
+    expect(find.text(counted), findsOneWidget);
+    expect(find.text(compactFormat(5120, Platform.localeName)), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('top_clients answers by name, by address or not at all', () {
+    final stats = _stats([
+      {'MacBook Pro': 5120},
+      {'192.168.1.9': 384},
+    ]);
+
+    expect(
+      queriesForDevice(stats, DeviceRow(
+        name: 'MacBook Pro',
+        address: '192.168.1.12',
+        logKey: '192.168.1.12',
+      )),
+      5120,
+    );
+    expect(
+      queriesForDevice(stats, DeviceRow(
+        name: '192.168.1.9',
+        address: '192.168.1.9',
+        logKey: '192.168.1.9',
+      )),
+      384,
+    );
+    expect(
+      queriesForDevice(stats, DeviceRow(
+        name: 'Nothing here',
+        address: '10.0.0.1',
+        logKey: '10.0.0.1',
+      )),
+      isNull,
+    );
+    expect(
+      queriesForDevice(null, DeviceRow(
+        name: 'MacBook Pro',
+        address: '192.168.1.12',
+        logKey: '192.168.1.12',
+      )),
+      isNull,
+    );
   });
 
   testWidgets('a configured device row shows the state of its entry',
@@ -159,8 +250,6 @@ void main() {
               client: client,
             ),
             onTap: (_) {},
-            onEdit: (_) {},
-            onDelete: (_) {},
             splitView: false,
           ),
           DeviceTile(
@@ -181,7 +270,6 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('client-0'), findsOneWidget);
     expect(find.text('10.0.0.0, aa:bb:cc:dd:ee:ff · ${l.hasCustomSettings}'), findsOneWidget);
-    expect(find.byType(ClientStatusIcons), findsOneWidget);
 
     // The hairline belongs between the rows only.
     expect(find.byType(AppleSeparator), findsOneWidget);
