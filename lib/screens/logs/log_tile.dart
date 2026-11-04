@@ -64,22 +64,6 @@ class LogTile extends StatelessWidget {
       }
     }
 
-    Widget meta(IconData icon, String text) => Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 12, color: palette.label3),
-        const SizedBox(width: 4),
-        Flexible(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 12.5, height: 1.3, color: palette.label2),
-          ),
-        ),
-      ],
-    );
-
     Widget statusPill() {
       final filter = getFilteredStatus(context, appConfigProvider, log.reason, false);
       final filtered = filter['filtered'];
@@ -262,26 +246,17 @@ class LogTile extends StatelessWidget {
       ? CupertinoIcons.checkmark_circle
       : CupertinoIcons.minus_circle;
 
-    final tile = AppleListTile(
+    final tile = AppleLogRow(
+      leading: statusPill(),
       title: log.question.name ?? "N/A",
-      subtitleWidget: Wrap(
-        spacing: 12,
-        runSpacing: 3,
-        children: [
-          meta(CupertinoIcons.person_crop_circle, logClient()),
-          meta(CupertinoIcons.clock, convertTimestampLocalTimezone(log.time, 'HH:mm:ss')),
-          if (appConfigProvider.showTimeLogs == true && log.elapsedMs != '')
-            meta(
-              CupertinoIcons.timer,
-              "${double.parse(log.elapsedMs).toStringAsFixed(2)} ms",
-            ),
-        ],
-      ),
-      trailing: statusPill(),
-      onTap: () => onLogTap(log),
+      time: convertTimestampLocalTimezone(log.time, 'HH:mm:ss'),
+      details: [
+        logClient(),
+        if (appConfigProvider.showTimeLogs == true && log.elapsedMs != '')
+          "${double.parse(log.elapsedMs).toStringAsFixed(2)} ms",
+      ],
       selected: isLogSelected == true,
-      showChevron: false,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      onTap: () => onLogTap(log),
     );
 
     return OptionsMenu(
@@ -329,7 +304,11 @@ class LogTile extends StatelessWidget {
       child: Column(
         children: [
           tile,
-          if (index != length - 1) AppleSeparator(indent: tile.separatorIndent),
+          if (index != length - 1)
+            const AppleSeparator(
+              indent: AppleLogRow.separatorInset,
+              endIndent: AppleLogRow.separatorInset,
+            ),
         ],
       ),
     );

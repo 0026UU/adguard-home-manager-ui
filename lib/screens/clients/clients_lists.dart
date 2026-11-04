@@ -130,6 +130,12 @@ class _ClientsListsState extends State<ClientsLists> with TickerProviderStateMix
 
     return AppleScreen(
       title: AppLocalizations.of(context)!.clients,
+      subtitle: loaded
+        ? "${clientsProvider.clients?.autoClients.length ?? 0} "
+              "${AppLocalizations.of(context)!.activeClients} · "
+              "${clientsProvider.clients?.clients.length ?? 0} "
+              "${AppLocalizations.of(context)!.added}"
+        : null,
       header: AppleSegmented(
         labels: [
           AppLocalizations.of(context)!.activeClients,

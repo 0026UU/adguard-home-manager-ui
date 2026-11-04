@@ -137,6 +137,7 @@ class _CustomRulesListState extends State<CustomRulesList> {
         showChevron: false,
         // Commented rules are read-only, so they render as a secondary row.
         enabled: !checkIfComment(rule),
+        mono: true,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
         trailing: IconButton(
           onPressed: () => widget.onRemoveCustomRule(rule),

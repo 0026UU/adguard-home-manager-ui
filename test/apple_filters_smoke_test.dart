@@ -100,7 +100,7 @@ void main() {
     l = await AppLocalizations.delegate.load(const Locale('en'));
   });
 
-  testWidgets('filter lists show a status capsule per row', (tester) async {
+  testWidgets('filter lists carry one switch per row', (tester) async {
     await _pumpList(
       tester,
       FiltersList(
@@ -114,9 +114,15 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('List 0'), findsOneWidget);
-    expect(find.byType(ApplePill), findsNWidgets(2));
-    expect(find.text(l.enabled), findsOneWidget);
-    expect(find.text(l.disabled), findsOneWidget);
+    // The design layer switches a list from the row itself rather than
+    // showing a status capsule, so the state is the switch position.
+    expect(find.byType(ApplePill), findsNothing);
+    final switches = tester
+        .widgetList<CupertinoSwitch>(find.byType(CupertinoSwitch))
+        .toList();
+    expect(switches, hasLength(2));
+    expect(switches[0].value, isTrue);
+    expect(switches[1].value, isFalse);
   });
 
   testWidgets('opening a list row reports the filter and its type', (tester) async {

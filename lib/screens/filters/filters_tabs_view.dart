@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
@@ -7,6 +9,7 @@ import 'package:adguard_home_manager/screens/filters/custom_rules_list.dart';
 import 'package:adguard_home_manager/screens/filters/filters_list.dart';
 
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
+import 'package:adguard_home_manager/functions/number_format.dart';
 import 'package:adguard_home_manager/providers/filtering_provider.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/models/filtering.dart';
@@ -58,6 +61,25 @@ class _FiltersTabsViewState extends State<FiltersTabsView> with TickerProviderSt
     super.dispose();
   }
 
+  /// The line under the title, which describes whichever list the tabs show.
+  String _subtitle(AppLocalizations l, Filtering filtering) {
+    if (tabController.index == 2) {
+      return "${filtering.userRules.length} ${l.customRules}";
+    }
+
+    final lists = tabController.index == 0
+      ? filtering.whitelistFilters
+      : filtering.filters;
+    final rules = lists.fold<int>(
+      0,
+      (total, list) => total + list.rulesCount,
+    );
+
+    return "${lists.where((list) => list.enabled == true).length}"
+        " / ${lists.length} ${l.filters} · "
+        "${intFormat(rules, Platform.localeName)} ${l.enabledRules}";
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -68,6 +90,9 @@ class _FiltersTabsViewState extends State<FiltersTabsView> with TickerProviderSt
 
     return AppleScreen(
       title: l.filters,
+      subtitle: loaded && filteringProvider.filtering != null
+        ? _subtitle(l, filteringProvider.filtering!)
+        : null,
       actions: widget.actions,
       scrollController: scrollController,
       header: AppleSegmented(

@@ -39,11 +39,17 @@ class ActiveClientTile extends StatelessWidget {
       title: name,
       subtitle: named ? client.ip : null,
       value: client.source,
-      leading: AppleAvatar(text: name, color: palette.seeded(name)),
+      leading: AppleAvatar(
+        text: name,
+        size: 40,
+        color: palette.seeded(name),
+        gradientTo: palette.seededAlt(name),
+      ),
       onTap: () => onTap(client),
       showChevron: !splitView,
       selected: splitView && client == selectedClient,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      leadingWidth: 40,
     );
 
     return OptionsMenu(

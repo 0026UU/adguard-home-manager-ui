@@ -11,6 +11,7 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 import 'package:adguard_home_manager/screens/filters/add_button.dart';
 import 'package:adguard_home_manager/screens/filters/list_options_menu.dart';
+import 'package:adguard_home_manager/screens/filters/toggle_list.dart';
 import 'package:adguard_home_manager/widgets/tab_content_list.dart';
 
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
@@ -94,19 +95,19 @@ class _FiltersListState extends State<FiltersList> {
 
     Widget row(int index) {
       final filter = widget.data[index];
-      final enabled = filter.enabled == true;
-      final statusColor = enabled
-        ? (appConfigProvider.useThemeColorForStatus == true ? palette.tint : palette.green)
-        : (appConfigProvider.useThemeColorForStatus == true ? palette.label3 : palette.red);
 
       final tile = AppleListTile(
         title: filter.name,
         subtitle: "${intFormat(filter.rulesCount, Platform.localeName)} ${l.enabledRules}",
-        trailing: ApplePill(
-          label: enabled ? l.enabled : l.disabled,
-          color: statusColor,
+        trailing: AppleSwitch(
+          value: filter.enabled == true,
+          onChanged: () => toggleFilterList(
+            context: context,
+            list: filter,
+            listType: widget.type,
+          ),
         ),
-        showChevron: true,
+        showChevron: false,
         onTap: () => widget.onOpenDetailsScreen(filter, widget.type),
       );
 

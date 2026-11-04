@@ -98,6 +98,26 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
       appConfigProvider.setSelectedSettingsScreen(screen: null);
     }
 
+    /// Settings entries push on phones and replace the detail pane on wide
+    /// layouts; the header card opens the same way as a row.
+    void open({required int thisItem, required Widget screen}) {
+      if (widget.twoColumns) {
+        appConfigProvider.setSelectedSettingsScreen(
+            screen: thisItem, notify: true);
+        Navigator.of(settingsNavigatorKey.currentContext!).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (context, animation1, animation2) =>
+                screen,
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+          ),
+        );
+      } else {
+        Navigator.of(context)
+            .push(MaterialPageRoute(builder: (context) => screen));
+      }
+    }
+
     /// One settings section row: pushes on phones, selects in the master pane.
     Widget row({
       required int thisItem,
@@ -117,27 +137,26 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
         selected: widget.twoColumns &&
             appConfigProvider.selectedSettingsScreen == thisItem,
         showChevron: !widget.twoColumns,
-        onTap: () {
-          if (widget.twoColumns) {
-            appConfigProvider.setSelectedSettingsScreen(
-                screen: thisItem, notify: true);
-            Navigator.of(settingsNavigatorKey.currentContext!).pushReplacement(
-              PageRouteBuilder(
-                pageBuilder: (context, animation1, animation2) =>
-                    screenToNavigate,
-                transitionDuration: Duration.zero,
-                reverseTransitionDuration: Duration.zero,
-              ),
-            );
-          } else {
-            Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => screenToNavigate));
-          }
-        },
+        onTap: () => open(thisItem: thisItem, screen: screenToNavigate),
       );
     }
 
     final updateAvailable = serversProvider.updateAvailable.data != null;
+
+    final server = serversProvider.selectedServer;
+    final serverStatus = statusProvider.serverStatus;
+    final appInfo = appConfigProvider.getAppInfo;
+
+    // The address is only shown when the user has not hidden it.
+    final address = server == null || appConfigProvider.hideServerAddress == true
+      ? null
+      : "${server.connectionMethod}://${server.domain}"
+            "${server.path ?? ""}${server.port != null ? ':${server.port}' : ""}";
+
+    final details = [
+      if (address != null) address,
+      if (serverStatus != null) serverStatus.serverVersion,
+    ].whereType<String>().where((part) => part.isNotEmpty).join(' · ');
 
     final serverRows = <Widget>[
       row(
@@ -238,11 +257,29 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
         key: widget.twoColumns ? _scaffoldMessengerKey : null,
         child: AppleScreen(
           title: l.settings,
+          subtitle: appInfo == null
+            ? null
+            : "${l.appVersion} ${appInfo.version} (${appInfo.buildNumber})",
           slivers: [
             SliverPadding(
               padding: const EdgeInsets.only(top: 10),
               sliver: SliverList.list(
                 children: [
+                  if (server != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                      child: AppleBigRow(
+                        icon: Icons.dns_outlined,
+                        color: palette.green,
+                        colorTo: palette.teal,
+                        title: server.name,
+                        details: details.isEmpty ? null : details,
+                        status: serverStatus != null ? l.connected : null,
+                        actionLabel: l.servers,
+                        onAction: () =>
+                            open(thisItem: 12, screen: const Servers()),
+                      ),
+                    ),
                   if (serversProvider.selectedServer != null &&
                       statusProvider.serverStatus != null &&
                       serversProvider.apiClient2 != null)

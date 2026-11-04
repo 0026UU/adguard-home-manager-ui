@@ -51,7 +51,12 @@ class _AddedClientTileState extends State<AddedClientTile> {
 
     final tile = AppleListTile(
       title: widget.client.name,
-      leading: AppleAvatar(text: widget.client.name, color: palette.seeded(widget.client.name)),
+      leading: AppleAvatar(
+        text: widget.client.name,
+        size: 40,
+        color: palette.seeded(widget.client.name),
+        gradientTo: palette.seededAlt(widget.client.name),
+      ),
       subtitleWidget: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -75,6 +80,7 @@ class _AddedClientTileState extends State<AddedClientTile> {
           )
         : null,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      leadingWidth: 40,
     );
 
     return MouseRegion(
