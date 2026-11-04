@@ -2585,6 +2585,80 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get overview => '概览';
+
+  @override
+  String get protectionSwitches => '防护开关';
+
+  @override
+  String get ruleFilteringHelper => '按列表与自定义规则拦截';
+
+  @override
+  String get safeBrowsingHelper => '拦截恶意与钓鱼网站';
+
+  @override
+  String get safeSearchHelper => '屏蔽成人内容';
+
+  @override
+  String get parentalFilteringHelper => '屏蔽成人站点与内容';
+
+  @override
+  String get pauseProtection => '暂停防护';
+
+  @override
+  String get pauseProtectionHelper => '选择时长临时关闭';
+
+  @override
+  String get protectionPausedHelper => '防护已暂停，点击恢复';
+
+  @override
+  String get running => '运行中';
+
+  @override
+  String get paused => '已暂停';
+
+  @override
+  String get resumeProtection => '恢复防护';
+
+  @override
+  String get filterLists => '过滤列表';
+
+  @override
+  String get addList => '添加列表';
+
+  @override
+  String updatedOn(Object date) {
+    return '更新于 $date';
+  }
+
+  @override
+  String get customRulesSyntaxHelper => '改写 / 例外 / 本地规则';
+
+  @override
+  String rulesCount(Object count) {
+    return '$count 条规则';
+  }
+
+  @override
+  String get customRulesPreview => '自定义规则预览';
+
+  @override
+  String showAllRules(Object count) {
+    return '查看全部 $count 条规则';
+  }
+
+  @override
+  String get blockByService => '按服务拦截';
+
+  @override
+  String get clearAll => '清空';
+
+  @override
+  String listsEnabledWithRules(Object lists, Object rules) {
+    return '$lists 个列表已启用 · $rules 条规则';
+  }
+
+  @override
+  String get editRules => '编辑规则';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -2779,6 +2853,12 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get theme => '主题';
+
+  @override
+  String get appleStyle => 'Apple 风格';
+
+  @override
+  String get appleStyleDescription => '半透明导航栏、大标题与分组列表。关闭后可恢复 Material 界面。';
 
   @override
   String get light => '明亮';
@@ -5063,4 +5143,78 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get overview => '概览';
+
+  @override
+  String get protectionSwitches => '防护开关';
+
+  @override
+  String get ruleFilteringHelper => '按列表与自定义规则拦截';
+
+  @override
+  String get safeBrowsingHelper => '拦截恶意与钓鱼网站';
+
+  @override
+  String get safeSearchHelper => '屏蔽成人内容';
+
+  @override
+  String get parentalFilteringHelper => '屏蔽成人站点与内容';
+
+  @override
+  String get pauseProtection => '暂停防护';
+
+  @override
+  String get pauseProtectionHelper => '选择时长临时关闭';
+
+  @override
+  String get protectionPausedHelper => '防护已暂停，点击恢复';
+
+  @override
+  String get running => '运行中';
+
+  @override
+  String get paused => '已暂停';
+
+  @override
+  String get resumeProtection => '恢复防护';
+
+  @override
+  String get filterLists => '过滤列表';
+
+  @override
+  String get addList => '添加列表';
+
+  @override
+  String updatedOn(Object date) {
+    return '更新于 $date';
+  }
+
+  @override
+  String get customRulesSyntaxHelper => '改写 / 例外 / 本地规则';
+
+  @override
+  String rulesCount(Object count) {
+    return '$count 条规则';
+  }
+
+  @override
+  String get customRulesPreview => '自定义规则预览';
+
+  @override
+  String showAllRules(Object count) {
+    return '查看全部 $count 条规则';
+  }
+
+  @override
+  String get blockByService => '按服务拦截';
+
+  @override
+  String get clearAll => '清空';
+
+  @override
+  String listsEnabledWithRules(Object lists, Object rules) {
+    return '$lists 个列表已启用 · $rules 条规则';
+  }
+
+  @override
+  String get editRules => '编辑规则';
 }

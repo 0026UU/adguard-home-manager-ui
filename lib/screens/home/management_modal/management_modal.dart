@@ -13,9 +13,8 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/screens/home/management_modal/main_switch.dart';
 import 'package:adguard_home_manager/screens/home/management_modal/small_switch.dart';
 
-import 'package:adguard_home_manager/functions/snackbar.dart';
+import 'package:adguard_home_manager/functions/update_blocking.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
-import 'package:adguard_home_manager/providers/app_config_provider.dart';
 
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
@@ -72,26 +71,17 @@ class _ManagementModalState extends State<ManagementModal> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
-    final statusProvider = Provider.of<StatusProvider>(context);
-    final appConfigProvider = Provider.of<AppConfigProvider>(context);
-
     void updateBlocking({
       required bool value, 
       required String filter,
       int? time
-    }) async {
-      final result = await statusProvider.updateBlocking(
-        block: filter, 
-        newStatus: value,
-        time: time
+    }) {
+      toggleProtection(
+        context: context,
+        filter: filter,
+        value: value,
+        time: time,
       );
-      if (mounted && result == false) {
-        showSnackbar(
-          appConfigProvider: appConfigProvider, 
-          label: AppLocalizations.of(context)!.invalidUsernamePassword, 
-          color: Colors.red
-        );
-      }
     }
 
     void disableWithCountdown(int time) async {

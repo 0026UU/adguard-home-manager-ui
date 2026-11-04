@@ -5130,6 +5130,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Overview'**
   String get overview;
+
+  /// No description provided for @protectionSwitches.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection'**
+  String get protectionSwitches;
+
+  /// No description provided for @ruleFilteringHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocks with your lists and custom rules'**
+  String get ruleFilteringHelper;
+
+  /// No description provided for @safeBrowsingHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocks dangerous and phishing sites'**
+  String get safeBrowsingHelper;
+
+  /// No description provided for @safeSearchHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Filters adult content'**
+  String get safeSearchHelper;
+
+  /// No description provided for @parentalFilteringHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocks adult sites and content'**
+  String get parentalFilteringHelper;
+
+  /// No description provided for @pauseProtection.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause protection'**
+  String get pauseProtection;
+
+  /// No description provided for @pauseProtectionHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how long to stay off'**
+  String get pauseProtectionHelper;
+
+  /// No description provided for @protectionPausedHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection is off, tap to resume'**
+  String get protectionPausedHelper;
+
+  /// No description provided for @running.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get running;
+
+  /// No description provided for @paused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get paused;
+
+  /// No description provided for @resumeProtection.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume protection'**
+  String get resumeProtection;
+
+  /// No description provided for @filterLists.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter lists'**
+  String get filterLists;
+
+  /// No description provided for @addList.
+  ///
+  /// In en, this message translates to:
+  /// **'Add list'**
+  String get addList;
+
+  /// No description provided for @updatedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {date}'**
+  String updatedOn(Object date);
+
+  /// No description provided for @customRulesSyntaxHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Rewrites, exceptions and local rules'**
+  String get customRulesSyntaxHelper;
+
+  /// No description provided for @rulesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} rules'**
+  String rulesCount(Object count);
+
+  /// No description provided for @customRulesPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom rules preview'**
+  String get customRulesPreview;
+
+  /// No description provided for @showAllRules.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all {count} rules'**
+  String showAllRules(Object count);
+
+  /// No description provided for @blockByService.
+  ///
+  /// In en, this message translates to:
+  /// **'Block by service'**
+  String get blockByService;
+
+  /// No description provided for @clearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all'**
+  String get clearAll;
+
+  /// No description provided for @listsEnabledWithRules.
+  ///
+  /// In en, this message translates to:
+  /// **'{lists} lists enabled · {rules} rules'**
+  String listsEnabledWithRules(Object lists, Object rules);
+
+  /// No description provided for @editRules.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit rules'**
+  String get editRules;
 }
 
 class _AppLocalizationsDelegate

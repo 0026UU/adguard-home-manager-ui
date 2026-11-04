@@ -44,7 +44,6 @@ class AppConfigProvider with ChangeNotifier {
   final bool _useThemeColorForStatus = false;
 
   int _selectedClientsTab = 0;
-  int _selectedFiltersTab = 0;
 
   List<HomeTopItems> _homeTopItemsOrder = homeTopItemsDefaultOrder;
 
@@ -115,10 +114,6 @@ class AppConfigProvider with ChangeNotifier {
 
   int get selectedClientsTab {
     return _selectedClientsTab;
-  }
-
-  int get selectedFiltersTab {
-    return _selectedFiltersTab;
   }
 
   List<AppLog> get logs {
@@ -207,11 +202,6 @@ class AppConfigProvider with ChangeNotifier {
 
   void setSelectedClientsTab(int tab) {
     _selectedClientsTab = tab;
-    notifyListeners();
-  }
-
-  void setSelectedFiltersTab(int tab) {
-    _selectedFiltersTab = tab;
     notifyListeners();
   }
 

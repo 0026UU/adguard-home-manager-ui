@@ -2695,4 +2695,78 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get overview => 'Overview';
+
+  @override
+  String get protectionSwitches => 'Protection';
+
+  @override
+  String get ruleFilteringHelper => 'Blocks with your lists and custom rules';
+
+  @override
+  String get safeBrowsingHelper => 'Blocks dangerous and phishing sites';
+
+  @override
+  String get safeSearchHelper => 'Filters adult content';
+
+  @override
+  String get parentalFilteringHelper => 'Blocks adult sites and content';
+
+  @override
+  String get pauseProtection => 'Pause protection';
+
+  @override
+  String get pauseProtectionHelper => 'Choose how long to stay off';
+
+  @override
+  String get protectionPausedHelper => 'Protection is off, tap to resume';
+
+  @override
+  String get running => 'Running';
+
+  @override
+  String get paused => 'Paused';
+
+  @override
+  String get resumeProtection => 'Resume protection';
+
+  @override
+  String get filterLists => 'Filter lists';
+
+  @override
+  String get addList => 'Add list';
+
+  @override
+  String updatedOn(Object date) {
+    return 'Updated $date';
+  }
+
+  @override
+  String get customRulesSyntaxHelper => 'Rewrites, exceptions and local rules';
+
+  @override
+  String rulesCount(Object count) {
+    return '$count rules';
+  }
+
+  @override
+  String get customRulesPreview => 'Custom rules preview';
+
+  @override
+  String showAllRules(Object count) {
+    return 'Show all $count rules';
+  }
+
+  @override
+  String get blockByService => 'Block by service';
+
+  @override
+  String get clearAll => 'Clear all';
+
+  @override
+  String listsEnabledWithRules(Object lists, Object rules) {
+    return '$lists lists enabled · $rules rules';
+  }
+
+  @override
+  String get editRules => 'Edit rules';
 }

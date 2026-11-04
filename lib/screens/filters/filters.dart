@@ -9,7 +9,7 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
 import 'package:adguard_home_manager/screens/filters/details/check_host_modal.dart';
-import 'package:adguard_home_manager/screens/filters/filters_tabs_view.dart';
+import 'package:adguard_home_manager/screens/filters/filters_page.dart';
 import 'package:adguard_home_manager/screens/filters/filters_triple_column.dart';
 import 'package:adguard_home_manager/screens/filters/details/list_details_screen.dart';
 import 'package:adguard_home_manager/screens/filters/modals/remove_custom_rule_modal.dart';
@@ -332,10 +332,8 @@ class _FiltersState extends State<Filters> {
           );
         }
         else {
-          return FiltersTabsView(
-            appConfigProvider: appConfigProvider, 
+          return FiltersPage(
             actions: actions(),
-            onRemoveCustomRule: openRemoveCustomRuleModal,
             onOpenDetailsModal: openListDetails,
           );
         }

@@ -564,6 +564,45 @@ class AppleGroupHeader extends StatelessWidget {
   }
 }
 
+/// The tappable word at the end of an [AppleGroupHeader] or
+/// [AppleListSection] header, the way `UITableView` section indexes offer
+/// "Edit" and the design layer offers "Add list" and "Clear all".
+class AppleHeaderAction extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+
+  /// Destructive actions read in red, as the design layer tints them.
+  final bool destructive;
+
+  const AppleHeaderAction({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.destructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+
+    return GestureDetector(
+      onTap: onPressed,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: destructive ? p.red : p.tint,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// A scrolling row list that reads as one inset-grouped card: 16pt side
 /// margins, rounded caps at both ends and the card colour behind every row.
 ///
@@ -717,6 +756,10 @@ class AppleListTile extends StatelessWidget {
   /// Right aligned value text (e.g. "Enabled", "3.4 ms").
   final String? value;
 
+  /// Colour of [value], for rows whose value carries the state (a paused
+  /// protection reads in the accent colour).
+  final Color? valueColor;
+
   final Widget? trailing;
   final Widget? leading;
   final IconData? icon;
@@ -748,6 +791,7 @@ class AppleListTile extends StatelessWidget {
     this.subtitle,
     this.subtitleWidget,
     this.value,
+    this.valueColor,
     this.trailing,
     this.leading,
     this.icon,
@@ -836,11 +880,17 @@ class AppleListTile extends StatelessWidget {
                 textAlign: TextAlign.right,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 16, height: 1.25, color: p.label2),
+                style: TextStyle(
+                  fontSize: 16,
+                  height: 1.25,
+                  color: valueColor ?? p.label2,
+                ),
               ),
             ),
           if (trailing != null) trailing!,
-          if (trailing == null && value == null && showChevron && onTap != null)
+          // A row can carry both a value and a disclosure, the way the design
+          // layer draws "1.2k ›"; only a trailing control replaces it.
+          if (trailing == null && showChevron && onTap != null)
             AppleChevron(color: enabled ? null : p.label4),
         ],
       ),

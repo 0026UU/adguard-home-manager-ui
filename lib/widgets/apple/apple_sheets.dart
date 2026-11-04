@@ -262,6 +262,10 @@ Future<void> showAppleActionSheet(
   return showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
+    // An action sheet with many choices (the pause durations, a client's
+    // actions) must stay reachable, so it is allowed to grow past half the
+    // screen and scroll.
+    isScrollControlled: true,
     builder: (sheetContext) {
       final p = ApplePalette.of(sheetContext);
       final cancel = cancelLabel ?? MaterialLocalizations.of(sheetContext).cancelButtonLabel;
@@ -289,7 +293,7 @@ Future<void> showAppleActionSheet(
       final hasHeader = title != null || message != null;
 
       return SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
           child: Column(
             mainAxisSize: MainAxisSize.min,
