@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
-
 import 'package:adguard_home_manager/models/dhcp.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+/// Enable switch of the DHCP server, labelled with the interface it runs on.
 class DhcpMainButton extends StatelessWidget {
   final NetworkInterface? selectedInterface;
   final bool enabled;
@@ -18,60 +19,22 @@ class DhcpMainButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(
-        top: 10,
-        left: 16, 
-        right: 16
-      ),
-      child: Material(
-        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(28),
-        child: InkWell(
-          onTap: selectedInterface != null
-            ? () => setEnabled(!enabled)
-            : null,
-          borderRadius: BorderRadius.circular(28),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 12
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppLocalizations.of(context)!.enableDhcpServer,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Theme.of(context).colorScheme.onSurface
-                      ),
-                    ),
-                    if (selectedInterface != null) ...[
-                      Text(
-                        selectedInterface!.name,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Theme.of(context).listTileTheme.textColor
-                        ),
-                      )
-                    ]
-                  ],
-                ),
-                Switch(
-                  value: enabled, 
-                  onChanged: selectedInterface != null
-                    ? (value) => setEnabled(value)
-                    : null,
-                ),
-              ],
-            ),
-          ),
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
+    final ready = selectedInterface != null;
+
+    return AppleListSection(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 22),
+      children: [
+        AppleSwitchListTile(
+          title: l.enableDhcpServer,
+          subtitle: selectedInterface?.name,
+          value: enabled,
+          onChanged: ready ? (value) => setEnabled(value) : null,
+          icon: CupertinoIcons.antenna_radiowaves_left_right,
+          iconColor: ready ? p.tint : p.gray,
         ),
-      ),
+      ],
     );
   }
 }

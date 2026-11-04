@@ -3,6 +3,7 @@
 import 'dart:io';
 
 import 'package:adguard_home_manager/constants/regexps.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
@@ -12,11 +13,10 @@ import 'package:adguard_home_manager/screens/settings/settings.dart';
 import 'package:adguard_home_manager/screens/settings/dhcp/dhcp_not_available.dart';
 import 'package:adguard_home_manager/widgets/confirm_action_modal.dart';
 import 'package:adguard_home_manager/screens/settings/dhcp/dhcp_main_button.dart';
-import 'package:adguard_home_manager/widgets/section_label.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/screens/settings/dhcp/dhcp_leases.dart';
 import 'package:adguard_home_manager/screens/settings/dhcp/select_interface_modal.dart';
 
-import 'package:adguard_home_manager/functions/desktop_mode.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
@@ -360,426 +360,280 @@ class _DhcpScreenState extends State<DhcpScreen> {
       return const DhcpNotAvailable();
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.dhcpSettings),
-        centerTitle: false,
-        surfaceTintColor: isDesktop(width) ? Colors.transparent : null,
-        actions: selectedInterface != null ? [
-          IconButton(
-            onPressed: checkDataValid() == true
-              ? () => saveSettings()
-              : null, 
-            icon: const Icon(Icons.save_rounded),
-            tooltip: AppLocalizations.of(context)!.save,
-          ),
-          PopupMenuButton(
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                onTap: selectInterface,
-                child: Row(
-                  children: [
-                    const Icon(Icons.swap_horiz_rounded),
-                    const SizedBox(width: 10),
-                    Text(AppLocalizations.of(context)!.changeInterface)
-                  ],
-                )
-              ), 
-              PopupMenuItem(
-                onTap: askRestoreLeases,
-                child: Row(
-                  children: [
-                    const Icon(Icons.settings_backup_restore_rounded),
-                    const SizedBox(width: 10),
-                    Text(AppLocalizations.of(context)!.restoreLeases)
-                  ],
-                )
-              ),
-              PopupMenuItem(
-                onTap: askRestoreConfig,
-                child: Row(
-                  children: [
-                    const Icon(Icons.restore),
-                    const SizedBox(width: 10),
-                    Text(AppLocalizations.of(context)!.restoreConfiguration)
-                  ],
-                )
-              ),
-            ] 
-          ),
-          const SizedBox(width: 10)
-        ] : null,
-      ),
-      body: SafeArea(
-        child: Builder(
-          builder: (context) {
-            switch (dhcpProvider.loadStatus) {
-              case LoadStatus.loading:
-                return SizedBox(
-                  width: double.maxFinite,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 30),
-                      Text(
-                        AppLocalizations.of(context)!.loadingDhcp,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 22,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      )
-                    ],
-                  ),
-                );
-              
-              case LoadStatus.loaded:
-                if (selectedInterface != null) {
-                  return SingleChildScrollView(
-                    child: Wrap(
-                      children: [
-                        DhcpMainButton(
-                          selectedInterface: selectedInterface, 
-                          enabled: enabled, 
-                          setEnabled: (v) => setState(() => enabled = v)
-                        ),
-                        if (selectedInterface!.ipv4Addresses.isNotEmpty) ...[
-                          SectionLabel(
-                            label: AppLocalizations.of(context)!.ipv4settings,
-                            padding: const EdgeInsets.only(
-                              top: 24, left: 16, right: 16, bottom: 8
-                            )
-                          ),
-                          _DhcpField(
-                            icon: Icons.skip_previous_rounded,
-                            label: AppLocalizations.of(context)!.startOfRange,
-                            controller: ipv4StartRangeController, 
-                            onChanged: (value) => validateIpV4(value, 'ipv4StartRangeError', AppLocalizations.of(context)!.ipNotValid),
-                            error: ipv4StartRangeError
-                          ),
-                          _DhcpField(
-                            icon: Icons.skip_next_rounded,
-                            label: AppLocalizations.of(context)!.endOfRange,
-                            controller: ipv4EndRangeController, 
-                            onChanged: (value) => validateIpV4(value, 'ipv4EndRangeError', AppLocalizations.of(context)!.ipNotValid),
-                            error: ipv4EndRangeError
-                          ),
-                          _DhcpField(
-                            icon: Icons.hub_rounded,
-                            label: AppLocalizations.of(context)!.subnetMask,
-                            controller: ipv4SubnetMaskController, 
-                            onChanged: (value) => validateIpV4(value, 'ipv4SubnetMaskError', AppLocalizations.of(context)!.subnetMaskNotValid),
-                            error: ipv4SubnetMaskError
-                          ),
-                          _DhcpField(
-                            icon: Icons.router_rounded,
-                            label: AppLocalizations.of(context)!.gateway,
-                            controller: ipv4GatewayController, 
-                            onChanged: (value) => validateIpV4(value, 'ipv4GatewayError', AppLocalizations.of(context)!.gatewayNotValid),
-                            error: ipv4GatewayError
-                          ),
-                          _DhcpField(
-                            icon: Icons.timer,
-                            label: AppLocalizations.of(context)!.leaseTime,
-                            controller: ipv4LeaseTimeController, 
-                            onChanged: (value) {
-                              if (int.tryParse(value).runtimeType == int) {
-                                setState(() => ipv4LeaseTimeError = null);
-                              }
-                              else {
-                                setState(() => ipv4LeaseTimeError = AppLocalizations.of(context)!.leaseTimeNotValid);
-                              }
-                            },
-                            error: ipv4LeaseTimeError
-                          ),
-                        ],
-                        if (selectedInterface!.ipv6Addresses.isNotEmpty) ...[
-                          SectionLabel(
-                            label: AppLocalizations.of(context)!.ipv6settings,
-                            padding: const EdgeInsets.all(16)
-                          ),
-                          _DhcpField(
-                            icon: Icons.skip_next_rounded,
-                            label: AppLocalizations.of(context)!.startOfRange,
-                            controller: ipv6StartRangeController, 
-                            onChanged: (value) => validateIpV6(value, 'ipv6StartRangeError', AppLocalizations.of(context)!.ipNotValid),
-                            error: ipv6StartRangeError
-                          ),
-                          _DhcpField(
-                            icon: Icons.skip_previous_rounded,
-                            label: AppLocalizations.of(context)!.endOfRange,
-                            controller: ipv6EndRangeController, 
-                            onChanged: (value) => validateIpV6(value, 'ipv6EndRangeError', AppLocalizations.of(context)!.ipNotValid),
-                            error: ipv6EndRangeError
-                          ),
-                          _DhcpField(
-                            icon: Icons.timer,
-                            label: AppLocalizations.of(context)!.leaseTime,
-                            controller: ipv6LeaseTimeController, 
-                            onChanged: (value) {
-                              if (int.tryParse(value).runtimeType == int) {
-                                setState(() => ipv6LeaseTimeError = null);
-                              }
-                              else {
-                                setState(() => ipv6LeaseTimeError = AppLocalizations.of(context)!.leaseTimeNotValid);
-                              }
-                            },
-                            error: ipv6LeaseTimeError
-                          )
-                        ],
-                        const SizedBox(height: 20),
-                        SectionLabel(
-                          label: AppLocalizations.of(context)!.dhcpLeases,
-                          padding: const EdgeInsets.all(16),
-                        ),
-                        if (width <= 900) Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => DhcpLeases(
-                                    items: dhcpProvider.dhcp!.dhcpStatus!.leases,
-                                    staticLeases: false,
-                                  )
-                                )
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    AppLocalizations.of(context)!.dhcpLeases,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Theme.of(context).colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  Icon(
-                                    Icons.arrow_forward_rounded,
-                                    color: Theme.of(context).colorScheme.onSurface,
-                                  )
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (width <= 900) Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => DhcpLeases(
-                                    items: dhcpProvider.dhcp!.dhcpStatus!.staticLeases,
-                                    staticLeases: true,
-                                  )
-                                )
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    AppLocalizations.of(context)!.dhcpStatic,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Theme.of(context).colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  Icon(
-                                    Icons.arrow_forward_rounded,
-                                    color: Theme.of(context).colorScheme.onSurface,
-                                  )
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (width > 900) Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            ElevatedButton(
-                              onPressed: () {
-                                if (!(Platform.isAndroid || Platform.isIOS)) {
-                                  Navigator.of(settingsNavigatorKey.currentContext!).push(
-                                    MaterialPageRoute(builder: (ctx) => DhcpLeases(
-                                      items: dhcpProvider.dhcp!.dhcpStatus!.leases,
-                                      staticLeases: false,
-                                    ))
-                                  );
-                                }
-                                else {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) => DhcpLeases(
-                                        items: dhcpProvider.dhcp!.dhcpStatus!.leases,
-                                        staticLeases: false,
-                                      )
-                                    )
-                                  );
-                                }
-                              },
-                              child: Row(
-                                children: [
-                                  Text(AppLocalizations.of(context)!.dhcpLeases),
-                                  const SizedBox(width: 8),
-                                  const Icon(Icons.arrow_forward_rounded)
-                                ],
-                              )
-                            ),
-                            ElevatedButton(
-                              onPressed: () {
-                                if (!(Platform.isAndroid || Platform.isIOS)) {
-                                  Navigator.of(settingsNavigatorKey.currentContext!).push(
-                                    MaterialPageRoute(builder: (ctx) => DhcpLeases(
-                                      items: dhcpProvider.dhcp!.dhcpStatus!.staticLeases,
-                                      staticLeases: true,
-                                    ))
-                                  );
-                                }
-                                else {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) => DhcpLeases(
-                                        items: dhcpProvider.dhcp!.dhcpStatus!.staticLeases,
-                                        staticLeases: true,
-                                      )
-                                    )
-                                  );
-                                }
-                              }, 
-                              child: Row(
-                                children: [
-                                  Text(AppLocalizations.of(context)!.dhcpStatic),
-                                  const SizedBox(width: 8),
-                                  const Icon(Icons.arrow_forward_rounded)
-                                ],
-                              )
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10)
-                      ],
-                    ),
-                  );
-                } 
-                else {
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Flexible(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.max,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              child: Text(
-                                AppLocalizations.of(context)!.neededSelectInterface,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 30),
-                            ElevatedButton(
-                              onPressed: selectInterface, 
-                              child: Text(AppLocalizations.of(context)!.selectInterface)
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                }
-                
-              case LoadStatus.error:
-                return SizedBox(
-                  width: double.maxFinite,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.error,
-                        color: Colors.red,
-                        size: 50,
-                      ),
-                      const SizedBox(height: 30),
-                      Text(
-                        AppLocalizations.of(context)!.dhcpSettingsNotLoaded,
-                        style: TextStyle(
-                          fontSize: 22,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      )
-                    ],
-                  ),
-                );
-        
-              default:
-                return const SizedBox();
-            }
-          },
-        ),
-      )
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
+
+    Widget fill(Widget child) => SliverFillRemaining(
+      hasScrollBody: false,
+      child: child
     );
-  }
-}
 
-class _DhcpField extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final TextEditingController controller;
-  final void Function(String) onChanged;
-  final String? error;
-
-  const _DhcpField({
-    required this.icon,
-    required this.label,
-    required this.controller,
-    required this.onChanged,
-    required this.error,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-
-    return FractionallySizedBox(
-      widthFactor: width > 900 ? 0.5 : 1,
-      child: Padding(
-        padding: width > 900
-          ? const EdgeInsets.only(top: 12, bottom: 12, left: 16, right: 8)
-          : const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: TextFormField(
-          controller: controller,
-          onChanged: onChanged,
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon),
-            border: const OutlineInputBorder(
-              borderRadius: BorderRadius.all(
-                Radius.circular(10)
-              )
-            ),
-            errorText: error,
-            labelText: label,
-          ),
-          keyboardType: TextInputType.number,
+    // Caption above a stack of fields, the form counterpart of a section header.
+    Widget group(String label) => Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 7),
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.08,
+          color: p.label2,
+          height: 1.25,
         ),
       ),
+    );
+
+    Widget field({
+      required String label,
+      required IconData icon,
+      required TextEditingController controller,
+      required ValueChanged<String> onChanged,
+      String? error,
+    }) => Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: TextFormField(
+        controller: controller,
+        onChanged: onChanged,
+        keyboardType: TextInputType.number,
+        style: AppleInput.style(context),
+        decoration: AppleInput.decoration(
+          context,
+          label: label,
+          icon: icon,
+          error: error,
+        ),
+      ),
+    );
+
+    // The lease duration is sent as a plain integer, so anything but a number
+    // is refused before the request is made.
+    ValueChanged<String> leaseTime(void Function(String? error) setError) =>
+      (value) => setState(
+        () => setError(
+          int.tryParse(value).runtimeType == int ? null : l.leaseTimeNotValid
+        )
+      );
+
+    void openMenu() => showAppleActionSheet(
+      context,
+      cancelLabel: l.cancel,
+      actions: [
+        AppleSheetAction(
+          label: l.changeInterface,
+          icon: CupertinoIcons.arrow_2_circlepath,
+          onTap: selectInterface
+        ),
+        AppleSheetAction(
+          label: l.restoreLeases,
+          icon: CupertinoIcons.list_bullet,
+          onTap: askRestoreLeases
+        ),
+        AppleSheetAction(
+          label: l.restoreConfiguration,
+          icon: CupertinoIcons.gear,
+          onTap: askRestoreConfig,
+          destructive: true
+        ),
+      ],
+    );
+
+    void openLeases({required bool isStatic}) {
+      final leases = isStatic
+        ? dhcpProvider.dhcp!.dhcpStatus!.staticLeases
+        : dhcpProvider.dhcp!.dhcpStatus!.leases;
+
+      final route = MaterialPageRoute(
+        builder: (context) => DhcpLeases(
+          items: leases,
+          staticLeases: isStatic
+        )
+      );
+
+      // On a desktop window the settings pane owns its own navigator.
+      if (width > 900 && !(Platform.isAndroid || Platform.isIOS)) {
+        Navigator.of(settingsNavigatorKey.currentContext!).push(route);
+      }
+      else {
+        Navigator.of(context).push(route);
+      }
+    }
+
+    List<Widget> content() {
+      if (dhcpProvider.loadStatus == LoadStatus.loading) {
+        return [fill(AppleLoading(label: l.loadingDhcp))];
+      }
+
+      if (dhcpProvider.loadStatus == LoadStatus.error) {
+        return [
+          fill(
+            AppleEmptyState(
+              icon: CupertinoIcons.exclamationmark_triangle_fill,
+              title: l.dhcpSettingsNotLoaded,
+              color: p.red,
+            )
+          )
+        ];
+      }
+
+      if (selectedInterface == null) {
+        return [
+          fill(
+            AppleEmptyState(
+              icon: CupertinoIcons.antenna_radiowaves_left_right,
+              title: l.neededSelectInterface,
+              action: SizedBox(
+                width: 320,
+                child: AppleButton(
+                  label: l.selectInterface,
+                  onPressed: selectInterface
+                ),
+              ),
+            )
+          )
+        ];
+      }
+
+      return [
+        SliverToBoxAdapter(
+          child: DhcpMainButton(
+            selectedInterface: selectedInterface,
+            enabled: enabled,
+            setEnabled: (v) => setState(() => enabled = v)
+          )
+        ),
+        if (selectedInterface!.ipv4Addresses.isNotEmpty) ...[
+          SliverToBoxAdapter(child: group(l.ipv4settings)),
+          SliverToBoxAdapter(
+            child: field(
+              label: l.startOfRange,
+              icon: CupertinoIcons.arrow_left_to_line,
+              controller: ipv4StartRangeController,
+              error: ipv4StartRangeError,
+              onChanged: (value) => validateIpV4(
+                value, 'ipv4StartRangeError', l.ipNotValid
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: field(
+              label: l.endOfRange,
+              icon: CupertinoIcons.arrow_right_to_line,
+              controller: ipv4EndRangeController,
+              error: ipv4EndRangeError,
+              onChanged: (value) => validateIpV4(
+                value, 'ipv4EndRangeError', l.ipNotValid
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: field(
+              label: l.subnetMask,
+              icon: CupertinoIcons.square_split_2x1_fill,
+              controller: ipv4SubnetMaskController,
+              error: ipv4SubnetMaskError,
+              onChanged: (value) => validateIpV4(
+                value, 'ipv4SubnetMaskError', l.subnetMaskNotValid
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: field(
+              label: l.gateway,
+              icon: CupertinoIcons.globe,
+              controller: ipv4GatewayController,
+              error: ipv4GatewayError,
+              onChanged: (value) => validateIpV4(
+                value, 'ipv4GatewayError', l.gatewayNotValid
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: field(
+              label: l.leaseTime,
+              icon: CupertinoIcons.timer,
+              controller: ipv4LeaseTimeController,
+              error: ipv4LeaseTimeError,
+              onChanged: leaseTime((error) => ipv4LeaseTimeError = error),
+            ),
+          ),
+        ],
+        if (selectedInterface!.ipv6Addresses.isNotEmpty) ...[
+          SliverToBoxAdapter(child: group(l.ipv6settings)),
+          SliverToBoxAdapter(
+            child: field(
+              label: l.startOfRange,
+              icon: CupertinoIcons.arrow_left_to_line,
+              controller: ipv6StartRangeController,
+              error: ipv6StartRangeError,
+              onChanged: (value) => validateIpV6(
+                value, 'ipv6StartRangeError', l.ipNotValid
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: field(
+              label: l.endOfRange,
+              icon: CupertinoIcons.arrow_right_to_line,
+              controller: ipv6EndRangeController,
+              error: ipv6EndRangeError,
+              onChanged: (value) => validateIpV6(
+                value, 'ipv6EndRangeError', l.ipNotValid
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: field(
+              label: l.leaseTime,
+              icon: CupertinoIcons.timer,
+              controller: ipv6LeaseTimeController,
+              error: ipv6LeaseTimeError,
+              onChanged: leaseTime((error) => ipv6LeaseTimeError = error),
+            ),
+          ),
+        ],
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: AppleListSection(
+              title: l.dhcpLeases,
+              children: [
+                AppleListTile(
+                  title: l.dhcpLeases,
+                  icon: CupertinoIcons.list_bullet,
+                  onTap: () => openLeases(isStatic: false)
+                ),
+                AppleListTile(
+                  title: l.dhcpStatic,
+                  icon: CupertinoIcons.person_2_fill,
+                  iconColor: p.indigo,
+                  onTap: () => openLeases(isStatic: true)
+                ),
+              ],
+            ),
+          ),
+        ),
+      ];
+    }
+
+    return AppleScreen(
+      title: l.dhcpSettings,
+      actions: selectedInterface != null
+        ? [
+            IconButton(
+              onPressed: checkDataValid() == true
+                ? () => saveSettings()
+                : null,
+              icon: const Icon(CupertinoIcons.checkmark),
+              tooltip: l.save,
+            ),
+            IconButton(
+              onPressed: openMenu,
+              icon: const Icon(CupertinoIcons.ellipsis),
+            ),
+            const SizedBox(width: 6),
+          ]
+        : const [],
+      slivers: content(),
     );
   }
 }

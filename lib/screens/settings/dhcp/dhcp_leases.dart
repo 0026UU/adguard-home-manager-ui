@@ -2,10 +2,9 @@
 
 import 'dart:io';
 
-import 'package:adguard_home_manager/functions/desktop_mode.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:animations/animations.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
@@ -17,6 +16,7 @@ import 'package:adguard_home_manager/providers/app_config_provider.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/classes/process_modal.dart';
 import 'package:adguard_home_manager/models/dhcp.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 class DhcpLeases extends StatelessWidget {
   final List<Lease> items;
@@ -32,6 +32,9 @@ class DhcpLeases extends StatelessWidget {
   Widget build(BuildContext context) {
     final dhcpProvider = Provider.of<DhcpProvider>(context);
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
+
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
     final width = MediaQuery.of(context).size.width;
 
@@ -121,67 +124,56 @@ class DhcpLeases extends StatelessWidget {
       }
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        surfaceTintColor: isDesktop(width) ? Colors.transparent : null,
-        title: Text(
-          staticLeases == true
-            ? AppLocalizations.of(context)!.dhcpStatic
-            : AppLocalizations.of(context)!.dhcpLeases,
-        ),
-      ),
-      body: items.isNotEmpty
-        ? SafeArea(
-            child: ListView.builder(
-              padding: const EdgeInsets.only(top: 0),
-              itemCount: items.length,
-              itemBuilder: (context, index) => ListTile(
-                isThreeLine: true,
-                title: Text(items[index].ip),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(items[index].mac),
-                    Text(items[index].hostname),
-                  ],
-                ),
-                trailing: staticLeases == true
-                  ? IconButton(
-                      onPressed: () {
-                        showModal(
-                          context: context,
-                          builder: (context) => DeleteStaticLeaseModal(
-                            onConfirm: () => deleteLease(items[index])
-                          )
-                        );
-                      }, 
-                      icon: const Icon(Icons.delete)
-                    )
-                  : null,
+    Widget leaseTile(Lease lease) => AppleListTile(
+      title: lease.ip,
+      subtitle: lease.hostname == ''
+        ? lease.mac
+        : "${lease.mac}\n${lease.hostname}",
+      subtitleMaxLines: 2,
+      icon: CupertinoIcons.desktopcomputer,
+      iconColor: staticLeases == true ? p.indigo : p.tint,
+      trailing: staticLeases == true
+        ? IconButton(
+            onPressed: () => showDialog(
+              context: context,
+              builder: (context) => DeleteStaticLeaseModal(
+                onConfirm: () => deleteLease(lease)
               ),
             ),
+            tooltip: l.deleteStaticLease,
+            icon: Icon(CupertinoIcons.trash, color: p.red),
           )
-        : Center(
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Text(
-                staticLeases == true
-                  ? AppLocalizations.of(context)!.noDhcpStaticLeases
-                  : AppLocalizations.of(context)!.noLeases,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: 22
-                ),
-              ),
-            ),
-          ),
+        : null,
+    );
+
+    return AppleScreen(
+      title: staticLeases == true ? l.dhcpStatic : l.dhcpLeases,
       floatingActionButton: staticLeases == true
         ? FloatingActionButton(
             onPressed: openAddStaticLease,
-            child: const Icon(Icons.add),
+            backgroundColor: p.tint,
+            foregroundColor: Colors.white,
+            child: const Icon(CupertinoIcons.plus),
           )
         : null,
+      slivers: items.isEmpty
+        ? [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: AppleEmptyState(
+                icon: CupertinoIcons.list_bullet,
+                title: staticLeases == true ? l.noDhcpStaticLeases : l.noLeases,
+              ),
+            ),
+          ]
+        : [
+            SliverToBoxAdapter(
+              child: AppleListSection(
+                margin: const EdgeInsets.fromLTRB(16, 8, 16, 22),
+                children: items.map(leaseTile).toList(),
+              ),
+            ),
+          ],
     );
   }
 }
