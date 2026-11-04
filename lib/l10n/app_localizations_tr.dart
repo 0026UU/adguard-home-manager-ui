@@ -3008,4 +3008,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get searchDevicesHint => 'Search a name, an IP or a MAC address';
+
+  @override
+  String get logReason => 'Reason';
 }

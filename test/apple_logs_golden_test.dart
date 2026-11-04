@@ -32,6 +32,10 @@ void main() {
     expect(find.byType(AppleSegmented), findsOneWidget);
     expect(find.byType(AppleSearchField), findsOneWidget);
     expect(find.byType(LogTile), findsNWidgets(3));
+    // Every row carries the reason the server gave, between the device and
+    // the time the query took.
+    expect(find.text('FilteredBlackList'), findsNWidgets(2));
+    expect(find.text('Filtered'), findsOneWidget);
 
     await expectLater(
       find.byType(MaterialApp),

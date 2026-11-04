@@ -74,20 +74,20 @@ void main() {
           leading: ApplePill(label: 'Blocked', color: palette.red),
           title: 'ads.example.org',
           time: '21:04:12',
-          details: const ['192.168.1.24', '12.40 ms'],
+          details: const ['192.168.1.24', 'FilteredBlackList', '12.40 ms'],
           onTap: () {},
         ),
         AppleLogRow(
           leading: ApplePill(label: 'Allowed', color: palette.green),
           title: 'client-router.update.microsoft.com',
           time: '21:04:09',
-          details: const ['livingroom-mac', '3.10 ms'],
+          details: const ['livingroom-mac', 'NotFilteredNotFound', '3.10 ms'],
         ),
         AppleLogRow(
           leading: ApplePill(label: 'Forwarded', color: palette.tint),
           title: 'dns.google',
           time: '21:03:58',
-          details: const ['192.168.1.11'],
+          details: const ['192.168.1.11', 'FilteredSafeBrowsing'],
         ),
       ]),
     );

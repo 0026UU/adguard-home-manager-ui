@@ -904,5 +904,6 @@
     "sortedByQueries": "按查询量排序",
     "devicesQueriedLastDay": "{count} 台在最近 24 小时发起查询",
     "deviceQueries": "{count} 查询",
-    "searchDevicesHint": "搜索名称、IP 或 MAC"
+    "searchDevicesHint": "搜索名称、IP 或 MAC",
+    "logReason": "原因"
 }

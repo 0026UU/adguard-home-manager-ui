@@ -90,7 +90,7 @@ void main() {
     expect(find.text(l.hereWillAppearRealtimeLogs), findsOneWidget);
     expect(find.text(l.trackingQueries), findsOneWidget);
     expect(find.text(l.queryLog), findsNothing);
-    // Refreshing would only reload the history the page is not showing.
+    // The navigation bar keeps only the filters; a reload is a pull down.
     expect(find.byIcon(CupertinoIcons.arrow_clockwise), findsNothing);
 
     final before = logs.fetches;
@@ -100,7 +100,7 @@ void main() {
     expect(live.watching, isFalse);
     expect(logs.fetches, before);
     expect(find.byType(LogTile), findsNWidgets(3));
-    expect(find.byIcon(CupertinoIcons.arrow_clockwise), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.arrow_clockwise), findsNothing);
   });
 
   testWidgets('the live stream keeps its own rows and its own filter', (tester) async {

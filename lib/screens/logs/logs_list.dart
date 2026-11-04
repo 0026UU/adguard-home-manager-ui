@@ -369,7 +369,6 @@ class _LogsListWidgetState extends State<LogsListWidget> {
                 innerBoxIsScrolled: innerBoxIsScrolled, 
                 subtitle: _live ? localizations.trackingQueries : retention,
                 subtitleDot: _live ? palette.green : palette.tint,
-                live: _live,
               )
             )
           ],

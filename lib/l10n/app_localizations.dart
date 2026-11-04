@@ -5707,6 +5707,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search a name, an IP or a MAC address'**
   String get searchDevicesHint;
+
+  /// No description provided for @logReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason'**
+  String get logReason;
 }
 
 class _AppLocalizationsDelegate

@@ -932,5 +932,6 @@
     "sortedByQueries": "Sorted by queries",
     "devicesQueriedLastDay": "{count} devices queried in the last 24 hours",
     "deviceQueries": "{count} queries",
-    "searchDevicesHint": "Search a name, an IP or a MAC address"
+    "searchDevicesHint": "Search a name, an IP or a MAC address",
+    "logReason": "Reason"
 }

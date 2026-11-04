@@ -203,6 +203,15 @@ class _Content extends StatelessWidget {
                   ? ApplePill(label: "CACHE", color: p.teal, fontSize: 11)
                   : null,
             ),
+            if (log.reason != '')
+              AppleListTile(
+                title: l.logReason,
+                icon: CupertinoIcons.info_circle,
+                iconColor: statusColor,
+                subtitle: log.reason,
+                subtitleMaxLines: 3,
+                showChevron: false,
+              ),
             if (log.rule != null)
               AppleListTile(
                 title: l.blockingRule,

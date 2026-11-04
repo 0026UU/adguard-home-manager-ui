@@ -55,10 +55,6 @@ class AppConfigProvider with ChangeNotifier {
 
   bool _hideZeroValues = false;
 
-  bool _showTimeLogs = false;
-
-  bool _showIpLogs = false;
-
   bool _combinedChartHome = false;
 
   String? _doNotRememberVersion;
@@ -152,14 +148,6 @@ class AppConfigProvider with ChangeNotifier {
     return _useThemeColorForStatus;
   }
 
-  bool get showTimeLogs {
-    return _showTimeLogs;
-  }
-
-  bool get showIpLogs {
-    return _showIpLogs;
-  }
-
   bool get combinedChartHome {
     return _combinedChartHome;
   }
@@ -248,30 +236,6 @@ class AppConfigProvider with ChangeNotifier {
     try {
       sharedPreferencesInstance.setBool('hideZeroValues', status);
       _hideZeroValues = status;
-      notifyListeners();
-      return true;
-    } catch (e, stackTrace) {
-      Sentry.captureException(e, stackTrace: stackTrace);
-      return false;
-    }
-  }
-
-  Future<bool> setshowTimeLogs(bool status) async {
-    try {
-      sharedPreferencesInstance.setBool('showTimeLogs', status);
-      _showTimeLogs = status;
-      notifyListeners();
-      return true;
-    } catch (e, stackTrace) {
-      Sentry.captureException(e, stackTrace: stackTrace);
-      return false;
-    }
-  }
-
-  Future<bool> setShowIpLogs(bool status) async {
-    try {
-      sharedPreferencesInstance.setBool('showIpLogs', status);
-      _showIpLogs = status;
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
@@ -432,9 +396,7 @@ class AppConfigProvider with ChangeNotifier {
     _staticColor = sharedPreferencesInstance.getInt('staticColor') ?? 0;
     _useThemeColorForStatus =
         sharedPreferencesInstance.getBool('useThemeColorForStatus') ?? false;
-    _showTimeLogs = sharedPreferencesInstance.getBool('showTimeLogs') ?? false;
     _doNotRememberVersion = sharedPreferencesInstance.getString('doNotRememberVersion');
-    _showIpLogs = sharedPreferencesInstance.getBool('showIpLogs') ?? false;
     _combinedChartHome = sharedPreferencesInstance.getBool('combinedChart') ?? false;
     _hideServerAddress = sharedPreferencesInstance.getBool('hideServerAddress') ?? false;
     if (sharedPreferencesInstance.getStringList('homeTopItemsOrder') != null) {

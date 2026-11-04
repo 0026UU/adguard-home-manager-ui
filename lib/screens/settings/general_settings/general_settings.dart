@@ -202,51 +202,6 @@ class _GeneralSettingsState extends State<GeneralSettings> {
                     )
                   ) 
             ),
-            SectionLabel(label: AppLocalizations.of(context)!.logs),
-            CustomListTile(
-              icon: Icons.timer_rounded,
-              title: AppLocalizations.of(context)!.timeLogs,
-              subtitle: AppLocalizations.of(context)!.timeLogsDescription,
-              trailing: Switch(
-                value: appConfigProvider.showTimeLogs, 
-                onChanged: (value) => updateSettings(
-                  newStatus: value, 
-                  function: appConfigProvider.setshowTimeLogs
-                ),
-              ),
-              onTap: () => updateSettings(
-                newStatus: !appConfigProvider.showTimeLogs, 
-                function: appConfigProvider.setshowTimeLogs
-              ),
-              padding: const EdgeInsets.only(
-                top: 10,
-                bottom: 10,
-                left: 16,
-                right: 10
-              )
-            ),
-            CustomListTile(
-              icon: Icons.more,
-              title: AppLocalizations.of(context)!.ipLogs,
-              subtitle: AppLocalizations.of(context)!.ipLogsDescription,
-              trailing: Switch(
-                value: appConfigProvider.showIpLogs, 
-                onChanged: (value) => updateSettings(
-                  newStatus: value, 
-                  function: appConfigProvider.setShowIpLogs
-                ),
-              ),
-              onTap: () => updateSettings(
-                newStatus: !appConfigProvider.showIpLogs, 
-                function: appConfigProvider.setShowIpLogs
-              ),
-              padding: const EdgeInsets.only(
-                top: 10,
-                bottom: 10,
-                left: 16,
-                right: 10
-              )
-            ),
             // if (!(Platform.isAndroid || Platform.isIOS) || (Platform.isAndroid && (appConfigProvider.installationSource == InstallationAppReferrer.androidManually ))) ...[
             //   SectionLabel(label: AppLocalizations.of(context)!.application),
             //   CustomListTile(

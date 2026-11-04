@@ -26,15 +26,11 @@ class LogsListAppBar extends StatelessWidget {
   /// one, the stored query log gets the accent.
   final Color? subtitleDot;
 
-  /// The live stream watches the server already, so it needs no refresh.
-  final bool live;
-
   const LogsListAppBar({
     super.key,
     required this.innerBoxIsScrolled,
     this.subtitle,
     this.subtitleDot,
-    this.live = false,
   });
 
   @override
@@ -105,11 +101,6 @@ class LogsListAppBar extends StatelessWidget {
         bottomHeight: hasFilters ? 46 : 0,
       ),
       actions: [
-        if (!live && !(Platform.isAndroid || Platform.isIOS)) IconButton(
-          onPressed: () => logsProvider.fetchLogs(inOffset: 0), 
-          icon: const Icon(CupertinoIcons.arrow_clockwise),
-          tooltip: localizations.refresh,
-        ),
         if (logsProvider.loadStatus == LoadStatus.loaded) IconButton(
           onPressed: openFilersModal,
           icon: const Icon(CupertinoIcons.slider_horizontal_3),

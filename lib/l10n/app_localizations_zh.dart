@@ -2911,6 +2911,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get searchDevicesHint => '搜索名称、IP 或 MAC';
+
+  @override
+  String get logReason => '原因';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -5728,4 +5731,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get searchDevicesHint => '搜索名称、IP 或 MAC';
+
+  @override
+  String get logReason => '原因';
 }

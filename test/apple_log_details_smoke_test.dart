@@ -140,6 +140,9 @@ void main() {
     expect(find.byType(ApplePill), findsNWidgets(2));
     expect(find.text('AdGuard DNS filter'), findsOneWidget);
     expect(find.byType(AppleListSection), findsNWidgets(6));
+    // The reason the server answered with reads as a row of its own.
+    expect(find.text(l.logReason), findsOneWidget);
+    expect(find.text('FilteredBlackList'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
