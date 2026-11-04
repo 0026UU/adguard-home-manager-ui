@@ -176,7 +176,9 @@ void main() {
                 active: true,
                 icon: Icons.shield,
                 title: 'Protection enabled',
-                description: 'Blocked 5,921 / 18,432',
+                description:
+                    'Blocking ads and trackers for 128 devices\n'
+                    '5,921 / 18,432 queries blocked',
                 trailing: SizedBox(width: 58, height: 58),
                 actions: [
                   AppleButton.secondary(label: 'Manage'),

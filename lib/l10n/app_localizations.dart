@@ -5046,6 +5046,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Client IDs'**
   String get clientIds;
+
+  /// No description provided for @devices.
+  ///
+  /// In en, this message translates to:
+  /// **'Devices'**
+  String get devices;
+
+  /// No description provided for @identifiedDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Identified devices'**
+  String get identifiedDevices;
+
+  /// No description provided for @shownDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} devices'**
+  String shownDevices(Object count);
+
+  /// No description provided for @identifiedDevicesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} identified'**
+  String identifiedDevicesCount(Object count);
+
+  /// No description provided for @customSettingsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} with custom settings'**
+  String customSettingsCount(Object count);
+
+  /// No description provided for @hasCustomSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom settings'**
+  String get hasCustomSettings;
+
+  /// No description provided for @hasDefaultSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Default settings'**
+  String get hasDefaultSettings;
+
+  /// No description provided for @onlyCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get onlyCustom;
+
+  /// No description provided for @onlyDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get onlyDefault;
+
+  /// No description provided for @protectingDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocking ads and trackers for {count} devices'**
+  String protectingDevices(Object count);
+
+  /// No description provided for @allQueriesAllowedDirectly.
+  ///
+  /// In en, this message translates to:
+  /// **'All DNS queries are allowed directly'**
+  String get allQueriesAllowedDirectly;
+
+  /// No description provided for @blockedOfQueries.
+  ///
+  /// In en, this message translates to:
+  /// **'{blocked} / {total} queries blocked'**
+  String blockedOfQueries(Object blocked, Object total);
+
+  /// No description provided for @retainedFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Retained for {time}'**
+  String retainedFor(Object time);
+
+  /// No description provided for @overview.
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get overview;
 }
 
 class _AppLocalizationsDelegate

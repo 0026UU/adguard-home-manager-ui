@@ -78,6 +78,7 @@ class _HomeState extends State<Home> {
     final statusProvider = Provider.of<StatusProvider>(context);
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
     final serversProvider = Provider.of<ServersProvider>(context);
+    final clientsProvider = Provider.of<ClientsProvider>(context);
 
     final p = ApplePalette.of(context);
     final width = MediaQuery.sizeOf(context).width;
@@ -103,7 +104,7 @@ class _HomeState extends State<Home> {
     ].where((part) => part != null && part.isNotEmpty).join(' · ');
 
     return AppleScreen(
-      title: AppLocalizations.of(context)!.home,
+      title: AppLocalizations.of(context)!.overview,
       subtitle: subtitle,
       subtitleDot: protectedOn ? p.green : p.red,
       onRefresh: _refresh,
@@ -171,6 +172,7 @@ class _HomeState extends State<Home> {
               stats: stats,
               protectionOn: protectedOn,
               protectionLabel: AppLocalizations.of(context)!.allProtections,
+              devices: clientsProvider.clients?.autoClients.length ?? 0,
               onManage: () => showAppleSheet(
                 context,
                 title: AppLocalizations.of(context)!.allProtections,
@@ -307,6 +309,9 @@ class _HeroCard extends StatelessWidget {
   final DnsStatistics stats;
   final bool protectionOn;
   final String protectionLabel;
+
+  /// Devices the server knows about, shown on the first line of the card.
+  final int devices;
   final VoidCallback onManage;
   final VoidCallback onOpenLogs;
 
@@ -314,6 +319,7 @@ class _HeroCard extends StatelessWidget {
     required this.stats,
     required this.protectionOn,
     required this.protectionLabel,
+    required this.devices,
     required this.onManage,
     required this.onOpenLogs,
   });
@@ -321,10 +327,22 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = ApplePalette.of(context);
+    final l = AppLocalizations.of(context)!;
 
     final double rate = stats.numDnsQueries > 0
       ? (stats.numBlockedFiltering / stats.numDnsQueries) * 100
       : 0;
+
+    // Two lines, like the design layer: what the server is doing right now,
+    // then how much of the traffic the blocking accounts for.
+    final status = protectionOn
+      ? l.protectingDevices(devices)
+      : l.allQueriesAllowedDirectly;
+    final counts = l.blockedOfQueries(
+      intFormat(stats.numBlockedFiltering, Platform.localeName),
+      intFormat(stats.numDnsQueries, Platform.localeName),
+    );
+    final description = "$status\n$counts";
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
@@ -335,12 +353,9 @@ class _HeroCard extends StatelessWidget {
             : CupertinoIcons.pause_circle,
         onTapIcon: onManage,
         title: protectionOn
-            ? AppLocalizations.of(context)!.protectionEnabled
-            : AppLocalizations.of(context)!.disabled,
-        description:
-            "${AppLocalizations.of(context)!.blocked} "
-            "${intFormat(stats.numBlockedFiltering, Platform.localeName)} / "
-            "${intFormat(stats.numDnsQueries, Platform.localeName)}",
+            ? l.protectionEnabled
+            : l.disabled,
+        description: description,
         trailing: AppleDonut(
           percent: rate,
           size: 58,

@@ -789,5 +789,19 @@
     "clientDisallowedSuccessfully": "客户端成功禁止",
     "changesNotSaved": "更改无法保存",
     "allowingClient": "正在允许客户端...",
-    "disallowingClient": "正在禁止客户端..."
+    "disallowingClient": "正在禁止客户端...",
+    "devices": "设备",
+    "identifiedDevices": "已识别设备",
+    "shownDevices": "{count} 台设备",
+    "identifiedDevicesCount": "{count} 台已识别",
+    "customSettingsCount": "{count} 台已单独配置",
+    "hasCustomSettings": "自定义配置",
+    "hasDefaultSettings": "默认配置",
+    "onlyCustom": "已单独配置",
+    "onlyDefault": "未配置",
+    "protectingDevices": "正在为 {count} 台设备拦截广告与跟踪",
+    "allQueriesAllowedDirectly": "所有 DNS 查询正在直接放行",
+    "blockedOfQueries": "{blocked} / {total} 条查询被拦截",
+    "retainedFor": "保留 {time}",
+    "overview": "概览"
 }

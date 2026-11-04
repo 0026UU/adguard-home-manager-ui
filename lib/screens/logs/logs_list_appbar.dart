@@ -25,9 +25,13 @@ final GlobalKey _searchButtonKey = GlobalKey();
 class LogsListAppBar extends StatelessWidget {
   final bool innerBoxIsScrolled;
 
+  /// Status line under the title, e.g. how long the server keeps its logs.
+  final String? subtitle;
+
   const LogsListAppBar({
     super.key,
     required this.innerBoxIsScrolled,
+    this.subtitle,
   });
 
   @override
@@ -136,6 +140,8 @@ class LogsListAppBar extends StatelessWidget {
       actionsIconTheme: IconThemeData(color: palette.tint),
       flexibleSpace: AppleLargeTitle(
         title: localizations.logs,
+        subtitle: subtitle,
+        subtitleDot: subtitle == null ? null : palette.tint,
         bottomHeight: hasFilters ? 46 : 0,
       ),
       actions: [

@@ -2629,4 +2629,59 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get clientIds => 'Client IDs';
+
+  @override
+  String get devices => 'Devices';
+
+  @override
+  String get identifiedDevices => 'Identified devices';
+
+  @override
+  String shownDevices(Object count) {
+    return '$count devices';
+  }
+
+  @override
+  String identifiedDevicesCount(Object count) {
+    return '$count identified';
+  }
+
+  @override
+  String customSettingsCount(Object count) {
+    return '$count with custom settings';
+  }
+
+  @override
+  String get hasCustomSettings => 'Custom settings';
+
+  @override
+  String get hasDefaultSettings => 'Default settings';
+
+  @override
+  String get onlyCustom => 'Custom';
+
+  @override
+  String get onlyDefault => 'Default';
+
+  @override
+  String protectingDevices(Object count) {
+    return 'Blocking ads and trackers for $count devices';
+  }
+
+  @override
+  String get allQueriesAllowedDirectly =>
+      'All DNS queries are allowed directly';
+
+  @override
+  String blockedOfQueries(Object blocked, Object total) {
+    return '$blocked / $total queries blocked';
+  }
+
+  @override
+  String retainedFor(Object time) {
+    return 'Retained for $time';
+  }
+
+  @override
+  String get overview => 'Overview';
 }

@@ -15,9 +15,11 @@ import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/models/logs.dart';
+import 'package:adguard_home_manager/models/querylog_config.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
 import 'package:adguard_home_manager/providers/clients_provider.dart';
 import 'package:adguard_home_manager/providers/logs_provider.dart';
+import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
 
 class LogsListWidget extends StatefulWidget {
@@ -38,6 +40,29 @@ class LogsListWidget extends StatefulWidget {
 
 class _LogsListWidgetState extends State<LogsListWidget> {
   final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
+  /// How long the server keeps the queries below, shown under the title.
+  String? retention;
+
+  Future<void> fetchRetention() async {
+    final serversProvider = Provider.of<ServersProvider>(context, listen: false);
+
+    if (serversProvider.apiClient2 == null) return;
+
+    final result = await serversProvider.apiClient2!.getQueryLogInfo();
+    if (!mounted || result.successful != true) return;
+
+    final interval = (result.content as QueryLogConfig).interval ?? 0;
+    if (interval <= 0) return;
+
+    final localizations = AppLocalizations.of(context)!;
+    final hours = interval ~/ Duration.millisecondsPerHour;
+    setState(() {
+      retention = localizations.retainedFor(
+        hours > 0 ? localizations.hours(hours) : localizations.minutes(1),
+      );
+    });
+  }
 
   void fetchFilteringRules() async {
     final appConfigProvider = Provider.of<AppConfigProvider>(context, listen: false);
@@ -84,6 +109,7 @@ class _LogsListWidgetState extends State<LogsListWidget> {
     logsProvider.fetchLogs(inOffset: 0);
     fetchFilteringRules();
     fetchClients();
+    fetchRetention();
     super.initState();
   }
 
@@ -110,6 +136,7 @@ class _LogsListWidgetState extends State<LogsListWidget> {
               handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
               sliver: LogsListAppBar(
                 innerBoxIsScrolled: innerBoxIsScrolled, 
+                subtitle: retention,
               )
             )
           ],

@@ -821,5 +821,19 @@
     "enablingDnsRewriteRule": "Enabling DNS rewrite rules...",
     "disablingDnsRewriteRule": "Disabling DNS rewrite rules...",
     "selectIdToFilter": "Select an ID to filter",
-    "clientIds": "Client IDs"
+    "clientIds": "Client IDs",
+    "devices": "Devices",
+    "identifiedDevices": "Identified devices",
+    "shownDevices": "{count} devices",
+    "identifiedDevicesCount": "{count} identified",
+    "customSettingsCount": "{count} with custom settings",
+    "hasCustomSettings": "Custom settings",
+    "hasDefaultSettings": "Default settings",
+    "onlyCustom": "Custom",
+    "onlyDefault": "Default",
+    "protectingDevices": "Blocking ads and trackers for {count} devices",
+    "allQueriesAllowedDirectly": "All DNS queries are allowed directly",
+    "blockedOfQueries": "{blocked} / {total} queries blocked",
+    "retainedFor": "Retained for {time}",
+    "overview": "Overview"
 }

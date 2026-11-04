@@ -2531,6 +2531,60 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get clientIds => 'Client IDs';
+
+  @override
+  String get devices => '设备';
+
+  @override
+  String get identifiedDevices => '已识别设备';
+
+  @override
+  String shownDevices(Object count) {
+    return '$count 台设备';
+  }
+
+  @override
+  String identifiedDevicesCount(Object count) {
+    return '$count 台已识别';
+  }
+
+  @override
+  String customSettingsCount(Object count) {
+    return '$count 台已单独配置';
+  }
+
+  @override
+  String get hasCustomSettings => '自定义配置';
+
+  @override
+  String get hasDefaultSettings => '默认配置';
+
+  @override
+  String get onlyCustom => '已单独配置';
+
+  @override
+  String get onlyDefault => '未配置';
+
+  @override
+  String protectingDevices(Object count) {
+    return '正在为 $count 台设备拦截广告与跟踪';
+  }
+
+  @override
+  String get allQueriesAllowedDirectly => '所有 DNS 查询正在直接放行';
+
+  @override
+  String blockedOfQueries(Object blocked, Object total) {
+    return '$blocked / $total 条查询被拦截';
+  }
+
+  @override
+  String retainedFor(Object time) {
+    return '保留 $time';
+  }
+
+  @override
+  String get overview => '概览';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -4955,4 +5009,58 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get disallowingClient => '正在禁止客户端...';
+
+  @override
+  String get devices => '设备';
+
+  @override
+  String get identifiedDevices => '已识别设备';
+
+  @override
+  String shownDevices(Object count) {
+    return '$count 台设备';
+  }
+
+  @override
+  String identifiedDevicesCount(Object count) {
+    return '$count 台已识别';
+  }
+
+  @override
+  String customSettingsCount(Object count) {
+    return '$count 台已单独配置';
+  }
+
+  @override
+  String get hasCustomSettings => '自定义配置';
+
+  @override
+  String get hasDefaultSettings => '默认配置';
+
+  @override
+  String get onlyCustom => '已单独配置';
+
+  @override
+  String get onlyDefault => '未配置';
+
+  @override
+  String protectingDevices(Object count) {
+    return '正在为 $count 台设备拦截广告与跟踪';
+  }
+
+  @override
+  String get allQueriesAllowedDirectly => '所有 DNS 查询正在直接放行';
+
+  @override
+  String blockedOfQueries(Object blocked, Object total) {
+    return '$blocked / $total 条查询被拦截';
+  }
+
+  @override
+  String retainedFor(Object time) {
+    return '保留 $time';
+  }
+
+  @override
+  String get overview => '概览';
 }

@@ -506,6 +506,64 @@ class AppleListSection extends StatelessWidget {
   }
 }
 
+/// The caption line the design layer puts above a group: a 13pt label on the
+/// leading edge and, on the trailing edge, whatever the page counts there.
+/// Use it when the group itself is a scrolling list, since
+/// [AppleListSection] already draws its own header.
+class AppleGroupHeader extends StatelessWidget {
+  final String title;
+  final String? trailing;
+
+  /// Replaces [trailing] when the page needs something other than text.
+  final Widget? trailingWidget;
+
+  final EdgeInsets padding;
+
+  const AppleGroupHeader({
+    super.key,
+    required this.title,
+    this.trailing,
+    this.trailingWidget,
+    this.padding = const EdgeInsets.fromLTRB(16, 14, 16, 7),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+
+    return Padding(
+      padding: padding,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.08,
+                color: p.label2,
+                height: 1.25,
+              ),
+            ),
+          ),
+          if (trailingWidget != null)
+            trailingWidget!
+          else if (trailing != null)
+            Text(
+              trailing!,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: p.label3,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// A scrolling row list that reads as one inset-grouped card: 16pt side
 /// margins, rounded caps at both ends and the card colour behind every row.
 ///
@@ -1470,7 +1528,7 @@ class AppleHero extends StatelessWidget {
                             padding: const EdgeInsets.only(top: 3),
                             child: Text(
                               description!,
-                              maxLines: 2,
+                              maxLines: 3,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 13,
