@@ -1,8 +1,8 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:animations/animations.dart';
-import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
@@ -12,6 +12,8 @@ import 'package:adguard_home_manager/screens/clients/client/client_screen_functi
 import 'package:adguard_home_manager/screens/clients/client/added_client_tile.dart';
 import 'package:adguard_home_manager/screens/clients/client/remove_client_modal.dart';
 import 'package:adguard_home_manager/screens/clients/fab.dart';
+
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/widgets/tab_content_list.dart';
 
 import 'package:adguard_home_manager/functions/snackbar.dart';
@@ -22,8 +24,7 @@ import 'package:adguard_home_manager/classes/process_modal.dart';
 import 'package:adguard_home_manager/models/clients.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
 
-class AddedList extends StatefulWidget {
-  final ScrollController scrollController;
+class AddedList extends StatelessWidget {
   final List<Client> data;
   final void Function(Client) onClientSelected;
   final Client? selectedClient;
@@ -31,7 +32,6 @@ class AddedList extends StatefulWidget {
 
   const AddedList({
     super.key,
-    required this.scrollController,
     required this.data,
     required this.onClientSelected,
     this.selectedClient,
@@ -39,45 +39,19 @@ class AddedList extends StatefulWidget {
   });
 
   @override
-  State<AddedList> createState() => _AddedListState();
-}
-
-class _AddedListState extends State<AddedList> {
-  late bool isVisible;
-
-  @override
-  initState(){
-    super.initState();
-
-    isVisible = true;
-    widget.scrollController.addListener(() {
-      if (widget.scrollController.position.userScrollDirection == ScrollDirection.reverse) {
-        if (mounted && isVisible == true) {
-          setState(() => isVisible = false);
-        }
-      } 
-      else {
-        if (widget.scrollController.position.userScrollDirection == ScrollDirection.forward) {
-          if (mounted && isVisible == false) {
-            setState(() => isVisible = true);
-          }
-        }
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final statusProvider = Provider.of<StatusProvider>(context);
     final clientsProvider = Provider.of<ClientsProvider>(context);
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
+    final localizations = AppLocalizations.of(context)!;
+    final palette = ApplePalette.of(context);
 
     final width = MediaQuery.of(context).size.width;
 
     void confirmEditClient(Client client) async {
       ProcessModal processModal = ProcessModal();
       if (context.mounted) {
-        processModal.open(AppLocalizations.of(context)!.savingChanges);
+        processModal.open(localizations.savingChanges);
       }
       
       final result = await clientsProvider.editClient(client);
@@ -89,14 +63,14 @@ class _AddedListState extends State<AddedList> {
       if (result == true) {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.clientUpdatedSuccessfully, 
+          label: localizations.clientUpdatedSuccessfully, 
           color: Colors.green
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.clientNotUpdated, 
+          label: localizations.clientNotUpdated, 
           color: Colors.red
         );
       }
@@ -104,26 +78,26 @@ class _AddedListState extends State<AddedList> {
 
     void deleteClient(Client client) async {
       ProcessModal processModal = ProcessModal();
-      processModal.open(AppLocalizations.of(context)!.removingClient);
+      processModal.open(localizations.removingClient);
       
       final result = await clientsProvider.deleteClient(client);
     
       processModal.close();
 
       if (result == true) {
-        if (widget.splitView == true) {
+        if (splitView == true) {
           Navigator.of(clientsNavigatorKey.currentContext!).popUntil((route) => false);
         }
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.clientDeletedSuccessfully, 
+          label: localizations.clientDeletedSuccessfully, 
           color: Colors.green
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.clientNotDeleted, 
+          label: localizations.clientNotDeleted, 
           color: Colors.red
         );
       }
@@ -147,92 +121,54 @@ class _AddedListState extends State<AddedList> {
         )
       );
     }
+
+    // The provider already filters by the search term; this keeps the added
+    // list in sync with names and ids as before.
     final clientsDisplay = clientsProvider.searchTermClients != null && clientsProvider.searchTermClients != ""
-      ? widget.data.where(
+      ? data.where(
           (c) => c.name.toLowerCase().contains(clientsProvider.searchTermClients.toString()) || c.ids.where((id) => id.contains(clientsProvider.searchTermClients.toString())).isNotEmpty
         ).toList()
-      : widget.data;
+      : data;
 
     return CustomTabContentList(
-      listPadding: widget.splitView == true 
+      listPadding: splitView == true 
         ? const EdgeInsets.only(top: 8)
         : null,
-      loadingGenerator: () => SizedBox(
-        width: double.maxFinite,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 30),
-            Text(
-              AppLocalizations.of(context)!.loadingStatus,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 22,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            )
-          ],
-        ),
-      ), 
+      loadingGenerator: () => AppleLoading(
+        label: localizations.loadingStatus,
+      ),
       itemsCount: clientsDisplay.length,
       contentWidget: (index) => AddedClientTile(
-        selectedClient: widget.selectedClient,
+        selectedClient: selectedClient,
         client: clientsDisplay[index], 
-        onTap: widget.onClientSelected,
+        onTap: onClientSelected,
         onEdit: statusProvider.serverStatus != null
           ? (c) => openClientModal(c)
           : null,
         onDelete: openDeleteModal,
-        splitView: widget.splitView,
+        splitView: splitView,
+        showSeparator: index != clientsDisplay.length - 1,
       ),
-      noData: SizedBox(
-        width: double.maxFinite,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                AppLocalizations.of(context)!.noClientsList,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 24,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-            const SizedBox(height: 30),
-            TextButton.icon(
+      noData: Center(
+        child: AppleEmptyState(
+          icon: CupertinoIcons.person_2,
+          title: localizations.noClientsList,
+          color: palette.label3,
+          action: SizedBox(
+            width: 180,
+            child: AppleButton.secondary(
+              label: localizations.refresh,
+              icon: CupertinoIcons.arrow_2_circlepath,
               onPressed: () => clientsProvider.fetchClients(updateLoading: true),
-              icon: const Icon(Icons.refresh_rounded), 
-              label: Text(AppLocalizations.of(context)!.refresh),
-            )
-          ],
+            ),
+          ),
         ),
       ), 
-      errorGenerator: () => SizedBox(
-        width: double.maxFinite,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error,
-              color: Colors.red,
-              size: 50,
-            ),
-            const SizedBox(height: 30),
-            Text(
-              AppLocalizations.of(context)!.errorLoadServerStatus,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 22,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            )
-          ],
+      errorGenerator: () => Center(
+        child: AppleEmptyState(
+          icon: CupertinoIcons.exclamationmark_triangle,
+          title: localizations.errorLoadServerStatus,
+          color: palette.orange,
         ),
       ), 
       loadStatus: statusProvider.loadStatus == LoadStatus.loading || clientsProvider.loadStatus == LoadStatus.loading
@@ -240,7 +176,7 @@ class _AddedListState extends State<AddedList> {
         : clientsProvider.loadStatus, 
       onRefresh: () => clientsProvider.fetchClients(updateLoading: false),
       fab: const ClientsFab(),
-      fabVisible: isVisible,
+      fabVisible: true,
     );
   }
 }

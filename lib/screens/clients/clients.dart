@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:adguard_home_manager/screens/clients/clients_lists.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
 import 'package:adguard_home_manager/models/clients.dart';
 
 final clientsNavigatorKey = GlobalKey<NavigatorState>();
@@ -20,7 +22,10 @@ class _ClientsState extends State<Clients> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final palette = ApplePalette.of(context);
+
     return Scaffold(
+      backgroundColor: palette.card,
       body: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth > 900) {
@@ -31,6 +36,10 @@ class _ClientsState extends State<Clients> with TickerProviderStateMixin {
                 child: ClientsLists(
                   splitView: true,
                 )
+              ),
+              SizedBox(
+                width: 0.5,
+                child: ColoredBox(color: palette.separator),
               ),
               Expanded(
                 flex: 2,

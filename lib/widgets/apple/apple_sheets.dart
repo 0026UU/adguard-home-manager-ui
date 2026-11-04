@@ -184,7 +184,13 @@ class _AppleActionTile extends StatelessWidget {
         Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: action.disabled ? null : action.onTap,
+            onTap: action.disabled
+              ? null
+              : () {
+                  // UIAlertController semantics: the sheet always closes first.
+                  Navigator.pop(context);
+                  action.onTap?.call();
+                },
             child: SizedBox(
               width: double.infinity,
               height: 57,
@@ -345,4 +351,150 @@ Future<void> showAppleActionSheet(
       );
     },
   );
+}
+
+/// `UIAlertController` with `.alert` style: a centered 270pt card whose
+/// buttons sit in a hairline-separated footer, like iOS alerts.
+class AppleAlertDialog extends StatelessWidget {
+  final String title;
+  final String? message;
+  final List<AppleSheetAction> actions;
+
+  const AppleAlertDialog({
+    super.key,
+    required this.title,
+    this.message,
+    required this.actions,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+    final sideBySide = actions.length == 2;
+
+    Widget hairline({bool vertical = false}) => SizedBox(
+      width: vertical ? 0.5 : double.infinity,
+      height: vertical ? 44 : 0.5,
+      child: ColoredBox(color: p.separator),
+    );
+
+    final footer = sideBySide
+      ? Row(
+          children: [
+            Expanded(
+              child: _AppleAlertButton(action: actions[0], prominent: false),
+            ),
+            hairline(vertical: true),
+            Expanded(
+              child: _AppleAlertButton(action: actions[1], prominent: true),
+            ),
+          ],
+        )
+      : Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < actions.length; i++) ...[
+              _AppleAlertButton(action: actions[i], prominent: i == actions.length - 1),
+              if (i != actions.length - 1) hairline(),
+            ],
+          ],
+        );
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 270),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: ColoredBox(
+            color: p.chromeSolid,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: EdgeInsets.fromLTRB(16, 20, 16, message == null ? 20 : 6),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          height: 1.25,
+                          color: p.label,
+                        ),
+                      ),
+                      if (message != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            message!,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              height: 1.35,
+                              color: p.label2,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                hairline(),
+                footer,
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AppleAlertButton extends StatelessWidget {
+  final AppleSheetAction action;
+  final bool prominent;
+
+  const _AppleAlertButton({required this.action, required this.prominent});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+    final color = action.disabled
+      ? p.label3
+      : (action.color ?? (action.destructive ? p.red : p.tint));
+
+    return SizedBox(
+      height: 44,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: action.disabled
+            ? null
+            : () {
+                Navigator.pop(context);
+                action.onTap?.call();
+              },
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                action.label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 17,
+                  height: 1.2,
+                  fontWeight: prominent ? FontWeight.w600 : FontWeight.w400,
+                  color: color,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

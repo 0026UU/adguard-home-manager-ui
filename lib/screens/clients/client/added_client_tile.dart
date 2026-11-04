@@ -1,10 +1,11 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/widgets/options_menu.dart';
-import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
 
 import 'package:adguard_home_manager/models/menu_option.dart';
 import 'package:adguard_home_manager/functions/copy_clipboard.dart';
@@ -19,6 +20,9 @@ class AddedClientTile extends StatefulWidget {
   final Client? selectedClient;
   final bool? splitView;
 
+  /// Trailing hairline; disabled for the last row of a list.
+  final bool showSeparator;
+
   const AddedClientTile({
     super.key,
     required this.client,
@@ -27,6 +31,7 @@ class AddedClientTile extends StatefulWidget {
     required this.onDelete,
     this.selectedClient,
     required this.splitView,
+    this.showSeparator = true,
   });
 
   @override
@@ -38,225 +43,110 @@ class _AddedClientTileState extends State<AddedClientTile> {
 
   @override
   Widget build(BuildContext context) {
-    final appConfigProvider = Provider.of<AppConfigProvider>(context);
+    final localizations = AppLocalizations.of(context)!;
+    final palette = ApplePalette.of(context);
 
-    if (widget.splitView == true) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(28),
-          child: OptionsMenu(
-            options: (_) => [
-              MenuOption(
-                icon: Icons.copy_rounded,
-                title: AppLocalizations.of(context)!.copyClipboard, 
-                action: () => copyToClipboard(
-                  value: widget.client.ids.toString().replaceAll(RegExp(r'^\[|\]$'), ''), 
-                  successMessage: AppLocalizations.of(context)!.copiedClipboard,
-                )
-              ),
-            ],
-            child: InkWell(
-              borderRadius: BorderRadius.circular(28),
-              onTap: () => widget.onTap(widget.client),
-              onHover: (v) => setState(() => _isHover = v),
-              child: Container(
-                width: double.maxFinite,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
-                  color: widget.client == widget.selectedClient 
-                    ? Theme.of(context).colorScheme.primaryContainer
-                    : null
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.client.name,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w400,
-                                    color: Theme.of(context).colorScheme.onSurface,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  widget.client.ids.toString().replaceAll(RegExp(r'^\[|\]$'), ''),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.filter_list_rounded,
-                                      size: 19,
-                                      color: widget.client.filteringEnabled == true 
-                                        ? appConfigProvider.useThemeColorForStatus == true
-                                          ? Theme.of(context).colorScheme.primary
-                                          : Colors.green
-                                        : appConfigProvider.useThemeColorForStatus == true
-                                          ? Colors.grey
-                                          : Colors.red,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Icon(
-                                      Icons.vpn_lock_rounded,
-                                      size: 18,
-                                      color: widget.client.safebrowsingEnabled == true 
-                                        ? appConfigProvider.useThemeColorForStatus == true
-                                          ? Theme.of(context).colorScheme.primary
-                                          : Colors.green
-                                        : appConfigProvider.useThemeColorForStatus == true
-                                          ? Colors.grey
-                                          : Colors.red,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Icon(
-                                      Icons.block,
-                                      size: 18,
-                                      color: widget.client.parentalEnabled == true 
-                                        ? appConfigProvider.useThemeColorForStatus == true
-                                          ? Theme.of(context).colorScheme.primary
-                                          : Colors.green
-                                        : appConfigProvider.useThemeColorForStatus == true
-                                          ? Colors.grey
-                                          : Colors.red,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Icon(
-                                      Icons.search_rounded,
-                                      size: 19,
-                                      color: widget.client.safeSearch != null && widget.client.safeSearch!.enabled == true 
-                                        ? appConfigProvider.useThemeColorForStatus == true
-                                          ? Theme.of(context).colorScheme.primary
-                                          : Colors.green
-                                        : appConfigProvider.useThemeColorForStatus == true
-                                          ? Colors.grey
-                                          : Colors.red
-                                    )
-                                  ],
-                                )
-                              ],
-                            ),
-                          )
-                        ],
-                      ),
-                    ),
-                    if (widget.onEdit != null && _isHover == true) ...[
-                      const SizedBox(width: 8),
-                      IconButton(
-                        onPressed: () => widget.onEdit!(widget.client), 
-                        icon: const Icon(Icons.file_open_rounded),
-                        tooltip: AppLocalizations.of(context)!.seeDetails,
-                      )
-                    ]
-                  ],
-                )
-              ),
-            ),
+    final splitView = widget.splitView == true;
+    final ids = widget.client.ids.toString().replaceAll(RegExp(r'^\[|\]$'), '');
+
+    final tile = AppleListTile(
+      title: widget.client.name,
+      leading: AppleAvatar(text: widget.client.name, color: palette.seeded(widget.client.name)),
+      subtitleWidget: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            ids,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
-      );
-    }
-    else {
-      return OptionsMenu(
+          const SizedBox(height: 6),
+          ClientStatusIcons(client: widget.client),
+        ],
+      ),
+      onTap: () => widget.onTap(widget.client),
+      showChevron: !splitView,
+      selected: splitView && widget.client == widget.selectedClient,
+      trailing: splitView && widget.onEdit != null && _isHover
+        ? IconButton(
+            onPressed: () => widget.onEdit!(widget.client), 
+            icon: const Icon(CupertinoIcons.pencil, size: 20),
+            tooltip: localizations.seeDetails,
+          )
+        : null,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    );
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHover = true),
+      onExit: (_) => setState(() => _isHover = false),
+      child: OptionsMenu(
         options: (_) => [
           if (widget.onEdit != null) MenuOption(
-            title: AppLocalizations.of(context)!.seeDetails,
-            icon: Icons.file_open_rounded,
+            title: localizations.seeDetails,
+            icon: CupertinoIcons.pencil,
             action: () => widget.onEdit!(widget.client)
           ),
           MenuOption(
-            icon: Icons.copy_rounded,
-            title: AppLocalizations.of(context)!.copyClipboard, 
+            icon: CupertinoIcons.doc_on_clipboard,
+            title: localizations.copyClipboard, 
             action: () => copyToClipboard(
-              value: widget.client.ids.toString().replaceAll(RegExp(r'^\[|\]$'), ''), 
-              successMessage: AppLocalizations.of(context)!.copiedClipboard,
+              value: ids, 
+              successMessage: localizations.copiedClipboard,
             )
           ),
         ],
-        child: CustomListTile(
-          onTap: () => widget.onTap(widget.client),
-          title: widget.client.name,
-          subtitleWidget: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                widget.client.ids.toString().replaceAll(RegExp(r'^\[|\]$'), ''),
-                style: TextStyle(
-                  color: Theme.of(context).listTileTheme.textColor
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(
-                    Icons.filter_list_rounded,
-                    size: 19,
-                    color: widget.client.filteringEnabled == true 
-                      ? appConfigProvider.useThemeColorForStatus == true
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.green
-                      : appConfigProvider.useThemeColorForStatus == true
-                        ? Colors.grey
-                        : Colors.red,
-                  ),
-                  const SizedBox(width: 10),
-                  Icon(
-                    Icons.vpn_lock_rounded,
-                    size: 18,
-                    color: widget.client.safebrowsingEnabled == true 
-                      ? appConfigProvider.useThemeColorForStatus == true
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.green
-                      : appConfigProvider.useThemeColorForStatus == true
-                        ? Colors.grey
-                        : Colors.red,
-                  ),
-                  const SizedBox(width: 10),
-                  Icon(
-                    Icons.block,
-                    size: 18,
-                    color: widget.client.parentalEnabled == true 
-                      ? appConfigProvider.useThemeColorForStatus == true
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.green
-                      : appConfigProvider.useThemeColorForStatus == true
-                        ? Colors.grey
-                        : Colors.red,
-                  ),
-                  const SizedBox(width: 10),
-                  Icon(
-                    Icons.search_rounded,
-                    size: 19,
-                    color: widget.client.safeSearch != null && widget.client.safeSearch!.enabled == true 
-                      ? appConfigProvider.useThemeColorForStatus == true
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.green
-                      : appConfigProvider.useThemeColorForStatus == true
-                        ? Colors.grey
-                        : Colors.red
-                  )
-                ],
-              )
-            ],
-          ),
+        child: Column(
+          children: [
+            tile,
+            if (widget.showSeparator) AppleSeparator(indent: tile.separatorIndent),
+          ],
         ),
-      );
+      ),
+    );
+  }
+}
+
+/// Filtering / safe browsing / parental / safe search state of a client.
+class ClientStatusIcons extends StatelessWidget {
+  final Client client;
+
+  const ClientStatusIcons({
+    super.key,
+    required this.client,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final appConfigProvider = Provider.of<AppConfigProvider>(context);
+    final p = ApplePalette.of(context);
+
+    Color colorFor(bool enabled) {
+      if (appConfigProvider.useThemeColorForStatus == true) {
+        return enabled ? p.tint : p.label3;
+      }
+      return enabled ? p.green : p.red;
     }
+
+    Widget icon(IconData iconData, bool enabled) => Padding(
+      padding: const EdgeInsets.only(right: 12),
+      child: Icon(
+        iconData,
+        size: 16,
+        color: colorFor(enabled),
+      ),
+    );
+
+    return Row(
+      children: [
+        icon(CupertinoIcons.line_horizontal_3_decrease, client.filteringEnabled),
+        icon(CupertinoIcons.checkmark_shield, client.safebrowsingEnabled),
+        icon(CupertinoIcons.lock, client.parentalEnabled),
+        icon(
+          CupertinoIcons.search,
+          client.safeSearch != null && client.safeSearch!.enabled == true,
+        ),
+      ],
+    );
   }
 }

@@ -1,11 +1,14 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
 import 'package:adguard_home_manager/screens/clients/client/client_screen_functions.dart';
+
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
@@ -64,7 +67,9 @@ class ClientsFab extends StatelessWidget {
     if (statusProvider.serverStatus != null) {
       return FloatingActionButton(
         onPressed: openAddClient,
-        child: const Icon(Icons.add),
+        backgroundColor: AppleColors.tint(ApplePalette.brightnessOf(context)),
+        foregroundColor: Colors.white,
+        child: const Icon(CupertinoIcons.plus),
       );
     }
     else {

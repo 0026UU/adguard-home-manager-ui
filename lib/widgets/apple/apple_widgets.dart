@@ -51,6 +51,27 @@ class ApplePalette {
 
   /// Colour of a secondary "cancel / clear" affordance.
   Color get destructive => AppleColors.red(brightness);
+
+  static const List<Color> _seedColors = [
+    Color(0xFF0A84FF),
+    Color(0xFF5E5CE6),
+    Color(0xFFFF2D55),
+    Color(0xFFFF9500),
+    Color(0xFF30D158),
+    Color(0xFF64D2FF),
+    Color(0xFFBF5AF2),
+    Color(0xFFFFD60A),
+  ];
+
+  /// Stable accent for an avatar/initial badge, like iOS contact colours.
+  Color seeded(String seed) {
+    if (seed.isEmpty) return gray;
+    var hash = 0;
+    for (final unit in seed.codeUnits) {
+      hash = (hash * 31 + unit) & 0x7fffffff;
+    }
+    return _seedColors[hash % _seedColors.length];
+  }
 }
 
 /// Blurred translucent background used by bars and sheets (UIVisualEffect).
@@ -100,41 +121,72 @@ class AppleScreen extends StatelessWidget {
   /// owns a floating button.
   final double bottomSpacer;
 
+  /// Pinned under the collapsing title, like a segmented control in a
+  /// `UINavigationItem`.
+  final Widget? header;
+
+  /// Body for screens that bring their own scrolling content (tabbed lists).
+  /// When set, the title bar collapses through a [NestedScrollView] and
+  /// [slivers] is ignored.
+  final Widget? body;
+
   const AppleScreen({
     super.key,
     required this.title,
-    required this.slivers,
+    this.slivers = const [],
     this.actions = const [],
     this.searchbar,
     this.onRefresh,
     this.floatingActionButton,
     this.bottomSpacer = 24,
+    this.header,
+    this.body,
   });
 
   @override
   Widget build(BuildContext context) {
     final p = ApplePalette.of(context);
 
+    final appbar = SliverAppBar.large(
+      title: Text(title),
+      titleSpacing: 20,
+      leading: null,
+      automaticallyImplyLeading: false,
+      actions: actions,
+      bottom: header == null ? null : AppleHeaderBar(child: header!),
+      pinned: true,
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
+      backgroundColor: Colors.transparent,
+      foregroundColor: p.label,
+      iconTheme: IconThemeData(color: p.label),
+      actionsIconTheme: IconThemeData(color: p.tint),
+      flexibleSpace: AppleBlur(color: p.chrome),
+    );
+
+    if (body != null) {
+      return Scaffold(
+        backgroundColor: p.window,
+        floatingActionButton: floatingActionButton,
+        body: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) => [
+            SliverOverlapAbsorber(
+              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+              sliver: appbar,
+            ),
+            if (searchbar != null) SliverToBoxAdapter(child: searchbar!),
+          ],
+          body: body!,
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: p.window,
       floatingActionButton: floatingActionButton,
       body: CustomScrollView(
         slivers: [
-          SliverAppBar.large(
-            title: Text(title),
-            titleSpacing: 20,
-            leading: null,
-            automaticallyImplyLeading: false,
-            actions: actions,
-            pinned: true,
-            scrolledUnderElevation: 0,
-            surfaceTintColor: Colors.transparent,
-            backgroundColor: Colors.transparent,
-            foregroundColor: p.label,
-            iconTheme: IconThemeData(color: p.label),
-            actionsIconTheme: IconThemeData(color: p.tint),
-            flexibleSpace: AppleBlur(color: p.chrome),
-          ),
+          appbar,
           if (searchbar != null)
             SliverToBoxAdapter(child: searchbar!),
           if (onRefresh != null)
@@ -143,6 +195,31 @@ class AppleScreen extends StatelessWidget {
           SliverToBoxAdapter(child: SizedBox(height: bottomSpacer)),
         ],
       ),
+    );
+  }
+}
+
+/// Fixed height slot rendered under the large title by [AppleScreen].
+class AppleHeaderBar extends StatelessWidget implements PreferredSizeWidget {
+  final Widget child;
+  final double height;
+  final EdgeInsets padding;
+
+  const AppleHeaderBar({
+    super.key,
+    required this.child,
+    this.height = 44,
+    this.padding = const EdgeInsets.fromLTRB(16, 0, 16, 8),
+  });
+
+  @override
+  Size get preferredSize => Size.fromHeight(height);
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      child: Padding(padding: padding, child: Center(child: child)),
     );
   }
 }
@@ -356,6 +433,9 @@ class AppleListTile extends StatelessWidget {
   /// Set false to hide the disclosure indicator on tappable rows.
   final bool showChevron;
   final bool enabled;
+
+  /// Row highlight for master/detail lists on wide layouts.
+  final bool selected;
   final int? subtitleMaxLines;
   final double? titleMaxWidth;
   final EdgeInsets padding;
@@ -374,6 +454,7 @@ class AppleListTile extends StatelessWidget {
     this.onLongPress,
     this.showChevron = true,
     this.enabled = true,
+    this.selected = false,
     this.subtitleMaxLines,
     this.titleMaxWidth,
     this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
@@ -464,7 +545,15 @@ class AppleListTile extends StatelessWidget {
       onLongPress: enabled ? onLongPress : null,
       splashColor: Colors.transparent,
       highlightColor: p.fill3,
-      child: Opacity(opacity: enabled ? 1 : 0.6, child: row),
+      child: Container(
+        decoration: selected
+            ? BoxDecoration(
+                color: p.fill2,
+                borderRadius: BorderRadius.circular(8),
+              )
+            : null,
+        child: Opacity(opacity: enabled ? 1 : 0.6, child: row),
+      ),
     );
   }
 }
@@ -744,6 +833,28 @@ class AppleSearchField extends StatelessWidget {
                 ),
               ),
             ),
+            if (controller != null)
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: controller!,
+                builder: (context, value, _) {
+                  if (value.text.isEmpty) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        controller!.clear();
+                        onChanged?.call('');
+                      },
+                      child: Icon(
+                        CupertinoIcons.xmark_circle_fill,
+                        size: 18,
+                        color: p.label3,
+                      ),
+                    ),
+                  );
+                },
+              ),
             if (suffix != null) suffix!,
           ],
         ),
@@ -1009,6 +1120,34 @@ class AppleEmptyState extends StatelessWidget {
           if (action != null) ...[
             const SizedBox(height: 18),
             action!,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Centered spinner, used while a screen or a tab body is loading.
+class AppleLoading extends StatelessWidget {
+  final String? label;
+
+  const AppleLoading({super.key, this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CupertinoActivityIndicator(radius: 14),
+          if (label != null) ...[
+            const SizedBox(height: 18),
+            Text(
+              label!,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 15, height: 1.3, color: p.label2),
+            ),
           ],
         ],
       ),

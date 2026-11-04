@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
 import 'package:adguard_home_manager/screens/clients/client/active_client_tile.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/widgets/tab_content_list.dart';
 
 import 'package:adguard_home_manager/providers/clients_provider.dart';
@@ -27,30 +28,15 @@ class ClientsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final clientsProvider = Provider.of<ClientsProvider>(context);
+    final localizations = AppLocalizations.of(context)!;
+    final palette = ApplePalette.of(context);
 
     return CustomTabContentList(
       listPadding: splitView == true 
         ? const EdgeInsets.only(top: 8)
         : null,
-      loadingGenerator: () =>  SizedBox(
-        width: double.maxFinite,
-        height: MediaQuery.of(context).size.height-171,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 30),
-            Text(
-              AppLocalizations.of(context)!.loadingStatus,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 22,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            )
-          ],
-        ),
+      loadingGenerator: () => AppleLoading(
+        label: localizations.loadingStatus,
       ), 
       itemsCount: data.length, 
       contentWidget: (index) => ActiveClientTile(
@@ -58,51 +44,28 @@ class ClientsList extends StatelessWidget {
         onTap: onClientSelected,
         splitView: splitView,
         selectedClient: selectedClient,
+        showSeparator: index != data.length - 1,
       ),
-      noData: SizedBox(
-        width: double.maxFinite,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              AppLocalizations.of(context)!.noClientsList,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 24,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 30),
-            TextButton.icon(
+      noData: Center(
+        child: AppleEmptyState(
+          icon: CupertinoIcons.person_2,
+          title: localizations.noClientsList,
+          color: palette.label3,
+          action: SizedBox(
+            width: 180,
+            child: AppleButton.secondary(
+              label: localizations.refresh,
+              icon: CupertinoIcons.arrow_2_circlepath,
               onPressed: () => clientsProvider.fetchClients(updateLoading: false),
-              icon: const Icon(Icons.refresh_rounded), 
-              label: Text(AppLocalizations.of(context)!.refresh)
-            )
-          ],
+            ),
+          ),
         ),
       ), 
-      errorGenerator: () => SizedBox(
-        width: double.maxFinite,
-        height: MediaQuery.of(context).size.height-171,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error,
-              color: Colors.red,
-              size: 50,
-            ),
-            const SizedBox(height: 30),
-            Text(
-              AppLocalizations.of(context)!.errorLoadServerStatus,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 22,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            )
-          ],
+      errorGenerator: () => Center(
+        child: AppleEmptyState(
+          icon: CupertinoIcons.exclamationmark_triangle,
+          title: localizations.errorLoadServerStatus,
+          color: palette.orange,
         ),
       ), 
       loadStatus: clientsProvider.loadStatus, 

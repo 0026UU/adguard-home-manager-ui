@@ -5,8 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
-import 'package:adguard_home_manager/widgets/custom_list_tile_dialog.dart';
-import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/models/menu_option.dart';
 
@@ -29,26 +28,34 @@ class OptionsMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     void openOptionsModal() {
-      showDialog(
-        context: context, 
-        builder: (context) => _OptionsModal(
-          options: options,
-          value: value
-        )
+      showAppleActionSheet(
+        context,
+        cancelLabel: AppLocalizations.of(context)?.cancel,
+        actions: options(value)
+          .map((opt) => AppleSheetAction(
+            label: opt.title,
+            icon: opt.icon,
+            disabled: opt.disabled == true,
+            onTap: opt.action,
+          ))
+          .toList(),
       );
     }
 
     return Material(
       color: Colors.transparent,
       child: ContextMenuArea(
-        builder: (context) => options(value).map((opt) => CustomListTile(
-          title: opt.title,
-          icon: opt.icon,
-          onTap: () {
-            opt.action();
-            Navigator.pop(context);
-          },
-        )).toList(),
+        builder: (context) => options(value).map(
+          (opt) => _AppleMenuRow(
+            title: opt.title,
+            icon: opt.icon,
+            enabled: opt.disabled != true,
+            onTap: () {
+              opt.action();
+              Navigator.pop(context);
+            },
+          )
+        ).toList(),
         child: InkWell(
           onTap: onTap != null
             ? () => onTap!(value)
@@ -64,62 +71,61 @@ class OptionsMenu extends StatelessWidget {
   }
 }
 
-class _OptionsModal extends StatelessWidget {
-  final List<MenuOption> Function(dynamic) options;
-  final dynamic value;
+/// Single line inside the desktop right-click menu.
+class _AppleMenuRow extends StatelessWidget {
+  final String title;
+  final IconData? icon;
+  final bool enabled;
+  final void Function() onTap;
 
-  const _OptionsModal({
-    required this.options,
-    this.value,
+  const _AppleMenuRow({
+    required this.title,
+    required this.onTap,
+    this.icon,
+    required this.enabled,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      contentPadding: const EdgeInsets.symmetric(vertical: 16),
-      scrollable: true,
-      title: Column(
-        children: [
-          Icon(
-            Icons.more_horiz,
-            size: 24,
-            color: Theme.of(context).listTileTheme.iconColor
-          ),
-          const SizedBox(height: 16),
-          Text(
-            AppLocalizations.of(context)!.options,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface
+    final p = ApplePalette.of(context);
+
+    return Opacity(
+      opacity: enabled ? 1 : 0.4,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          splashColor: Colors.transparent,
+          highlightColor: p.fill3,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            child: Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(
+                    icon,
+                    size: 18,
+                    color: enabled ? p.tint : p.label3,
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Flexible(
+                  child: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.25,
+                      color: enabled ? p.label : p.label3,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          )
-        ],
-      ),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: 500
-        ),
-        child: Column(
-          children: options(value).map((opt) => CustomListTileDialog(
-            title: opt.title,
-            icon: opt.icon,
-            onTap: () {
-              Navigator.pop(context);
-              opt.action();
-            },
-          )).toList()
+          ),
         ),
       ),
-      actions: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton(
-              onPressed: () => Navigator.pop(context), 
-              child: Text(AppLocalizations.of(context)!.cancel)
-            )
-          ],
-        )
-      ],
     );
   }
 }
