@@ -85,35 +85,28 @@ void openServerFormModal({
   required double width,
   Server? server,
 }) {
-  showGeneralDialog(
-    context: context, 
-    barrierColor:  width <= 700 
-      ?Colors.transparent 
-      : Colors.black54,
-    transitionBuilder: (context, anim1, anim2, child) {
-      return SlideTransition(
-        position: Tween(
-          begin: const Offset(0, 1), 
-          end: const Offset(0, 0)
-        ).animate(
-          CurvedAnimation(
-            parent: anim1, 
-            curve: Curves.easeInOutCubicEmphasized
-          )
-        ),
-        child: child,
-      );
-    },
-    pageBuilder: (context, animation, secondaryAnimation) => AddServerModal(
-      fullScreen: width <= 700,
-      server: server,
-      onUnsupportedVersion: (version) => showDialog(
-        context: context, 
-        builder: (ctx) => VersionWarningModal(
-          version: version 
-        ),
-        barrierDismissible: false
-      ),
-    ),
+  void onUnsupportedVersion(String version) => showDialog(
+    context: context,
+    builder: (ctx) => VersionWarningModal(version: version),
+    barrierDismissible: false,
+  );
+
+  final modal = AddServerModal(
+    dialog: width > 700,
+    server: server,
+    onUnsupportedVersion: onUnsupportedVersion,
+  );
+
+  if (width > 700) {
+    showDialog(context: context, builder: (context) => modal);
+    return;
+  }
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => modal,
   );
 }

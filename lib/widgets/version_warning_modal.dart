@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 class VersionWarningModal extends StatelessWidget {
   final String version;
@@ -12,35 +13,13 @@ class VersionWarningModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      scrollable: true,
-      title: Column(
-        children: [
-          Icon(
-            Icons.warning_rounded,
-            size: 24,
-            color: Theme.of(context).listTileTheme.iconColor
-          ),
-          const SizedBox(height: 16),
-          Text(
-            AppLocalizations.of(context)!.unsupportedVersion,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface
-            ),
-          )
-        ],
-      ),
-      content: Text(AppLocalizations.of(context)!.unsupprtedVersionMessage(version)),
+    final l = AppLocalizations.of(context)!;
+
+    return AppleAlertDialog(
+      title: l.unsupportedVersion,
+      message: l.unsupprtedVersionMessage(version),
       actions: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton(
-              onPressed: () => Navigator.pop(context), 
-              child: Text(AppLocalizations.of(context)!.iUnderstand)
-            )
-          ],
-        )
+        AppleSheetAction(label: l.iUnderstand),
       ],
     );
   }

@@ -1,16 +1,14 @@
 // ignore_for_file: use_build_context_synchronously
-import 'package:provider/provider.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:segmented_button_slide/segmented_button_slide.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
 import 'package:adguard_home_manager/widgets/add_server/unsupported_version_modal.dart';
-import 'package:adguard_home_manager/widgets/add_server/form_text_field.dart';
-import 'package:adguard_home_manager/widgets/section_label.dart';
-import 'package:adguard_home_manager/widgets/custom_switch_list_tile.dart';
 import 'package:adguard_home_manager/widgets/add_server/add_server_functions.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/config/minimum_server_version.dart';
 import 'package:adguard_home_manager/models/server_status.dart';
@@ -32,13 +30,15 @@ enum ConnectionType { http, https}
 
 class AddServerModal extends StatefulWidget {
   final Server? server;
-  final bool fullScreen;
+
+  /// True shows the wide card, false the phone sheet.
+  final bool dialog;
   final void Function(String version) onUnsupportedVersion;
 
   const AddServerModal({
     super.key,
     this.server,
-    required this.fullScreen,
+    required this.dialog,
     required this.onUnsupportedVersion
   });
 
@@ -99,7 +99,21 @@ class _AddServerModalState extends State<AddServerModal> {
   }
 
   @override
+  void dispose() {
+    nameController.dispose();
+    ipDomainController.dispose();
+    pathController.dispose();
+    portController.dispose();
+    userController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
+
     final serversProvider = Provider.of<ServersProvider>(context, listen: false);
     final statusProvider = Provider.of<StatusProvider>(context, listen: false);
     final appConfigProvider = Provider.of<AppConfigProvider>(context, listen: false);
@@ -332,305 +346,254 @@ class _AddServerModalState extends State<AddServerModal> {
       }      
     }
 
-    Widget actions() {
-      return Row(
-        children: [
-          IconButton(
-            onPressed: () => openUrl(Urls.connectionInstructions), 
-            icon: const Icon(Icons.help_outline_outlined)
+    // Group header, same metrics as the AppleListSection title row.
+    Widget group(String label) => Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 7),
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.08,
+          color: p.label2,
+          height: 1.25,
+        ),
+      ),
+    );
+
+    Widget input({
+      required String label,
+      required TextEditingController controller,
+      required IconData icon,
+      String? error,
+      String? hint,
+      String? helper,
+      TextInputType? keyboardType,
+      bool obscure = false,
+      ValueChanged<String>? onChanged,
+    }) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: TextFormField(
+          controller: controller,
+          style: AppleInput.style(context),
+          enabled: !isConnecting,
+          obscureText: obscure,
+          keyboardType: keyboardType,
+          onChanged: onChanged,
+          decoration: AppleInput.decoration(
+            context,
+            label: label,
+            icon: icon,
+            error: error,
+            hint: hint,
+            helper: helper,
           ),
-          IconButton(
-            tooltip: widget.server == null 
-              ? AppLocalizations.of(context)!.connect
-              : AppLocalizations.of(context)!.save,
-            onPressed: allDataValid == true && isConnecting == false
-              ? widget.server == null 
-                ? () => connect()
-                : () => edit()
-              : null,
-            icon: isConnecting
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator()
-                )
-              : Icon(
-                widget.server == null
-                  ? Icons.login_rounded
-                  : Icons.save_rounded
-            )
-          ),
-        ],
+        ),
       );
     }
 
+    Widget notice(IconData icon, Color color, String text) => Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: AppleCard(
+        radius: BorderRadius.circular(10),
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppleIconBadge(icon: icon, color: color, size: 26, iconSize: 15),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  text,
+                  style: TextStyle(fontSize: 13, height: 1.35, color: p.label2),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
     List<Widget> form() {
+      final locked = widget.server != null || isConnecting;
+
       return [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          margin: const EdgeInsets.only(
-            top: 24,
-            left: 24,
-            right: 24
-          ),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.primary
-            )
-          ),
-          child: Text(
-            "${connectionType.name}://${ipDomainController.text}${portController.text != '' ? ':${portController.text}' : ""}${pathController.text}",
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.w500
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            decoration: BoxDecoration(
+              color: p.pill(p.tint),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: p.tint.withValues(alpha: 0.3)),
+            ),
+            child: Text(
+              "${connectionType.name}://${ipDomainController.text}${portController.text != '' ? ':${portController.text}' : ""}${pathController.text}",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                height: 1.3,
+                color: p.tint,
+              ),
             ),
           ),
         ),
-        SectionLabel(
-          label: AppLocalizations.of(context)!.general,
-          padding: const EdgeInsets.all(24),
-        ),
-        FormTextField(
-          label: AppLocalizations.of(context)!.name, 
-          controller: nameController, 
-          icon: Icons.badge_rounded,
+        group(l.general),
+        input(
+          label: l.name,
+          controller: nameController,
+          icon: CupertinoIcons.textbox,
           error: nameError,
           onChanged: (value) {
             if (value != '') {
               setState(() => nameError = null);
+            } else {
+              setState(() => nameError = l.nameNotEmpty);
             }
-            else {
-              setState(() => nameError = AppLocalizations.of(context)!.nameNotEmpty);
-            } 
             validateData();
           },
-          isConnecting: isConnecting,
         ),
-        SectionLabel(
-          label: AppLocalizations.of(context)!.connection,
-          padding: const EdgeInsets.all(24),
-        ),
-        SegmentedButtonSlide(
-          entries: const [
-            SegmentedButtonSlideEntry(label: "HTTP"),
-            SegmentedButtonSlideEntry(label: "HTTPS"),
-          ], 
-          selectedEntry: connectionType.index, 
-          onChange: (v) => setState(() => connectionType = ConnectionType.values[v]), 
-          colors: SegmentedButtonSlideColors(
-            barColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2), 
-            backgroundSelectedColor: Theme.of(context).colorScheme.primary, 
-          ),
-          textOverflow: TextOverflow.ellipsis,
-          height: 40,
-          margin: const EdgeInsets.symmetric(
-            horizontal: 24,
-          ),
-          selectedTextStyle: TextStyle(
-            color: Theme.of(context).colorScheme.onPrimary,
-            fontWeight: FontWeight.w700
-          ),
-          unselectedTextStyle: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-          hoverTextStyle: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+        group(l.connection),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          child: AppleSegmented(
+            labels: const ["HTTP", "HTTPS"],
+            selectedIndex: connectionType.index,
+            onChanged: (v) =>
+                setState(() => connectionType = ConnectionType.values[v]),
           ),
         ),
-        Card(
-          margin: const EdgeInsets.only(
-            top: 16, left: 24, right: 24
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.warning_rounded,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 16),
-                Flexible(child: Text(AppLocalizations.of(context)!.redirectHttpsWarning))
-              ],
-            ),
-          ),
+        notice(
+          CupertinoIcons.exclamationmark_triangle_fill,
+          p.orange,
+          l.redirectHttpsWarning,
         ),
-        if (connectionType == ConnectionType.https) Card(
-          margin: const EdgeInsets.only(
-            top: 16, left: 24, right: 24
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.info_rounded,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 16),
-                Flexible(child: Text(AppLocalizations.of(context)!.sslWarning))
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 30),
-        FormTextField(
-          label: AppLocalizations.of(context)!.ipDomain, 
-          controller: ipDomainController, 
-          icon: Icons.link_rounded,
+        if (connectionType == ConnectionType.https)
+          notice(CupertinoIcons.info_circle_fill, p.tint, l.sslWarning),
+        input(
+          label: l.ipDomain,
+          controller: ipDomainController,
+          icon: CupertinoIcons.link,
           error: ipDomainError,
           keyboardType: TextInputType.url,
           onChanged: (v) {
-            setState(() => ipDomainError = validateAddress(context: context, value: v));
+            setState(
+              () => ipDomainError = validateAddress(context: context, value: v),
+            );
             validateData();
           },
-          isConnecting: isConnecting,
         ),
-        const SizedBox(height: 20),
-        FormTextField(
-          label: AppLocalizations.of(context)!.path, 
-          controller: pathController, 
-          icon: Icons.route_rounded,
+        input(
+          label: l.path,
+          controller: pathController,
+          icon: CupertinoIcons.list_bullet_indent,
           error: pathError,
+          hint: l.examplePath,
+          helper: l.helperPath,
           onChanged: (v) {
-            setState(() => pathError = validateSubroute(context: context, value: v));
+            setState(
+              () => pathError = validateSubroute(context: context, value: v),
+            );
             validateData();
           },
-          hintText: AppLocalizations.of(context)!.examplePath,
-          helperText: AppLocalizations.of(context)!.helperPath,
-          isConnecting: isConnecting,
         ),
-        const SizedBox(height: 20),
-        FormTextField(
-          label: AppLocalizations.of(context)!.port, 
-          controller: portController, 
-          icon: Icons.numbers_rounded,
+        input(
+          label: l.port,
+          controller: portController,
+          icon: CupertinoIcons.number,
           error: portError,
           keyboardType: TextInputType.number,
           onChanged: (v) {
-            setState(() => portError = validatePort(context: context, value: v));
+            setState(
+              () => portError = validatePort(context: context, value: v),
+            );
             validateData();
           },
-          isConnecting: isConnecting,
         ),
-        SectionLabel(
-          label: AppLocalizations.of(context)!.authentication,
-          padding: const EdgeInsets.all(24),
+        group(l.authentication),
+        input(
+          label: l.username,
+          controller: userController,
+          icon: CupertinoIcons.person,
         ),
-        FormTextField(
-          label: AppLocalizations.of(context)!.username, 
-          controller: userController, 
-          icon: Icons.person_rounded,
-          isConnecting: isConnecting,
-        ),
-        const SizedBox(height: 20),
-        FormTextField(
-          label: AppLocalizations.of(context)!.password, 
-          controller: passwordController, 
-          icon: Icons.lock_rounded,
+        input(
+          label: l.password,
+          controller: passwordController,
+          icon: CupertinoIcons.lock,
           keyboardType: TextInputType.visiblePassword,
-          obscureText: true,
-          isConnecting: isConnecting,
+          obscure: true,
         ),
-        SectionLabel(
-          label: AppLocalizations.of(context)!.other,
-          padding: const EdgeInsets.only(
-            top: 32,
-            left: 24,
-            bottom: 12
-          ),
+        group(l.other),
+        AppleListSection(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          children: [
+            AppleSwitchListTile(
+              title: l.defaultServer,
+              icon: CupertinoIcons.star_fill,
+              iconColor: p.yellow,
+              value: defaultServer,
+              onChanged: locked
+                  ? null
+                  : (value) => setState(() => defaultServer = value),
+            ),
+            AppleSwitchListTile(
+              title: l.runningHomeAssistant,
+              icon: CupertinoIcons.house_fill,
+              iconColor: p.indigo,
+              value: homeAssistant,
+              onChanged: locked
+                  ? null
+                  : (value) => setState(() => homeAssistant = value),
+            ),
+          ],
         ),
-        CustomSwitchListTile(
-          value: defaultServer, 
-          onChanged:  (value) => setState(() => defaultServer = value),
-          title: AppLocalizations.of(context)!.defaultServer,
-          disabled: widget.server != null || isConnecting,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 4
-          ),
-        ),
-        CustomSwitchListTile(
-          value: homeAssistant, 
-          onChanged:  (value) => setState(() => homeAssistant = value),
-          title: AppLocalizations.of(context)!.runningHomeAssistant,
-          disabled: widget.server != null || isConnecting,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 4
-          ),
-        ),
-        const SizedBox(height: 20),
       ];
     }
 
-    if (widget.fullScreen == true) {
-      return Dialog.fullscreen(
-        child: Scaffold(
-          appBar: AppBar(
-            leading: CloseButton(
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: widget.server == null
-              ? Text(AppLocalizations.of(context)!.createConnection)
-              : Text(AppLocalizations.of(context)!.editConnection),
-            actions: [
-              actions(),
-              const SizedBox(width: 8)
-            ],
-          ),
-          body: SafeArea(
-            child: ListView(
-              children: form()
-            ),
-          ),
-        ),
-      );
-    }
-    else {  
-      return Dialog(
-        child: SizedBox(
-          width: 400,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () => Navigator.pop(context), 
-                          icon: const Icon(Icons.clear_rounded)
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          widget.server == null
-                            ? AppLocalizations.of(context)!.createConnection
-                            : AppLocalizations.of(context)!.editConnection,
-                          style: const TextStyle(
-                            fontSize: 20
-                          ),
-                        ),
-                      ],
-                    ),
-                    actions()
-                  ],
-                ),
+    return AppleFormModal(
+      title: widget.server == null ? l.createConnection : l.editConnection,
+      icon: widget.server == null ? CupertinoIcons.plus : CupertinoIcons.pencil,
+      dialog: widget.dialog,
+      maxWidth: 460,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isConnecting)
+            const Padding(
+              padding: EdgeInsets.only(right: 6),
+              child: SizedBox(
+                width: 14,
+                height: 14,
+                child: CupertinoActivityIndicator(radius: 4),
               ),
-              Expanded(
-                child: ListView(
-                  children: form()
-                ),
-              )
-            ],
+            ),
+          IconButton(
+            onPressed: () => openUrl(Urls.connectionInstructions),
+            icon: Icon(CupertinoIcons.question_circle, color: p.tint),
           ),
-        ),
-      );
-    }
+        ],
+      ),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Column(children: form()),
+            ),
+          ),
+          AppleFormFooter(
+            confirmLabel: widget.server == null ? l.connect : l.save,
+            confirmEnabled: allDataValid && !isConnecting,
+            onConfirm: widget.server == null ? connect : edit,
+          ),
+        ],
+      ),
+    );
   }
 }

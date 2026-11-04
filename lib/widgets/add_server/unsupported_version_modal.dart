@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
-
 import 'package:adguard_home_manager/config/minimum_server_version.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 class UnsupportedVersionModal extends StatelessWidget {
   final String serverVersion;
@@ -16,61 +16,18 @@ class UnsupportedVersionModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Column(
-        children: [
-          Icon(
-            Icons.error_rounded,
-            size: 24,
-            color: Theme.of(context).colorScheme.onSurfaceVariant
-          ),
-          const SizedBox(height: 16),
-          Text(
-            AppLocalizations.of(context)!.unsupportedServerVersion,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface
-            ),
-          )
-        ],
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            AppLocalizations.of(context)!.unsupportedServerVersionMessage,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            AppLocalizations.of(context)!.yourVersion(serverVersion),
-            style: const TextStyle(
-              fontStyle: FontStyle.italic
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            AppLocalizations.of(context)!.minimumRequiredVersion(
-              serverVersion.contains("b")
-                ? MinimumServerVersion.beta
-                : MinimumServerVersion.stable
-            ),
-            style: const TextStyle(
-              fontStyle: FontStyle.italic
-            ),
-          ),
-        ],
-      ),
+    final l = AppLocalizations.of(context)!;
+
+    final minimum = serverVersion.contains("b")
+        ? MinimumServerVersion.beta
+        : MinimumServerVersion.stable;
+
+    return AppleAlertDialog(
+      title: l.unsupportedServerVersion,
+      message:
+          "${l.unsupportedServerVersionMessage}\n\n${l.yourVersion(serverVersion)}\n${l.minimumRequiredVersion(minimum)}",
       actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-            onClose();
-          }, 
-          child: Text(AppLocalizations.of(context)!.close)
-        ),
+        AppleSheetAction(label: l.close, onTap: onClose),
       ],
     );
   }

@@ -1,14 +1,12 @@
-// ignore_for_file: use_build_context_synchronously
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
-
 
 import 'package:adguard_home_manager/models/server.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 class DeleteModal extends StatelessWidget {
   final Server serverToDelete;
@@ -20,95 +18,44 @@ class DeleteModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final serversProvider = Provider.of<ServersProvider>(context);
-    final appConfigProvider = Provider.of<AppConfigProvider>(context);
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
+    final serversProvider =
+        Provider.of<ServersProvider>(context, listen: false);
+    final appConfigProvider =
+        Provider.of<AppConfigProvider>(context, listen: false);
 
     void removeServer() async {
       final previouslySelectedServer = serversProvider.selectedServer;
 
       final deleted = await serversProvider.removeServer(serverToDelete);
 
-      Navigator.pop(context);
-
       if (deleted == true) {
-        if (previouslySelectedServer != null && previouslySelectedServer.id == serverToDelete.id) {
+        if (previouslySelectedServer != null &&
+            previouslySelectedServer.id == serverToDelete.id) {
           appConfigProvider.setSelectedScreen(0);
         }
 
         showSnackbar(
-          appConfigProvider: appConfigProvider, 
-          label: AppLocalizations.of(context)!.connectionRemoved, 
-          color: Colors.green
-        );
-      }
-      else {
+            appConfigProvider: appConfigProvider,
+            label: l.connectionRemoved,
+            color: p.green);
+      } else {
         showSnackbar(
-          appConfigProvider: appConfigProvider, 
-          label: AppLocalizations.of(context)!.connectionCannotBeRemoved, 
-          color: Colors.red
-        );
+            appConfigProvider: appConfigProvider,
+            label: l.connectionCannotBeRemoved,
+            color: p.red);
       }
     }
 
-    return AlertDialog(
-      title: Column(
-        children: [
-          Icon(
-            Icons.delete,
-            size: 24,
-            color: Theme.of(context).listTileTheme.iconColor
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: Text(
-              AppLocalizations.of(context)!.remove,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w400,
-                color: Theme.of(context).colorScheme.onSurface
-              ),
-            ),
-          ),
-        ],
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Column(
-            children: [
-              Text(
-                AppLocalizations.of(context)!.removeWarning,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant
-                ),
-              ),
-              const SizedBox(height: 10),
-              Center(
-                child: Text(
-                  "${serverToDelete.connectionMethod}://${serverToDelete.domain}${serverToDelete.path ?? ""}${serverToDelete.port != null ? ':${serverToDelete.port}' : ""}",
-                  style: TextStyle(
-                    fontStyle: FontStyle.italic,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return AppleAlertDialog(
+      title: l.remove,
+      message:
+          "${l.removeWarning}\n\n${serverToDelete.connectionMethod}://${serverToDelete.domain}${serverToDelete.path ?? ""}${serverToDelete.port != null ? ':${serverToDelete.port}' : ""}",
       actions: [
-        TextButton(
-          onPressed: () => {
-            Navigator.pop(context)
-          }, 
-          child: Text(AppLocalizations.of(context)!.cancel)
-        ),
-        TextButton(
-          onPressed: removeServer,
-          child: Text(AppLocalizations.of(context)!.remove),
-        ),
+        AppleSheetAction(label: l.cancel),
+        AppleSheetAction(
+            label: l.remove, destructive: true, onTap: removeServer),
       ],
     );
   }
