@@ -2801,4 +2801,21 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get editRules => 'Edit rules';
+
+  @override
+  String get historyLogs => 'History';
+
+  @override
+  String get queryLog => 'Query log';
+
+  @override
+  String get trackingQueries => 'Tracking queries…';
+
+  @override
+  String loadedRecords(Object count) {
+    return '$count loaded';
+  }
+
+  @override
+  String get searchDomainOrClient => 'Search by domain or device';
 }

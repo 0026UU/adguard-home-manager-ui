@@ -151,18 +151,24 @@ class AppleFormFooter extends StatelessWidget {
       child: Row(
         children: [
           if (leading != null) ...[leading!, const Spacer()],
-          AppleFormButton(
-            label: cancelLabel ?? l.cancel,
-            background: p.fill2,
-            foreground: p.label,
-            onPressed: cancel,
+          // A narrow dialog cannot always fit two labels, so the pair gives way
+          // before the row runs off the edge.
+          Flexible(
+            child: AppleFormButton(
+              label: cancelLabel ?? l.cancel,
+              background: p.fill2,
+              foreground: p.label,
+              onPressed: cancel,
+            ),
           ),
           const SizedBox(width: 10),
-          AppleFormButton(
-            label: confirmLabel,
-            background: destructive ? p.red : p.tint,
-            foreground: Colors.white,
-            onPressed: confirmEnabled ? onConfirm : null,
+          Flexible(
+            child: AppleFormButton(
+              label: confirmLabel,
+              background: destructive ? p.red : p.tint,
+              foreground: Colors.white,
+              onPressed: confirmEnabled ? onConfirm : null,
+            ),
           ),
         ],
       ),
@@ -204,6 +210,8 @@ class AppleFormButton extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               child: Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 15,

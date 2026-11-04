@@ -8,19 +8,13 @@ import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
-import 'package:adguard_home_manager/screens/logs/live/live_logs_screen.dart';
 import 'package:adguard_home_manager/screens/logs/filters/logs_filters_modal.dart';
-import 'package:adguard_home_manager/widgets/floating_search_bar.dart';
 
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/constants/enums.dart';
-import 'package:adguard_home_manager/providers/live_logs_provider.dart';
-import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/models/applied_filters.dart';
 import 'package:adguard_home_manager/providers/logs_provider.dart';
-
-final GlobalKey _searchButtonKey = GlobalKey();
 
 class LogsListAppBar extends StatelessWidget {
   final bool innerBoxIsScrolled;
@@ -28,10 +22,19 @@ class LogsListAppBar extends StatelessWidget {
   /// Status line under the title, e.g. how long the server keeps its logs.
   final String? subtitle;
 
+  /// Colour of the dot in front of [subtitle]. The live stream gets a green
+  /// one, the stored query log gets the accent.
+  final Color? subtitleDot;
+
+  /// The live stream watches the server already, so it needs no refresh.
+  final bool live;
+
   const LogsListAppBar({
     super.key,
     required this.innerBoxIsScrolled,
     this.subtitle,
+    this.subtitleDot,
+    this.live = false,
   });
 
   @override
@@ -65,50 +68,6 @@ class LogsListAppBar extends StatelessWidget {
       }
     }
 
-    void showSearchDialog() {
-      showDialog(
-        context: context, 
-        builder: (context) => FloatingSearchBar(
-          existingSearchValue: logsProvider.appliedFilters.searchText ?? "",
-          searchButtonRenderBox: _searchButtonKey.currentContext?.findRenderObject() as RenderBox?,
-          onSearchCompleted: (v) {
-            logsProvider.setAppliedFilters(
-              AppliedFiters(
-                selectedResultStatus: logsProvider.appliedFilters.selectedResultStatus, 
-                searchText: v != "" ? v : null, 
-                clients: logsProvider.appliedFilters.clients
-              )
-            );
-            logsProvider.filterLogs();
-          },
-          onSearchFieldUpdated: (v) {
-            if (v == "") {
-              logsProvider.setSearchText(null);
-              return;
-            }
-            logsProvider.setSearchText(v);
-          },
-        ),
-      );
-    }
-
-    void openLiveLogsScreen() {
-      if (!context.mounted) return;
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => MultiProvider(
-            providers: [
-              ChangeNotifierProxyProvider<ServersProvider, LiveLogsProvider>(
-                create: (context) => LiveLogsProvider(), 
-                update: (context, servers, logs) => logs!..update(servers),
-              ),
-            ],
-            child: const LiveLogsScreen()
-          )
-        )
-      );
-    }
-
     final Map<String, String> translatedString = {
       "all": localizations.all, 
       "filtered": localizations.filtered, 
@@ -121,8 +80,9 @@ class LogsListAppBar extends StatelessWidget {
     };
 
     final applied = logsProvider.appliedFilters;
-    final hasFilters = applied.searchText != null
-      || applied.selectedResultStatus != 'all'
+    // The search lives in the field under the title now, so only the filters
+    // that have no home of their own get a chip.
+    final hasFilters = applied.selectedResultStatus != 'all'
       || applied.clients.isNotEmpty;
 
     return SliverAppBar.large(
@@ -141,45 +101,19 @@ class LogsListAppBar extends StatelessWidget {
       flexibleSpace: AppleLargeTitle(
         title: localizations.logs,
         subtitle: subtitle,
-        subtitleDot: subtitle == null ? null : palette.tint,
+        subtitleDot: subtitle == null ? null : (subtitleDot ?? palette.tint),
         bottomHeight: hasFilters ? 46 : 0,
       ),
       actions: [
-        if (!(Platform.isAndroid || Platform.isIOS)) IconButton(
+        if (!live && !(Platform.isAndroid || Platform.isIOS)) IconButton(
           onPressed: () => logsProvider.fetchLogs(inOffset: 0), 
           icon: const Icon(CupertinoIcons.arrow_clockwise),
           tooltip: localizations.refresh,
         ),
         if (logsProvider.loadStatus == LoadStatus.loaded) IconButton(
-          key: _searchButtonKey,
-          onPressed: showSearchDialog,
-          icon: const Icon(CupertinoIcons.search),
-          tooltip: localizations.search,
-        ),
-        if (logsProvider.loadStatus == LoadStatus.loaded) PopupMenuButton(
+          onPressed: openFilersModal,
+          icon: const Icon(CupertinoIcons.slider_horizontal_3),
           tooltip: localizations.filters,
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              onTap: openFilersModal,
-              child: Row(
-                children: [
-                  const Icon(CupertinoIcons.slider_horizontal_3),
-                  const SizedBox(width: 10),
-                  Text(localizations.filters)
-                ],
-              )
-            ),
-            PopupMenuItem(
-              onTap: openLiveLogsScreen,
-              child: Row(
-                children: [
-                  const Icon(CupertinoIcons.bolt),
-                  const SizedBox(width: 10),
-                  Text(localizations.liveLogs)
-                ],
-              )
-            ),
-          ],
         ),
         const SizedBox(width: 8),
       ],
@@ -190,25 +124,6 @@ class LogsListAppBar extends StatelessWidget {
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                if (applied.searchText != null)
-                  AppleFilterChip(
-                    icon: CupertinoIcons.search,
-                    label: applied.searchText!,
-                    onDeleted: () {
-                      logsProvider.setAppliedFilters(
-                        AppliedFiters(
-                          selectedResultStatus: applied.selectedResultStatus, 
-                          searchText: null,
-                          clients: applied.clients
-                        )
-                      );
-                      logsProvider.setSearchText(null);
-                      logsProvider.fetchLogs(
-                        inOffset: 0,
-                        searchText: ''
-                      );
-                    },
-                  ),
                 if (applied.selectedResultStatus != 'all')
                   AppleFilterChip(
                     icon: CupertinoIcons.checkmark_shield,

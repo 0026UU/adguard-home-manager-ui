@@ -2459,11 +2459,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get select => 'Select';
 
   @override
-  String get liveLogs => 'Live logs';
+  String get liveLogs => '实时日志';
 
   @override
-  String get hereWillAppearRealtimeLogs =>
-      'Here there will appear the logs on realtime.';
+  String get hereWillAppearRealtimeLogs => '这里会显示实时日志';
 
   @override
   String get applicationDetails => 'Application details';
@@ -2659,6 +2658,23 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get editRules => '编辑规则';
+
+  @override
+  String get historyLogs => '历史记录';
+
+  @override
+  String get queryLog => '查询记录';
+
+  @override
+  String get trackingQueries => '正在追踪查询…';
+
+  @override
+  String loadedRecords(Object count) {
+    return '$count 条已加载';
+  }
+
+  @override
+  String get searchDomainOrClient => '按域名或设备搜索';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -5091,6 +5107,12 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get disallowingClient => '正在禁止客户端...';
 
   @override
+  String get liveLogs => '实时日志';
+
+  @override
+  String get hereWillAppearRealtimeLogs => '这里会显示实时日志';
+
+  @override
   String get devices => '设备';
 
   @override
@@ -5217,4 +5239,21 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get editRules => '编辑规则';
+
+  @override
+  String get historyLogs => '历史记录';
+
+  @override
+  String get queryLog => '查询记录';
+
+  @override
+  String get trackingQueries => '正在追踪查询…';
+
+  @override
+  String loadedRecords(Object count) {
+    return '$count 条已加载';
+  }
+
+  @override
+  String get searchDomainOrClient => '按域名或设备搜索';
 }

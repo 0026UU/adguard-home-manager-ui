@@ -5262,6 +5262,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Edit rules'**
   String get editRules;
+
+  /// No description provided for @historyLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get historyLogs;
+
+  /// No description provided for @queryLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Query log'**
+  String get queryLog;
+
+  /// No description provided for @trackingQueries.
+  ///
+  /// In en, this message translates to:
+  /// **'Tracking queries…'**
+  String get trackingQueries;
+
+  /// No description provided for @loadedRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} loaded'**
+  String loadedRecords(Object count);
+
+  /// No description provided for @searchDomainOrClient.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by domain or device'**
+  String get searchDomainOrClient;
 }
 
 class _AppLocalizationsDelegate

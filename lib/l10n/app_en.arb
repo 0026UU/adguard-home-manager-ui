@@ -857,5 +857,10 @@
     "blockByService": "Block by service",
     "clearAll": "Clear all",
     "listsEnabledWithRules": "{lists} lists enabled · {rules} rules",
-    "editRules": "Edit rules"
+    "editRules": "Edit rules",
+    "historyLogs": "History",
+    "queryLog": "Query log",
+    "trackingQueries": "Tracking queries…",
+    "loadedRecords": "{count} loaded",
+    "searchDomainOrClient": "Search by domain or device"
 }

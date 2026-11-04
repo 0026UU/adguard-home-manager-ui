@@ -827,5 +827,12 @@
     "listsEnabledWithRules": "{lists} 个列表已启用 · {rules} 条规则",
     "editRules": "编辑规则",
     "appleStyle": "Apple 风格",
-    "appleStyleDescription": "半透明导航栏、大标题与分组列表。关闭后可恢复 Material 界面。"
+    "appleStyleDescription": "半透明导航栏、大标题与分组列表。关闭后可恢复 Material 界面。",
+    "liveLogs": "实时日志",
+    "hereWillAppearRealtimeLogs": "这里会显示实时日志",
+    "historyLogs": "历史记录",
+    "queryLog": "查询记录",
+    "trackingQueries": "正在追踪查询…",
+    "loadedRecords": "{count} 条已加载",
+    "searchDomainOrClient": "按域名或设备搜索"
 }
