@@ -799,6 +799,10 @@ class AppleSearchField extends StatelessWidget {
   final VoidCallback? onTap;
   final Widget? suffix;
 
+  /// For the floating search field, which appears on its own and must be ready
+  /// to type in.
+  final bool autofocus;
+
   const AppleSearchField({
     super.key,
     this.controller,
@@ -807,6 +811,7 @@ class AppleSearchField extends StatelessWidget {
     this.onSubmit,
     this.onTap,
     this.suffix,
+    this.autofocus = false,
   });
 
   @override
@@ -831,6 +836,7 @@ class AppleSearchField extends StatelessWidget {
                 onChanged: onChanged,
                 onSubmitted: onSubmit != null ? (_) => onSubmit!() : null,
                 onTap: onTap,
+                autofocus: autofocus,
                 textAlignVertical: TextAlignVertical.center,
                 cursorRadius: const Radius.circular(2),
                 style: TextStyle(fontSize: 16, color: p.label),

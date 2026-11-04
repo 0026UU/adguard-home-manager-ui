@@ -1,5 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
+/// Placeholder shown while a settings section loads its values.
 class LoadingData extends StatelessWidget {
   final String text;
 
@@ -12,64 +15,29 @@ class LoadingData extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(24),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 30),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text(
-                text,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 22,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant
-                ),
-              ),
-            )
-          ],
-        ),
-      ),
+      child: AppleLoading(label: text),
     );
   }
 }
 
+/// Placeholder shown when a settings section could not be loaded.
 class ErrorLoadData extends StatelessWidget {
   final String text;
 
   const ErrorLoadData({
     super.key,
-    required this.text
+    required this.text,
   });
 
   @override
   Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.error,
-            color: Colors.red,
-            size: 50,
-          ),
-          const SizedBox(height: 30),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text(
-              text,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 22,
-                color: Theme.of(context).colorScheme.onSurfaceVariant
-              ),
-            ),
-          )
-        ],
+      child: AppleEmptyState(
+        icon: CupertinoIcons.exclamationmark_triangle,
+        title: text,
+        color: p.orange,
       ),
     );
   }

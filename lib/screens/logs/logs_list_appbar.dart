@@ -84,9 +84,6 @@ class LogsListAppBar extends StatelessWidget {
             }
             logsProvider.setSearchText(v);
           },
-          onSearchFieldCleared: () {
-            logsProvider.setSearchText(null);
-          },
         ),
       );
     }
