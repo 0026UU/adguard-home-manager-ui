@@ -66,11 +66,26 @@ class ApplePalette {
   /// Stable accent for an avatar/initial badge, like iOS contact colours.
   Color seeded(String seed) {
     if (seed.isEmpty) return gray;
+    return _seedColors[_seedIndex(seed) % _seedColors.length];
+  }
+
+  /// Second accent of the pair, hashed separately so the two stops of the
+  /// gradient do not land on the same colour.
+  Color seededAlt(String seed) {
+    if (seed.isEmpty) return gray;
+    final first = _seedIndex(seed) % _seedColors.length;
+    var second = _seedIndex(seed, 131) % _seedColors.length;
+    if (second == first) second = (second + 3) % _seedColors.length;
+
+    return _seedColors[second];
+  }
+
+  static int _seedIndex(String seed, [int multiplier = 31]) {
     var hash = 0;
     for (final unit in seed.codeUnits) {
-      hash = (hash * 31 + unit) & 0x7fffffff;
+      hash = (hash * multiplier + unit) & 0x7fffffff;
     }
-    return _seedColors[hash % _seedColors.length];
+    return hash;
   }
 }
 
@@ -662,6 +677,13 @@ class AppleListTile extends StatelessWidget {
   final double? titleMaxWidth;
   final EdgeInsets padding;
 
+  /// Width of [leading], so the hairline under the row can start at the text.
+  final double? leadingWidth;
+
+  /// Set true for rows whose title is code (filter rules, addresses), which
+  /// the design layer draws in a monospaced face.
+  final bool mono;
+
   const AppleListTile({
     super.key,
     required this.title,
@@ -681,10 +703,12 @@ class AppleListTile extends StatelessWidget {
     this.subtitleMaxLines,
     this.titleMaxWidth,
     this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+    this.leadingWidth,
+    this.mono = false,
   });
 
   double get separatorIndent {
-    if (leading != null) return padding.left + 29 + 12;
+    if (leading != null) return padding.left + (leadingWidth ?? 29) + 12;
     if (icon != null) return padding.left + 29 + 12;
     return padding.left;
   }
@@ -716,8 +740,9 @@ class AppleListTile extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 17,
-                      height: 1.25,
+                      fontSize: mono ? 13.5 : 17,
+                      height: mono ? 1.35 : 1.25,
+                      fontFamily: mono ? 'monospace' : null,
                       fontWeight: FontWeight.w400,
                       color: textColor,
                     ),
@@ -753,7 +778,7 @@ class AppleListTile extends StatelessWidget {
                 textAlign: TextAlign.right,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 17, height: 1.25, color: p.label3),
+                style: TextStyle(fontSize: 16, height: 1.25, color: p.label2),
               ),
             ),
           if (trailing != null) trailing!,
@@ -873,6 +898,29 @@ class AppleSwitchListTile extends StatelessWidget {
   }
 }
 
+/// A bare iOS switch, for rows that are tappable as a whole.
+class AppleSwitch extends StatelessWidget {
+  final bool value;
+  final VoidCallback? onChanged;
+
+  const AppleSwitch({
+    super.key,
+    required this.value,
+    this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+
+    return CupertinoSwitch(
+      value: value,
+      onChanged: onChanged == null ? null : (_) => onChanged!(),
+      activeTrackColor: AppleColors.green(p.b),
+    );
+  }
+}
+
 /// UISegmentedControl with a sliding white capsule.
 class AppleSegmented extends StatelessWidget {
   final List<String> labels;
@@ -987,7 +1035,7 @@ class ApplePill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: filled ? p.pill(color) : Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(6),
         border: filled ? null : Border.all(color: color, width: 1),
       ),
       child: Text(
@@ -996,9 +1044,124 @@ class ApplePill extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
           fontSize: fontSize,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
           height: 1.2,
           color: color,
+        ),
+      ),
+    );
+  }
+}
+
+/// A query log entry: the status pill, the domain and the time on the first
+/// line, the details as dot separated runs underneath.
+class AppleLogRow extends StatelessWidget {
+  final Widget leading;
+  final String title;
+  final String? time;
+  final List<String> details;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  /// Hairlines between entries stop short of the card edge, unlike list rows.
+  static const double separatorInset = 14;
+
+  const AppleLogRow({
+    super.key,
+    required this.leading,
+    required this.title,
+    this.time,
+    this.details = const [],
+    this.selected = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+
+    return InkWell(
+      onTap: onTap,
+      splashColor: Colors.transparent,
+      highlightColor: p.fill3,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        color: selected ? p.fill2 : null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                leading,
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      height: 1.25,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
+                      color: p.label,
+                    ),
+                  ),
+                ),
+                if (time != null) ...[
+                  const SizedBox(width: 9),
+                  SizedBox(
+                    width: 52,
+                    child: Text(
+                      time!,
+                      textAlign: TextAlign.right,
+                      maxLines: 1,
+                      overflow: TextOverflow.clip,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: p.label3,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            if (details.isNotEmpty) ...[
+              const SizedBox(height: 3),
+              Row(
+                children: [
+                  for (var i = 0; i < details.length; i++) ...[
+                    if (i > 0) ...[
+                      const SizedBox(width: 7),
+                      Container(
+                        width: 3,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: p.label3,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 7),
+                    ],
+                    Flexible(
+                      child: Text(
+                        details[i],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          height: 1.3,
+                          color: p.label2,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -1035,12 +1198,12 @@ class AppleSearchField extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
       child: Container(
-        height: 36,
+        height: 38,
         decoration: BoxDecoration(
           color: p.fill2,
           borderRadius: BorderRadius.circular(10),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         child: Row(
           children: [
             Icon(CupertinoIcons.search, size: 16, color: p.label3),
@@ -1342,6 +1505,113 @@ class AppleHero extends StatelessWidget {
   }
 }
 
+/// The oversized card that heads the settings page: a gradient icon tile, the
+/// server name, one line of detail, a status pill, and underneath the card the
+/// action that opens what it describes.
+class AppleBigRow extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final Color? colorTo;
+  final String title;
+  final String? details;
+  final String? status;
+  final Color? statusColor;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  const AppleBigRow({
+    super.key,
+    required this.icon,
+    required this.color,
+    this.colorTo,
+    required this.title,
+    this.details,
+    this.status,
+    this.statusColor,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppleCard(
+          padding: const EdgeInsets.all(14),
+          radius: BorderRadius.circular(18),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  gradient: LinearGradient(
+                    begin: Alignment(-0.7, -0.7),
+                    end: Alignment(0.7, 0.7),
+                    colors: [color, colorTo ?? color],
+                  ),
+                ),
+                child: Icon(icon, size: 24, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 18,
+                        height: 1.2,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.4,
+                        color: p.label,
+                      ),
+                    ),
+                    if (details != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        details!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 13, height: 1.25, color: p.label2),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (status != null) ...[
+                const SizedBox(width: 8),
+                ApplePill(
+                  label: status!,
+                  color: statusColor ?? p.green,
+                  fontSize: 12,
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (actionLabel != null) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 40,
+            child: AppleButton.secondary(
+              label: actionLabel!,
+              onPressed: onAction,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 /// One tile of the statistics grid: caption, big number, optional note and an
 /// optional sparkline pinned to the top right corner of the tile.
 class AppleStatTile extends StatelessWidget {
@@ -1514,22 +1784,36 @@ class AppleAvatar extends StatelessWidget {
   final double size;
   final IconData? icon;
 
+  /// When set, the badge is filled with a 140° gradient to this colour and the
+  /// initial turns white, the way the design layer paints device avatars.
+  final Color? gradientTo;
+
   const AppleAvatar({
     super.key,
     required this.text,
     required this.color,
     this.size = 34,
     this.icon,
+    this.gradientTo,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bool gradient = gradientTo != null;
+
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.16),
         shape: BoxShape.circle,
+        gradient: gradient
+          ? LinearGradient(
+              begin: Alignment(-0.76, -0.64),
+              end: Alignment(0.76, 0.64),
+              colors: [color, gradientTo!],
+            )
+          : null,
+        color: gradient ? null : color.withValues(alpha: 0.16),
       ),
       alignment: Alignment.center,
       child: icon != null
@@ -1537,9 +1821,9 @@ class AppleAvatar extends StatelessWidget {
         : Text(
             text.isEmpty ? '?' : text.characters.first.toUpperCase(),
             style: TextStyle(
-              fontSize: size * 0.42,
-              fontWeight: FontWeight.w600,
-              color: color,
+              fontSize: gradient ? size * 0.375 : size * 0.42,
+              fontWeight: gradient ? FontWeight.w700 : FontWeight.w600,
+              color: gradient ? Colors.white : color,
             ),
           ),
     );
@@ -1580,10 +1864,15 @@ class AppleButton extends StatelessWidget {
     final base = color ?? p.tint;
     final enabled = onPressed != null && !busy;
 
+    // The design layer fills a secondary button with the light grey and keeps
+    // the label in the text colour; only the primary one takes the accent.
+    final background = filled ? base : p.fill2;
+    final foreground = filled ? Colors.white : p.label;
+
     return Opacity(
       opacity: enabled ? 1 : 0.35,
       child: Material(
-        color: filled ? base : p.card,
+        color: background,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
@@ -1599,7 +1888,7 @@ class AppleButton extends StatelessWidget {
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.2,
-                    color: filled ? Colors.white : base,
+                    color: foreground,
                   ),
                 )
               : Row(
@@ -1607,7 +1896,7 @@ class AppleButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (icon != null) ...[
-                      Icon(icon, size: 19, color: filled ? Colors.white : base),
+                      Icon(icon, size: 19, color: foreground),
                       const SizedBox(width: 7),
                     ],
                     Text(
@@ -1615,7 +1904,7 @@ class AppleButton extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
-                        color: filled ? Colors.white : base,
+                        color: foreground,
                       ),
                     ),
                   ],
