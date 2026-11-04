@@ -134,6 +134,10 @@ class AppleScreen extends StatelessWidget {
   /// scroll-driven behaviour (e.g. hiding a button while scrolling down).
   final ScrollController? scrollController;
 
+  /// Nav-bar leading item, e.g. a back button on a pushed route. Tab
+  /// destinations leave this empty.
+  final Widget? leading;
+
   const AppleScreen({
     super.key,
     required this.title,
@@ -146,6 +150,7 @@ class AppleScreen extends StatelessWidget {
     this.header,
     this.body,
     this.scrollController,
+    this.leading,
   });
 
   @override
@@ -155,7 +160,7 @@ class AppleScreen extends StatelessWidget {
     final appbar = SliverAppBar.large(
       title: Text(title),
       titleSpacing: 20,
-      leading: null,
+      leading: leading,
       automaticallyImplyLeading: false,
       actions: actions,
       bottom: header == null ? null : AppleHeaderBar(child: header!),
