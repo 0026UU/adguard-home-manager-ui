@@ -1,26 +1,24 @@
-import 'dart:io';
-
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
-
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/widgets/option_box.dart';
 
-
+/// Picks how often the server should refresh the filter lists.
 class UpdateIntervalListsModal extends StatefulWidget {
   final int interval;
   final void Function(int) onChange;
   final bool dialog;
 
-  const UpdateIntervalListsModal({
-    super.key,
-    required this.interval,
-    required this.onChange,
-    required this.dialog
-  });
+  const UpdateIntervalListsModal(
+      {super.key,
+      required this.interval,
+      required this.onChange,
+      required this.dialog});
 
   @override
-  State<UpdateIntervalListsModal> createState() => _UpdateIntervalListsModalState();
+  State<UpdateIntervalListsModal> createState() =>
+      _UpdateIntervalListsModalState();
 }
 
 class _UpdateIntervalListsModalState extends State<UpdateIntervalListsModal> {
@@ -40,43 +38,18 @@ class _UpdateIntervalListsModalState extends State<UpdateIntervalListsModal> {
 
   @override
   Widget build(BuildContext context) {
-    final MediaQueryData mediaQueryData = MediaQuery.of(context);  
+    final l = AppLocalizations.of(context)!;
 
-    if (widget.dialog == true) {
-      return Dialog(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: 500
-          ),
-          child: _Content(
-            selectedOption: selectedOption,
-            onUpdateValue: _updateRadioValue,
-            onConfirm: () => widget.onChange(selectedOption!),
-          )
-        ),
-      );
-    }
-    else {
-      return Padding(
-        padding: mediaQueryData.viewInsets,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).dialogBackgroundColor,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(28),
-              topRight: Radius.circular(28)
-            ),
-          ),
-          child: SafeArea(
-            child: _Content(
-              selectedOption: selectedOption,
-              onUpdateValue: _updateRadioValue,
-              onConfirm: () => widget.onChange(selectedOption!),
-            ),
-          )
-        ),
-      );
-    }
+    return AppleFormModal(
+      title: l.updateFrequency,
+      icon: CupertinoIcons.clock,
+      dialog: widget.dialog,
+      body: _Content(
+        selectedOption: selectedOption,
+        onUpdateValue: _updateRadioValue,
+        onConfirm: () => widget.onChange(selectedOption!),
+      ),
+    );
   }
 }
 
@@ -100,42 +73,8 @@ class _Content extends StatelessWidget {
           child: SingleChildScrollView(
             child: Wrap(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Flexible(
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 24),
-                            child: Icon(
-                              Icons.update_rounded,
-                              size: 24,
-                              color: Theme.of(context).listTileTheme.iconColor
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 16
-                            ),
-                            child: Text(
-                              AppLocalizations.of(context)!.updateFrequency,
-                              textAlign: TextAlign.center,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 24,
-                                color: Theme.of(context).colorScheme.onSurface
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  ],
-                ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Wrap(
                     runSpacing: 16,
                     children: [
@@ -218,39 +157,14 @@ class _Content extends StatelessWidget {
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => Navigator.pop(context), 
-                child: Text(AppLocalizations.of(context)!.cancel),
-              ),
-              const SizedBox(width: 20),
-              TextButton(
-                onPressed: selectedOption != null
-                  ? () {
-                    Navigator.pop(context);
-                    onConfirm();
-                  }
-                  : null,
-                style: ButtonStyle(
-                  overlayColor: WidgetStateProperty.all(
-                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-                  ),
-                  foregroundColor: WidgetStateProperty.all(
-                    selectedOption != null
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.grey,
-                  ),
-                ), 
-                child: Text(AppLocalizations.of(context)!.confirm),
-              ),
-            ],
-          ),
+        AppleFormFooter(
+          confirmLabel: AppLocalizations.of(context)!.confirm,
+          confirmEnabled: selectedOption != null,
+          onConfirm: () {
+            Navigator.pop(context);
+            onConfirm();
+          },
         ),
-        if (Platform.isIOS) const SizedBox(height: 16)
       ],
     );
   }

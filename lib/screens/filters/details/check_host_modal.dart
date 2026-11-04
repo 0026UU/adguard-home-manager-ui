@@ -1,53 +1,32 @@
 // ignore_for_file: use_build_context_synchronously
 
-import 'package:adguard_home_manager/constants/regexps.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
-
-import 'package:adguard_home_manager/providers/app_config_provider.dart';
+import 'package:adguard_home_manager/constants/regexps.dart';
 import 'package:adguard_home_manager/functions/get_filtered_status.dart';
+import 'package:adguard_home_manager/providers/app_config_provider.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+/// Asks the server whether one host would be blocked by the current filters.
 class CheckHostModal extends StatelessWidget {
   final bool dialog;
 
-  const CheckHostModal({
-    super.key,
-    required this.dialog
-  });
+  const CheckHostModal({super.key, required this.dialog});
 
   @override
   Widget build(BuildContext context) {
-    if (dialog == true) {
-      return Dialog(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: 400
-          ),
-          child: const _Content()
-        ),
-      );
-    }
-    else {
-      return Padding(
-        padding: MediaQuery.of(context).viewInsets,
-        child: Container(
-          width: double.maxFinite,
-          decoration: BoxDecoration(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(28),
-              topRight: Radius.circular(28),
-            ),
-            color: Theme.of(context).dialogBackgroundColor
-          ),
-          child: const SafeArea(
-            child: _Content()
-          )
-        ),
-      );
-    }
+    final l = AppLocalizations.of(context)!;
+
+    return AppleFormModal(
+      title: l.checkHostFiltered,
+      icon: CupertinoIcons.shield,
+      dialog: dialog,
+      body: const _Content(),
+    );
   }
 }
 
@@ -67,9 +46,9 @@ class _ContentState extends State<_Content> {
   void validateDomain(String value) {
     if (Regexps.domain.hasMatch(value)) {
       setState(() => domainError = null);
-    }
-    else {
-      setState(() => domainError = AppLocalizations.of(context)!.domainNotValid);
+    } else {
+      setState(
+          () => domainError = AppLocalizations.of(context)!.domainNotValid);
     }
   }
 
@@ -79,9 +58,13 @@ class _ContentState extends State<_Content> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(),
-          const SizedBox(width: 20),
-          Text(AppLocalizations.of(context)!.checkingHost)
+          const CupertinoActivityIndicator(radius: 9),
+          const SizedBox(width: 14),
+          Text(
+            AppLocalizations.of(context)!.checkingHost,
+            style:
+                TextStyle(fontSize: 15, color: ApplePalette.of(context).label2),
+          ),
         ],
       ),
     );
@@ -95,63 +78,62 @@ class _ContentState extends State<_Content> {
     void checkHost() async {
       setState(() => resultWidget = checking());
 
-      final result = await serversProvider.apiClient2!.checkHostFiltered(host: domainController.text);
+      final result = await serversProvider.apiClient2!
+          .checkHostFiltered(host: domainController.text);
       if (!mounted) return;
 
       if (result.successful == true) {
-        final status = getFilteredStatus(context, appConfigProvider, result.content['reason'], true);
+        final status = getFilteredStatus(
+            context, appConfigProvider, result.content['reason'], true);
+        final p = ApplePalette.of(context);
+        final statusColor = status['filtered'] == true
+            ? (appConfigProvider.useThemeColorForStatus == true
+                ? p.label3
+                : p.red)
+            : (appConfigProvider.useThemeColorForStatus == true
+                ? p.tint
+                : p.green);
         if (mounted) {
           setState(() => resultWidget = Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                status['icon'],
-                size: 18,
-                color: status['filtered'] == true
-                  ? appConfigProvider.useThemeColorForStatus == true
-                    ? Colors.grey
-                    : Colors.red
-                  : appConfigProvider.useThemeColorForStatus
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.green,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                status['label'],
-                style: TextStyle(
-                  color: status['filtered'] == true
-                    ? appConfigProvider.useThemeColorForStatus == true
-                      ? Colors.grey
-                      : Colors.red
-                    : appConfigProvider.useThemeColorForStatus
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.green,
-                  fontWeight: FontWeight.w500
-                ),
-              )
-            ],
-          ));
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    status['icon'],
+                    size: 18,
+                    color: statusColor,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    status['label'],
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  )
+                ],
+              ));
         }
-      }
-      else {
+      } else {
         setState(() => resultWidget = Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.cancel,
-              size: 18,
-              color: Colors.red,
-            ),
-            const SizedBox(width: 10),
-            Text(
-              AppLocalizations.of(context)!.check,
-              style: const TextStyle(
-                color: Colors.red,
-                fontWeight: FontWeight.w500
-              ),
-            )
-          ],
-        ));
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  CupertinoIcons.nosign,
+                  size: 18,
+                  color: ApplePalette.of(context).red,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  AppLocalizations.of(context)!.check,
+                  style: TextStyle(
+                    color: ApplePalette.of(context).red,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                )
+              ],
+            ));
       }
     }
 
@@ -162,104 +144,44 @@ class _ContentState extends State<_Content> {
           child: SingleChildScrollView(
             child: Wrap(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 24),
-                          child: Icon(
-                            Icons.shield_rounded,
-                            size: 24,
-                            color: Theme.of(context).listTileTheme.iconColor
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          AppLocalizations.of(context)!.checkHostFiltered,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 24,
-                            color: Theme.of(context).colorScheme.onSurface
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  ],
-                ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: TextFormField(
                     controller: domainController,
+                    style: AppleInput.style(context),
                     onChanged: validateDomain,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.link_rounded),
-                      border: const OutlineInputBorder(
-                        borderRadius: BorderRadius.all(
-                          Radius.circular(10)
-                        )
-                      ),
-                      errorText: domainError,
-                      labelText: AppLocalizations.of(context)!.domain,
+                    decoration: AppleInput.decoration(
+                      context,
+                      icon: CupertinoIcons.globe,
+                      error: domainError,
+                      label: AppLocalizations.of(context)!.domain,
                     ),
                   ),
                 ),
-                if (resultWidget != null) Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: resultWidget,
-                ),
-                if (resultWidget == null) Padding(
-                  padding: const EdgeInsets.all(24),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
                   child: Center(
-                    child: Text(
-                      AppLocalizations.of(context)!.insertDomain,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 16,
-                      ),
-                    ),
+                    child: resultWidget ??
+                        Text(
+                          AppLocalizations.of(context)!.insertDomain,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: ApplePalette.of(context).label2,
+                          ),
+                        ),
                   ),
                 ),
               ],
             ),
           ),
         ),
-        Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(
-                bottom: 24,
-                right: 24
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context), 
-                    child: Text(AppLocalizations.of(context)!.close),
-                  ),
-                  const SizedBox(width: 20),
-                  TextButton(
-                    onPressed: domainController.text != '' && domainError == null
-                      ? () => checkHost()
-                      : null, 
-                    child: Text(
-                      AppLocalizations.of(context)!.check,
-                      style: TextStyle(
-                        color: domainController.text != '' && domainError == null
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.grey
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          ],
-        )
+        AppleFormFooter(
+          confirmLabel: AppLocalizations.of(context)!.check,
+          cancelLabel: AppLocalizations.of(context)!.close,
+          confirmEnabled: domainController.text != '' && domainError == null,
+          onConfirm: () => checkHost(),
+        ),
       ],
     );
   }

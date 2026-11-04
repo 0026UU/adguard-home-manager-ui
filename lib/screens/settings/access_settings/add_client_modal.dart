@@ -1,9 +1,11 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
-
 import 'package:adguard_home_manager/providers/clients_provider.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+/// Adds a client or a domain to one of the access control lists.
 class AddClientModal extends StatelessWidget {
   final AccessSettingsList type;
   final void Function(String, AccessSettingsList) onConfirm;
@@ -18,42 +20,36 @@ class AddClientModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (dialog == true) {
-      return Padding(
-        padding: MediaQuery.of(context).viewInsets,
-        child: Dialog(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 400
-            ),
-            child: _Content(
-              type: type,
-              onConfirm: onConfirm,
-            )
-          ),
-        ),
-      );
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
+
+    String title;
+    IconData icon;
+    Color color;
+    switch (type) {
+      case AccessSettingsList.allowed:
+        title = l.allowClient;
+        icon = CupertinoIcons.checkmark_shield;
+        color = p.green;
+        break;
+      case AccessSettingsList.disallowed:
+        title = l.disallowClient;
+        icon = CupertinoIcons.shield;
+        color = p.red;
+        break;
+      default:
+        title = l.disallowedDomains;
+        icon = CupertinoIcons.globe;
+        color = p.tint;
     }
-    else {
-      return Padding(
-        padding: MediaQuery.of(context).viewInsets,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).dialogBackgroundColor,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(28),
-              topRight: Radius.circular(28)
-            )
-          ),
-          child: SafeArea(
-            child: _Content(
-              type: type,
-              onConfirm: onConfirm,
-            ),
-          )
-        ),
-      );
-    }
+
+    return AppleFormModal(
+      title: title,
+      icon: icon,
+      iconColor: color,
+      dialog: dialog,
+      body: _Content(type: type, onConfirm: onConfirm),
+    );
   }
 }
 
@@ -77,133 +73,53 @@ class _ContentState extends State<_Content> {
   void checkValidValues() {
     if (fieldController.text != '') {
       setState(() => validData = true);
-    }
-    else {
+    } else {
       setState(() => validData = false);
     }
   }
 
   @override
+  void dispose() {
+    fieldController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    IconData icon() {
-      switch (widget.type) {
-        case AccessSettingsList.allowed:
-          return Icons.check;
+    final l = AppLocalizations.of(context)!;
+    final isClient = widget.type == AccessSettingsList.allowed ||
+        widget.type == AccessSettingsList.disallowed;
 
-        case AccessSettingsList.disallowed:
-          return Icons.block;
-
-        case AccessSettingsList.domains:
-          return Icons.link_rounded;
-
-        default:
-          return Icons.check;
-      }
-    }
-
-    String title() {
-      switch (widget.type) {
-        case AccessSettingsList.allowed:
-          return AppLocalizations.of(context)!.allowClient;
-
-        case AccessSettingsList.disallowed:
-          return AppLocalizations.of(context)!.disallowClient;
-
-        case AccessSettingsList.domains:
-          return AppLocalizations.of(context)!.disallowedDomains;
-
-        default:
-          return "";
-      }
-    }
-
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            child: SingleChildScrollView(
-              child: Wrap(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        icon(),
-                        size: 24,
-                        color: Theme.of(context).listTileTheme.iconColor
-                      ),
-                    ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          title(),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 24,
-                            color: Theme.of(context).colorScheme.onSurface
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  TextFormField(
-                    controller: fieldController,
-                    onChanged: (_) => checkValidValues(),
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.link_rounded),
-                      border: const OutlineInputBorder(
-                        borderRadius: BorderRadius.all(
-                          Radius.circular(10)
-                        )
-                      ),
-                      helperText: widget.type == AccessSettingsList.allowed || widget.type == AccessSettingsList.disallowed
-                        ? AppLocalizations.of(context)!.addClientFieldDescription : null,
-                      labelText: widget.type == AccessSettingsList.allowed || widget.type == AccessSettingsList.disallowed
-                        ? AppLocalizations.of(context)!.clientIdentifier
-                        : AppLocalizations.of(context)!.domain,
-                    ),
-                  ),
-                ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: TextFormField(
+                controller: fieldController,
+                style: AppleInput.style(context),
+                onChanged: (_) => checkValidValues(),
+                decoration: AppleInput.decoration(
+                  context,
+                  icon: CupertinoIcons.globe,
+                  label: isClient ? l.clientIdentifier : l.domain,
+                  helper: isClient ? l.addClientFieldDescription : null,
+                ),
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(top: 24),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context), 
-                  child: Text(AppLocalizations.of(context)!.cancel)
-                ),
-                const SizedBox(width: 16),
-                TextButton(
-                  onPressed: validData == true
-                    ? () {
-                        Navigator.pop(context);
-                        widget.onConfirm(fieldController.text, widget.type);
-                      }
-                    : null, 
-                  child: Text(
-                    AppLocalizations.of(context)!.confirm,
-                    style: TextStyle(
-                      color: validData == true
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey
-                    ),
-                  )
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+        AppleFormFooter(
+          confirmLabel: l.confirm,
+          confirmEnabled: validData,
+          onConfirm: () {
+            Navigator.pop(context);
+            widget.onConfirm(fieldController.text, widget.type);
+          },
+        ),
+      ],
     );
   }
 }
