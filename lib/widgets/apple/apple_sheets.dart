@@ -145,9 +145,11 @@ Future<T?> showAppleSheet<T>(
   Widget? headTrailingWidget,
   double initialFraction = 0.6,
   double maxFraction = 0.95,
+  bool useRootNavigator = false,
 }) {
   return showModalBottomSheet<T>(
     context: context,
+    useRootNavigator: useRootNavigator,
     isScrollControlled: true,
     barrierColor: const Color(0x66000000),
     backgroundColor: Colors.transparent,

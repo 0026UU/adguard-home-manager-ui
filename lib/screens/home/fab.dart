@@ -1,5 +1,9 @@
-import 'package:provider/provider.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:adguard_home_manager/l10n/app_localizations.dart';
+
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/screens/home/management_modal/management_modal.dart';
 
@@ -25,14 +29,15 @@ class HomeFab extends StatelessWidget {
         );
       }
       else {
-        showModalBottomSheet(
-          context: context, 
-          isScrollControlled: true,
+        showAppleSheet(
+          context,
           useRootNavigator: true,
-          builder: (context) => const ManagementModal(
-            dialog: false,
+          title: AppLocalizations.of(context)!.allProtections,
+          initialFraction: 0.65,
+          body: const Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: ManagementModal(dialog: false),
           ),
-          backgroundColor: Colors.transparent,
         );
       }
     }
@@ -40,7 +45,11 @@ class HomeFab extends StatelessWidget {
     return statusProvider.loadStatus == LoadStatus.loaded
       ? FloatingActionButton(
           onPressed: openManagementBottomSheet,
-          child: const Icon(Icons.shield_rounded),
+          backgroundColor: statusProvider.serverStatus!.generalEnabled == true
+            ? AppleColors.green(ApplePalette.brightnessOf(context))
+            : AppleColors.red(ApplePalette.brightnessOf(context)),
+          foregroundColor: Colors.white,
+          child: const Icon(CupertinoIcons.shield_fill),
         )
       : const SizedBox();
   }

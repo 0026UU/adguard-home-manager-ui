@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:expandable/expandable.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +9,8 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 import 'package:adguard_home_manager/functions/format_time.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
+
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 class MainSwitch extends StatelessWidget {
   final ExpandableController expandableController;
@@ -27,26 +30,31 @@ class MainSwitch extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusProvider = Provider.of<StatusProvider>(context);
 
+    final p = ApplePalette.of(context);
+    final bool generalOn = statusProvider.serverStatus!.generalEnabled == true;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.zero,
       child: ExpandableNotifier(
         controller: expandableController,
         child: Material(
           color: Colors.transparent,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(10),
           child: InkWell(
             onTap: statusProvider.serverStatus!.generalEnabled == true && !statusProvider.protectionsManagementProcess.contains('general')
               ? () => expandableController.toggle()
               : null,
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(10),
             child: Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: 20,
                 vertical: 12
               ),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                borderRadius: BorderRadius.circular(10),
+                color: generalOn
+                  ? AppleColors.green(p.b).withValues(alpha: 0.14)
+                  : AppleColors.red(p.b).withValues(alpha: 0.12),
               ),
               child: Expandable(
                 theme: const ExpandableThemeData(
@@ -98,6 +106,7 @@ class _TopRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusProvider = Provider.of<StatusProvider>(context);
+    final p = ApplePalette.of(context);
 
     return  Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -108,11 +117,11 @@ class _TopRow extends StatelessWidget {
               RotationTransition(
                 turns: animation,
                 child: Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: 26,
+                  CupertinoIcons.chevron_down,
+                  size: 15,
                   color: statusProvider.serverStatus!.generalEnabled == true
-                    ? Theme.of(context).colorScheme.onSurfaceVariant
-                    : Colors.grey,
+                    ? p.label2
+                    : p.label3,
                 ),
               ),
               const SizedBox(width: 8),
@@ -123,14 +132,17 @@ class _TopRow extends StatelessWidget {
                     Text(
                       AppLocalizations.of(context)!.allProtections,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 18,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color: p.label,
                       ),
                     ),
                     if (statusProvider.serverStatus!.timeGeneralDisabled > 0) ...[
                       const SizedBox(height: 2),
                       if (statusProvider.currentDeadline != null) Text(
-                        "${AppLocalizations.of(context)!.remainingTime}: ${formatRemainingSeconds(statusProvider.remainingTime)}"
+                        "${AppLocalizations.of(context)!.remainingTime}: ${formatRemainingSeconds(statusProvider.remainingTime)}",
+                        style: TextStyle(fontSize: 13, color: p.label2),
                       )
                     ]
                   ],
@@ -140,8 +152,9 @@ class _TopRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Switch(
-          value: statusProvider.serverStatus!.generalEnabled, 
+        CupertinoSwitch(
+          value: statusProvider.serverStatus!.generalEnabled,
+          activeTrackColor: AppleColors.green(ApplePalette.brightnessOf(context)),
           onChanged: statusProvider.protectionsManagementProcess.contains('general') == false
             ? (value) {
               if (value == false && expandableController.expanded == true && legacyMode == false) {

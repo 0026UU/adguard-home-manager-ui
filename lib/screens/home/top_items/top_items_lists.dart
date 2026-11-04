@@ -34,16 +34,8 @@ class TopItemsLists extends StatelessWidget {
     final logsProvider = Provider.of<LogsProvider>(context);
     final clientsProvider = Provider.of<ClientsProvider>(context);
 
-    List<Widget> bottom = [
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Divider(
-          thickness: 1,
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2),
-        ),
-      ),
-      const SizedBox(height: 16),
-    ];
+    // Sections carry their own bottom margin.
+    const List<Widget> bottom = <Widget>[];
 
     void filterDomainLogs({required String value}) {
       logsProvider.setSearchText(value);

@@ -1,11 +1,15 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
+/// One protection toggle inside the management sheet.
 class SmallSwitch extends StatelessWidget {
   final String label;
   final IconData icon;
-  final bool value; 
+  final bool value;
   final void Function(bool) onChange;
   final bool disabled;
+  final Color? iconColor;
 
   const SmallSwitch({
     super.key,
@@ -14,52 +18,17 @@ class SmallSwitch extends StatelessWidget {
     required this.value,
     required this.onChange,
     required this.disabled,
+    this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: disabled == false
-          ? () => onChange(!value)
-          : null,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 44,
-            vertical: 8
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    icon,
-                    size: 24,
-                    color: Theme.of(context).listTileTheme.iconColor,
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                ],
-              ),
-              Switch(
-                value: value, 
-                onChanged: disabled == false
-                  ? onChange
-                  : null,
-              )
-            ],
-          ),
-        ),
-      ),
+    return AppleSwitchListTile(
+      title: label,
+      value: value,
+      icon: icon,
+      iconColor: iconColor ?? ApplePalette.of(context).tint,
+      onChanged: disabled == false ? onChange : null,
     );
   }
 }
