@@ -291,9 +291,10 @@ void main() {
   testWidgets('the title line counts what is working', (tester) async {
     await _pumpPage(tester);
 
-    // Only list 0 and list 9 are enabled, and their rules are what the server
-    // is actually applying.
-    expect(find.text(l.listsEnabledWithRules('2', '209')), findsOneWidget);
+    // Only list 0 is enabled, and its rules are what the server is actually
+    // applying; the allowlists are not counted, because the page does not
+    // show them.
+    expect(find.text(l.listsEnabledWithRules('1', '100')), findsOneWidget);
   });
 
   testWidgets('the pause row offers the durations', (tester) async {
@@ -320,7 +321,7 @@ void main() {
     expect(find.text(l.resumeProtection), findsOneWidget);
   });
 
-  testWidgets('both kinds of list get their own group and add action', (tester) async {
+  testWidgets('the page keeps the blocklists and the way to add one', (tester) async {
     var detailsId = -1;
     var detailsType = '';
 
@@ -336,18 +337,16 @@ void main() {
     expect(find.text('List 0'), findsOneWidget);
     expect(find.text(l.addList), findsOneWidget);
 
-    await _scrollTo(tester, find.text(l.whitelists));
-
-    // The whitelists are the other half of what the server is given, so they
-    // get their own group with its own way in.
-    expect(find.text('List 9'), findsOneWidget);
-    expect(find.text(l.addList), findsOneWidget);
-
-    await tester.tap(find.text('List 9'));
+    await tester.tap(find.text('List 0'));
     await tester.pumpAndSettle();
 
-    expect(detailsId, 9);
-    expect(detailsType, 'whitelist');
+    expect(detailsId, 0);
+    expect(detailsType, 'blacklist');
+
+    // The allowlists the server also keeps have no place in this design, so
+    // the page leaves them out rather than inventing a group for them.
+    expect(find.text(l.whitelists), findsNothing);
+    expect(find.text('List 9'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

@@ -144,10 +144,7 @@ class _FiltersPageState extends State<FiltersPage> {
   String _footnote(AppLocalizations l, Filtering filtering) {
     final enabled = filtering.filters
         .where((list) => list.enabled == true)
-        .toList()
-      ..addAll(
-        filtering.whitelistFilters.where((list) => list.enabled == true),
-      );
+        .toList();
 
     final rules = enabled.fold<int>(0, (total, list) => total + list.rulesCount);
 
@@ -482,18 +479,6 @@ class _FiltersPageState extends State<FiltersPage> {
           lists: filtering.filters,
         ),
       );
-
-      if (filtering.whitelistFilters.isNotEmpty) {
-        slivers.addAll(
-          _listGroup(
-            l: l,
-            p: palette,
-            title: l.whitelists,
-            type: 'whitelist',
-            lists: filtering.whitelistFilters,
-          ),
-        );
-      }
 
       slivers.addAll(_rulesGroup(l, palette, filtering));
       slivers.addAll(_servicesGroup(l, filteringProvider, filtering));

@@ -25,13 +25,11 @@ import 'package:adguard_home_manager/providers/app_config_provider.dart';
 class FiltersTripleColumn extends StatelessWidget {
   final void Function(String) onRemoveCustomRule;
   final void Function(Filter, String) onOpenDetailsModal;
-  final List<Widget> actions;
 
   const FiltersTripleColumn({
     super.key,
     required this.onRemoveCustomRule,
     required this.onOpenDetailsModal,
-    required this.actions,
   });
 
   @override
@@ -203,7 +201,6 @@ class FiltersTripleColumn extends StatelessWidget {
             icon: const Icon(CupertinoIcons.arrow_clockwise),
             tooltip: l.refresh,
           ),
-          ...actions
         ],
       ),
       body: Builder(
