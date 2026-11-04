@@ -368,43 +368,6 @@ class _DhcpScreenState extends State<DhcpScreen> {
       child: child
     );
 
-    // Caption above a stack of fields, the form counterpart of a section header.
-    Widget group(String label) => Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 7),
-      child: Text(
-        label.toUpperCase(),
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.08,
-          color: p.label2,
-          height: 1.25,
-        ),
-      ),
-    );
-
-    Widget field({
-      required String label,
-      required IconData icon,
-      required TextEditingController controller,
-      required ValueChanged<String> onChanged,
-      String? error,
-    }) => Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: TextFormField(
-        controller: controller,
-        onChanged: onChanged,
-        keyboardType: TextInputType.number,
-        style: AppleInput.style(context),
-        decoration: AppleInput.decoration(
-          context,
-          label: label,
-          icon: icon,
-          error: error,
-        ),
-      ),
-    );
-
     // The lease duration is sent as a plain integer, so anything but a number
     // is refused before the request is made.
     ValueChanged<String> leaseTime(void Function(String? error) setError) =>
@@ -502,91 +465,99 @@ class _DhcpScreenState extends State<DhcpScreen> {
           )
         ),
         if (selectedInterface!.ipv4Addresses.isNotEmpty) ...[
-          SliverToBoxAdapter(child: group(l.ipv4settings)),
+          SliverToBoxAdapter(child: AppleFormGroupLabel(l.ipv4settings)),
           SliverToBoxAdapter(
-            child: field(
+            child: AppleTextField(
               label: l.startOfRange,
               icon: CupertinoIcons.arrow_left_to_line,
               controller: ipv4StartRangeController,
               error: ipv4StartRangeError,
+              keyboardType: TextInputType.number,
               onChanged: (value) => validateIpV4(
                 value, 'ipv4StartRangeError', l.ipNotValid
               ),
             ),
           ),
           SliverToBoxAdapter(
-            child: field(
+            child: AppleTextField(
               label: l.endOfRange,
               icon: CupertinoIcons.arrow_right_to_line,
               controller: ipv4EndRangeController,
               error: ipv4EndRangeError,
+              keyboardType: TextInputType.number,
               onChanged: (value) => validateIpV4(
                 value, 'ipv4EndRangeError', l.ipNotValid
               ),
             ),
           ),
           SliverToBoxAdapter(
-            child: field(
+            child: AppleTextField(
               label: l.subnetMask,
               icon: CupertinoIcons.square_split_2x1_fill,
               controller: ipv4SubnetMaskController,
               error: ipv4SubnetMaskError,
+              keyboardType: TextInputType.number,
               onChanged: (value) => validateIpV4(
                 value, 'ipv4SubnetMaskError', l.subnetMaskNotValid
               ),
             ),
           ),
           SliverToBoxAdapter(
-            child: field(
+            child: AppleTextField(
               label: l.gateway,
               icon: CupertinoIcons.globe,
               controller: ipv4GatewayController,
               error: ipv4GatewayError,
+              keyboardType: TextInputType.number,
               onChanged: (value) => validateIpV4(
                 value, 'ipv4GatewayError', l.gatewayNotValid
               ),
             ),
           ),
           SliverToBoxAdapter(
-            child: field(
+            child: AppleTextField(
               label: l.leaseTime,
               icon: CupertinoIcons.timer,
               controller: ipv4LeaseTimeController,
               error: ipv4LeaseTimeError,
+              keyboardType: TextInputType.number,
               onChanged: leaseTime((error) => ipv4LeaseTimeError = error),
             ),
           ),
         ],
         if (selectedInterface!.ipv6Addresses.isNotEmpty) ...[
-          SliverToBoxAdapter(child: group(l.ipv6settings)),
+          SliverToBoxAdapter(child: AppleFormGroupLabel(l.ipv6settings)),
           SliverToBoxAdapter(
-            child: field(
+            child: AppleTextField(
               label: l.startOfRange,
               icon: CupertinoIcons.arrow_left_to_line,
               controller: ipv6StartRangeController,
               error: ipv6StartRangeError,
+              keyboardType: TextInputType.number,
               onChanged: (value) => validateIpV6(
                 value, 'ipv6StartRangeError', l.ipNotValid
               ),
             ),
           ),
           SliverToBoxAdapter(
-            child: field(
+            child: AppleTextField(
               label: l.endOfRange,
               icon: CupertinoIcons.arrow_right_to_line,
               controller: ipv6EndRangeController,
               error: ipv6EndRangeError,
+              keyboardType: TextInputType.number,
               onChanged: (value) => validateIpV6(
                 value, 'ipv6EndRangeError', l.ipNotValid
               ),
             ),
           ),
           SliverToBoxAdapter(
-            child: field(
+            child: AppleTextField(
               label: l.leaseTime,
               icon: CupertinoIcons.timer,
               controller: ipv6LeaseTimeController,
               error: ipv6LeaseTimeError,
+              keyboardType: TextInputType.number,
               onChanged: leaseTime((error) => ipv6LeaseTimeError = error),
             ),
           ),

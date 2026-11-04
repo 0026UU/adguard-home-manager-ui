@@ -346,52 +346,6 @@ class _AddServerModalState extends State<AddServerModal> {
       }      
     }
 
-    // Group header, same metrics as the AppleListSection title row.
-    Widget group(String label) => Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 7),
-      child: Text(
-        label.toUpperCase(),
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.08,
-          color: p.label2,
-          height: 1.25,
-        ),
-      ),
-    );
-
-    Widget input({
-      required String label,
-      required TextEditingController controller,
-      required IconData icon,
-      String? error,
-      String? hint,
-      String? helper,
-      TextInputType? keyboardType,
-      bool obscure = false,
-      ValueChanged<String>? onChanged,
-    }) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        child: TextFormField(
-          controller: controller,
-          style: AppleInput.style(context),
-          enabled: !isConnecting,
-          obscureText: obscure,
-          keyboardType: keyboardType,
-          onChanged: onChanged,
-          decoration: AppleInput.decoration(
-            context,
-            label: label,
-            icon: icon,
-            error: error,
-            hint: hint,
-            helper: helper,
-          ),
-        ),
-      );
-    }
 
     Widget notice(IconData icon, Color color, String text) => Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -443,10 +397,11 @@ class _AddServerModalState extends State<AddServerModal> {
             ),
           ),
         ),
-        group(l.general),
-        input(
+        AppleFormGroupLabel(l.general),
+        AppleTextField(
           label: l.name,
           controller: nameController,
+          enabled: !isConnecting,
           icon: CupertinoIcons.textbox,
           error: nameError,
           onChanged: (value) {
@@ -458,7 +413,7 @@ class _AddServerModalState extends State<AddServerModal> {
             validateData();
           },
         ),
-        group(l.connection),
+        AppleFormGroupLabel(l.connection),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           child: AppleSegmented(
@@ -475,9 +430,10 @@ class _AddServerModalState extends State<AddServerModal> {
         ),
         if (connectionType == ConnectionType.https)
           notice(CupertinoIcons.info_circle_fill, p.tint, l.sslWarning),
-        input(
+        AppleTextField(
           label: l.ipDomain,
           controller: ipDomainController,
+          enabled: !isConnecting,
           icon: CupertinoIcons.link,
           error: ipDomainError,
           keyboardType: TextInputType.url,
@@ -488,9 +444,10 @@ class _AddServerModalState extends State<AddServerModal> {
             validateData();
           },
         ),
-        input(
+        AppleTextField(
           label: l.path,
           controller: pathController,
+          enabled: !isConnecting,
           icon: CupertinoIcons.list_bullet_indent,
           error: pathError,
           hint: l.examplePath,
@@ -502,9 +459,10 @@ class _AddServerModalState extends State<AddServerModal> {
             validateData();
           },
         ),
-        input(
+        AppleTextField(
           label: l.port,
           controller: portController,
+          enabled: !isConnecting,
           icon: CupertinoIcons.number,
           error: portError,
           keyboardType: TextInputType.number,
@@ -515,20 +473,22 @@ class _AddServerModalState extends State<AddServerModal> {
             validateData();
           },
         ),
-        group(l.authentication),
-        input(
+        AppleFormGroupLabel(l.authentication),
+        AppleTextField(
           label: l.username,
           controller: userController,
+          enabled: !isConnecting,
           icon: CupertinoIcons.person,
         ),
-        input(
+        AppleTextField(
           label: l.password,
           controller: passwordController,
+          enabled: !isConnecting,
           icon: CupertinoIcons.lock,
           keyboardType: TextInputType.visiblePassword,
           obscure: true,
         ),
-        group(l.other),
+        AppleFormGroupLabel(l.other),
         AppleListSection(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           children: [

@@ -275,3 +275,92 @@ class AppleInput {
         color: ApplePalette.of(context).label,
       );
 }
+
+/// Caption above a block of fields, using the same metrics as the
+/// [AppleListSection] title so both read as one inset-grouped form.
+class AppleFormGroupLabel extends StatelessWidget {
+  final String label;
+  final EdgeInsetsGeometry padding;
+
+  const AppleFormGroupLabel(
+    this.label, {
+    super.key,
+    this.padding = const EdgeInsets.fromLTRB(16, 10, 16, 7),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+
+    return Padding(
+      padding: padding,
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.08,
+          color: p.label2,
+          height: 1.25,
+        ),
+      ),
+    );
+  }
+}
+
+/// One labelled field of an Apple form: the [AppleInput] chrome plus the
+/// spacing the forms share, so a form is a list of these and nothing else.
+class AppleTextField extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final IconData? icon;
+  final ValueChanged<String>? onChanged;
+  final String? error;
+  final String? hint;
+  final String? helper;
+  final int? helperMaxLines;
+  final TextInputType? keyboardType;
+  final bool obscure;
+  final bool enabled;
+  final EdgeInsetsGeometry padding;
+
+  const AppleTextField({
+    super.key,
+    required this.label,
+    required this.controller,
+    this.icon,
+    this.onChanged,
+    this.error,
+    this.hint,
+    this.helper,
+    this.helperMaxLines,
+    this.keyboardType,
+    this.obscure = false,
+    this.enabled = true,
+    this.padding = const EdgeInsets.fromLTRB(16, 0, 16, 12),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: padding,
+      child: TextFormField(
+        controller: controller,
+        style: AppleInput.style(context),
+        enabled: enabled,
+        obscureText: obscure,
+        keyboardType: keyboardType,
+        onChanged: onChanged,
+        decoration: AppleInput.decoration(
+          context,
+          label: label,
+          icon: icon,
+          error: error,
+          hint: hint,
+          helper: helper,
+          helperMaxLines: helperMaxLines,
+        ),
+      ),
+    );
+  }
+}

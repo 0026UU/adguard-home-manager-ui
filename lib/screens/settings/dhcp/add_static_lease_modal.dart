@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 import 'package:adguard_home_manager/constants/regexps.dart';
@@ -87,57 +86,40 @@ class __ContentState extends State<_Content> {
           child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Wrap(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Padding(
+                  AppleTextField(
+                    label: AppLocalizations.of(context)!.macAddress,
+                    controller: macController,
+                    icon: CupertinoIcons.wifi,
+                    error: macError,
+                    onChanged: validateMac,
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: TextFormField(
-                      controller: macController,
-                      style: AppleInput.style(context),
-                      onChanged: validateMac,
-                      decoration: AppleInput.decoration(
-                        context,
-                        icon: CupertinoIcons.wifi,
-                        error: macError,
-                        label: AppLocalizations.of(context)!.macAddress,
-                      ),
-                    ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: TextFormField(
-                      controller: ipController,
-                      style: AppleInput.style(context),
-                      onChanged: validateIp,
-                      decoration: AppleInput.decoration(
-                        context,
-                        icon: CupertinoIcons.globe,
-                        error: ipError,
-                        label: AppLocalizations.of(context)!.ipAddress,
-                      ),
-                    ),
+                  AppleTextField(
+                    label: AppLocalizations.of(context)!.ipAddress,
+                    controller: ipController,
+                    icon: CupertinoIcons.globe,
+                    error: ipError,
+                    onChanged: validateIp,
+                    padding: const EdgeInsets.only(bottom: 12),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: TextFormField(
-                      controller: hostNameController,
-                      style: AppleInput.style(context),
-                      onChanged: (value) {
-                        if (value != '') {
-                          setState(() => hostNameError = null);
-                        } else {
-                          setState(() => hostNameError =
-                              AppLocalizations.of(context)!.hostNameError);
-                        }
-                        validateData();
-                      },
-                      decoration: AppleInput.decoration(
-                        context,
-                        icon: CupertinoIcons.person,
-                        error: hostNameError,
-                        label: AppLocalizations.of(context)!.hostName,
-                      ),
-                    ),
+                  AppleTextField(
+                    label: AppLocalizations.of(context)!.hostName,
+                    controller: hostNameController,
+                    icon: CupertinoIcons.person,
+                    error: hostNameError,
+                    padding: const EdgeInsets.only(bottom: 12),
+                    onChanged: (value) {
+                      if (value != '') {
+                        setState(() => hostNameError = null);
+                      } else {
+                        setState(() => hostNameError =
+                            AppLocalizations.of(context)!.hostNameError);
+                      }
+                      validateData();
+                    },
                   ),
                 ],
               ),
