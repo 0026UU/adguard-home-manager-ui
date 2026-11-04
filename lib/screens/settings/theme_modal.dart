@@ -94,7 +94,6 @@ class _ThemeModalState extends State<ThemeModal> {
                         trailing: CustomRadio(
                           value: 0, 
                           groupValue: _selectedItem,
-                          backgroundColor: Theme.of(context).dialogBackgroundColor,
                         ),
                       ),
                     ),
@@ -120,7 +119,6 @@ class _ThemeModalState extends State<ThemeModal> {
                         trailing: CustomRadio(
                           value: 1, 
                           groupValue: _selectedItem,
-                          backgroundColor: Theme.of(context).dialogBackgroundColor,
                         ),
                       ),
                     ),
@@ -146,7 +144,6 @@ class _ThemeModalState extends State<ThemeModal> {
                         trailing: CustomRadio(
                           value: 2, 
                           groupValue: _selectedItem,
-                          backgroundColor: Theme.of(context).dialogBackgroundColor,
                         ),
                       ),
                     ),

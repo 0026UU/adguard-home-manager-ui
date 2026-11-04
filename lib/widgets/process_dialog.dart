@@ -1,5 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
+/// Blocking alert shown while a request runs.
 class ProcessDialog extends StatelessWidget {
   final String message;
 
@@ -10,29 +13,37 @@ class ProcessDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => false,
-      child: Dialog(
-        backgroundColor: Theme.of(context).dialogBackgroundColor,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: 30,
-            horizontal: 30
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(width: 40),
-              Flexible(
-                child: Text(
-                  message,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface
-                  ),
+    final p = ApplePalette.of(context);
+
+    return PopScope(
+      canPop: false,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 270),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: ColoredBox(
+              color: p.chromeSolid,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+                child: Row(
+                  children: [
+                    const CupertinoActivityIndicator(radius: 10),
+                    const SizedBox(width: 18),
+                    Expanded(
+                      child: Text(
+                        message,
+                        style: TextStyle(
+                          fontSize: 15,
+                          height: 1.3,
+                          color: p.label,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              )
-            ],
+              ),
+            ),
           ),
         ),
       ),

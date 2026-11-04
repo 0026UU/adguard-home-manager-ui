@@ -33,10 +33,16 @@ class AppleSheet extends StatelessWidget {
   final List<Widget> actions;
   final Widget? trailing;
 
+  /// Glyph or badge shown before the sheet title.
+  final Widget? leading;
+
   /// Buttons rendered in the head row (e.g. a segmented control).
   final Widget? headTrailingWidget;
 
   final double initialFraction;
+
+  /// Snap floor for the draggable sheet.
+  final double minFraction;
   final double maxFraction;
 
   const AppleSheet({
@@ -46,7 +52,9 @@ class AppleSheet extends StatelessWidget {
     this.actions = const [],
     this.trailing,
     this.headTrailingWidget,
+    this.leading,
     this.initialFraction = 0.6,
+    this.minFraction = 0.4,
     this.maxFraction = 0.95,
   });
 
@@ -56,7 +64,7 @@ class AppleSheet extends StatelessWidget {
 
     return DraggableScrollableSheet(
       initialChildSize: initialFraction,
-      minChildSize: 0.4,
+      minChildSize: minFraction,
       maxChildSize: maxFraction,
       expand: false,
       snap: true,
@@ -84,6 +92,10 @@ class AppleSheet extends StatelessWidget {
                       if (title != null || trailing != null || headTrailingWidget != null)
                         Row(
                           children: [
+                            if (leading != null) ...[
+                              leading!,
+                              const SizedBox(width: 10),
+                            ],
                             if (title != null)
                               Expanded(
                                 child: Text(
@@ -143,7 +155,9 @@ Future<T?> showAppleSheet<T>(
   List<Widget> actions = const [],
   Widget? trailing,
   Widget? headTrailingWidget,
+  Widget? leading,
   double initialFraction = 0.6,
+  double minFraction = 0.4,
   double maxFraction = 0.95,
   bool useRootNavigator = false,
 }) {
@@ -159,7 +173,9 @@ Future<T?> showAppleSheet<T>(
       actions: actions,
       trailing: trailing,
       headTrailingWidget: headTrailingWidget,
+      leading: leading,
       initialFraction: initialFraction,
+      minFraction: minFraction,
       maxFraction: maxFraction,
     ),
   );

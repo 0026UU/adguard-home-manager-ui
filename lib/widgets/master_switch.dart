@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
+/// Header switch that gates a whole settings group.
 class MasterSwitch extends StatelessWidget {
   final String label;
   final bool value;
@@ -18,34 +21,21 @@ class MasterSwitch extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: margin ?? const EdgeInsets.symmetric(horizontal: 16),
-      child: Material(
-        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(28),
-        child: InkWell(
-          onTap: () => onChange(!value),
-          borderRadius: BorderRadius.circular(28),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 8
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 18,
-                  ),
-                ),
-                Switch(
-                  value: value, 
-                  onChanged: onChange,
-                )
-              ],
+      child: AppleListSection(
+        margin: EdgeInsets.zero,
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => onChange(!value),
+              child: AppleSwitchListTile(
+                title: label,
+                value: value,
+                onChanged: onChange,
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

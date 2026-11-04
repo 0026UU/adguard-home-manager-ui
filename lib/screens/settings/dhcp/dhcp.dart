@@ -299,7 +299,6 @@ class _DhcpScreenState extends State<DhcpScreen> {
         showDialog(
           context: context, 
           builder: (context) => ConfirmActionModal(
-            icon: Icons.settings_backup_restore_rounded,
             title: AppLocalizations.of(context)!.restoreLeases,
             message: AppLocalizations.of(context)!.restoreLeasesMessage, 
             onConfirm: () => restoreLeases()
@@ -313,7 +312,6 @@ class _DhcpScreenState extends State<DhcpScreen> {
         showDialog(
           context: context, 
           builder: (context) => ConfirmActionModal(
-            icon: Icons.restore,
             title: AppLocalizations.of(context)!.restoreConfiguration,
             message: AppLocalizations.of(context)!.restoreConfigurationMessage,
             onConfirm: () => restoreConfig()

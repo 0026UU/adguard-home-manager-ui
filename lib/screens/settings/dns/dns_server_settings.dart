@@ -414,7 +414,6 @@ class _DnsServerSettingsScreenState extends State<DnsServerSettingsScreen> {
             CustomRadioListTile(
               groupValue: blockingMode, 
               value: "default", 
-              radioBackgroundColor: Theme.of(context).dialogBackgroundColor, 
               title: AppLocalizations.of(context)!.defaultMode,
               subtitle: AppLocalizations.of(context)!.defaultDescription,
               onChanged: updateBlockingMode,
@@ -422,7 +421,6 @@ class _DnsServerSettingsScreenState extends State<DnsServerSettingsScreen> {
             CustomRadioListTile(
               groupValue: blockingMode, 
               value: "refused", 
-              radioBackgroundColor: Theme.of(context).dialogBackgroundColor, 
               title: "REFUSED",
               subtitle: AppLocalizations.of(context)!.refusedDescription,
               onChanged: updateBlockingMode,
@@ -430,7 +428,6 @@ class _DnsServerSettingsScreenState extends State<DnsServerSettingsScreen> {
             CustomRadioListTile(
               groupValue: blockingMode, 
               value: "nxdomain", 
-              radioBackgroundColor: Theme.of(context).dialogBackgroundColor, 
               title: "NXDOMAIN",
               subtitle: AppLocalizations.of(context)!.nxdomainDescription,
               onChanged: updateBlockingMode,
@@ -438,7 +435,6 @@ class _DnsServerSettingsScreenState extends State<DnsServerSettingsScreen> {
             CustomRadioListTile(
               groupValue: blockingMode, 
               value: "null_ip", 
-              radioBackgroundColor: Theme.of(context).dialogBackgroundColor, 
               title: AppLocalizations.of(context)!.nullIp,
               subtitle: AppLocalizations.of(context)!.nullIpDescription,
               onChanged: updateBlockingMode,
@@ -446,7 +442,6 @@ class _DnsServerSettingsScreenState extends State<DnsServerSettingsScreen> {
             CustomRadioListTile(
               groupValue: blockingMode, 
               value: "custom_ip", 
-              radioBackgroundColor: Theme.of(context).dialogBackgroundColor, 
               title: AppLocalizations.of(context)!.customIp,
               subtitle: AppLocalizations.of(context)!.customIpDescription,
               onChanged: updateBlockingMode,

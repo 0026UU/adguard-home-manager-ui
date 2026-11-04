@@ -313,7 +313,6 @@ class _UpstreamDnsScreenState extends State<UpstreamDnsScreen> {
             CustomRadioListTile(
               groupValue: upstreamMode, 
               value: "", 
-              radioBackgroundColor: Theme.of(context).dialogBackgroundColor, 
               title: AppLocalizations.of(context)!.loadBalancing,
               subtitle: AppLocalizations.of(context)!.loadBalancingDescription,
               onChanged: (value) => setState(() => upstreamMode = value),
@@ -321,7 +320,6 @@ class _UpstreamDnsScreenState extends State<UpstreamDnsScreen> {
             CustomRadioListTile(
               groupValue: upstreamMode, 
               value: "parallel", 
-              radioBackgroundColor: Theme.of(context).dialogBackgroundColor, 
               title: AppLocalizations.of(context)!.parallelRequests,
               subtitle: AppLocalizations.of(context)!.parallelRequestsDescription,
               onChanged: (value) => setState(() => upstreamMode = value),
@@ -329,7 +327,6 @@ class _UpstreamDnsScreenState extends State<UpstreamDnsScreen> {
             CustomRadioListTile(
               groupValue: upstreamMode, 
               value: "fastest_addr", 
-              radioBackgroundColor: Theme.of(context).dialogBackgroundColor, 
               title: AppLocalizations.of(context)!.fastestIpAddress,
               subtitle: AppLocalizations.of(context)!.fastestIpAddressDescription,
               onChanged: (value) => setState(() => upstreamMode = value),
