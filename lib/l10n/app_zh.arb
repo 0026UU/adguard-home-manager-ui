@@ -869,5 +869,8 @@
     "pauseForever": "永久暂停",
     "nowLabel": "现在",
     "todayLabel": "今天",
-    "configured": "已配置"
+    "configured": "已配置",
+    "add": "添加",
+    "dnsRewritesSubtitle": "把域名解析指向指定地址",
+    "back": "返回"
 }

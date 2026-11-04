@@ -897,5 +897,8 @@
     "pauseForever": "Pause indefinitely",
     "nowLabel": "Now",
     "todayLabel": "Today",
-    "configured": "Configured"
+    "configured": "Configured",
+    "add": "Add",
+    "dnsRewritesSubtitle": "Point a domain name at an address of your choosing",
+    "back": "Back"
 }

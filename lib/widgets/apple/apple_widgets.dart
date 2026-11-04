@@ -716,6 +716,56 @@ class AppleChevron extends StatelessWidget {
   }
 }
 
+/// The back capsule the design layer puts in the top-left corner of a pushed
+/// page: a tint chevron and the title of the screen it goes back to, on a
+/// filled 36pt pill.
+class AppleBackButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onPressed;
+
+  const AppleBackButton({super.key, required this.label, this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, right: 8),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            height: 36,
+            constraints: const BoxConstraints(maxWidth: 150),
+            padding: const EdgeInsets.only(left: 4, right: 10),
+            decoration: BoxDecoration(
+              color: p.fill3,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(CupertinoIcons.back, size: 22, color: p.tint),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 16, color: p.tint),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Rounded tinted square behind a leading icon (Settings app style).
 class AppleIconBadge extends StatelessWidget {
   final IconData icon;

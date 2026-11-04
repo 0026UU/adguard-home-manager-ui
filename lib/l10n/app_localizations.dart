@@ -5503,6 +5503,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Configured'**
   String get configured;
+
+  /// No description provided for @add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get add;
+
+  /// No description provided for @dnsRewritesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Point a domain name at an address of your choosing'**
+  String get dnsRewritesSubtitle;
+
+  /// No description provided for @back.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get back;
 }
 
 class _AppLocalizationsDelegate

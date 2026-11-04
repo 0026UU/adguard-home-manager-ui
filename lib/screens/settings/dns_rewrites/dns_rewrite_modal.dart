@@ -57,6 +57,10 @@ class _ContentState extends State<_Content> {
 
   bool validData = false;
 
+  // The update endpoint rewrites the whole rule, so a form that did not carry
+  // the state over would quietly switch a disabled rule back on.
+  late bool enabled = widget.rule?.enabled ?? true;
+
   void validateDomain(String value) {
     if (Regexps.wildcardDomain.hasMatch(value)) {
       setState(() => domainError = null);
@@ -95,7 +99,7 @@ class _ContentState extends State<_Content> {
     RewriteRules currentRule() => RewriteRules(
           domain: domainController.text,
           answer: answerController.text,
-          enabled: true,
+          enabled: enabled,
         );
 
     return Column(
@@ -129,6 +133,18 @@ class _ContentState extends State<_Content> {
                       label: l.answer,
                     ),
                   ),
+
+                  // `/rewrite/add` ignores the flag, so only an existing rule
+                  // can be saved switched off.
+                  if (widget.rule != null) ...[
+                    const SizedBox(height: 6),
+                    AppleSwitchListTile(
+                      title: l.enabled,
+                      value: enabled,
+                      onChanged: (value) => setState(() => enabled = value),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
                 ],
               ),
             ),

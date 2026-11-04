@@ -2,14 +2,14 @@
 
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/screens/settings/dns_rewrites/delete_dns_rewrite.dart';
-import 'package:adguard_home_manager/screens/settings/dns_rewrites/dns_rewrites_enable_button.dart';
 import 'package:adguard_home_manager/screens/settings/dns_rewrites/dns_rewrite_modal.dart';
 
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
@@ -20,6 +20,8 @@ import 'package:adguard_home_manager/providers/rewrite_rules_provider.dart';
 import 'package:adguard_home_manager/models/rewrite_rules.dart';
 import 'package:adguard_home_manager/classes/process_modal.dart';
 
+/// The rewrite table of the server: one rule per row, the domain it matches
+/// and the address it answers with.
 class DnsRewritesScreen extends StatefulWidget {
   const DnsRewritesScreen({super.key});
 
@@ -28,30 +30,10 @@ class DnsRewritesScreen extends StatefulWidget {
 }
 
 class _DnsRewritesScreenState extends State<DnsRewritesScreen> {
-  late bool isVisible;
-  final ScrollController scrollController = ScrollController();
-
   @override
   void initState() {
-    final provider = Provider.of<RewriteRulesProvider>(context, listen: false);
-    provider.fetchData();
+    Provider.of<RewriteRulesProvider>(context, listen: false).fetchData();
     super.initState();
-
-    isVisible = true;
-    scrollController.addListener(() {
-      if (scrollController.position.userScrollDirection == ScrollDirection.reverse) {
-        if (mounted && isVisible == true) {
-          setState(() => isVisible = false);
-        }
-      } 
-      else {
-        if (scrollController.position.userScrollDirection == ScrollDirection.forward) {
-          if (mounted && isVisible == false) {
-            setState(() => isVisible = true);
-          }
-        }
-      }
-    });
   }
 
   @override
@@ -60,380 +42,171 @@ class _DnsRewritesScreenState extends State<DnsRewritesScreen> {
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
 
     final width = MediaQuery.of(context).size.width;
+    final p = ApplePalette.of(context);
+    final l = AppLocalizations.of(context)!;
 
     void deleteDnsRewrite(RewriteRules rule) async {
-      ProcessModal processModal = ProcessModal();
-      processModal.open(AppLocalizations.of(context)!.deleting);
+      final processModal = ProcessModal();
+      processModal.open(l.deleting);
 
       final result = await rewriteRulesProvider.deleteDnsRewrite(rule);
 
       processModal.close();
 
-      if (result == true) {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsRewriteRuleDeleted, 
-          color: Colors.green
-        );
-      }
-      else {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsRewriteRuleNotDeleted, 
-          color: Colors.red
-        );
-      }
+      showSnackbar(
+        appConfigProvider: appConfigProvider,
+        label: result
+          ? l.dnsRewriteRuleDeleted
+          : l.dnsRewriteRuleNotDeleted,
+        color: result ? p.green : p.red,
+      );
     }
 
     void addDnsRewrite(RewriteRules rule, _) async {
-      ProcessModal processModal = ProcessModal();
-      processModal.open(AppLocalizations.of(context)!.addingRewrite);
+      final processModal = ProcessModal();
+      processModal.open(l.addingRewrite);
 
       final result = await rewriteRulesProvider.addDnsRewrite(rule);
 
       processModal.close();
 
-      if (result == true) {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsRewriteRuleAdded, 
-          color: Colors.green
-        );
-      }
-      else {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsRewriteRuleNotAdded, 
-          color: Colors.red
-        );
-      }
-    }
-
-    void updateRewriteRule(RewriteRules newRule, RewriteRules? previousRule) async {
-      ProcessModal processModal = ProcessModal();
-      processModal.open(AppLocalizations.of(context)!.updatingRule);
-
-      final result = await rewriteRulesProvider.editDnsRewrite(newRule, previousRule!);
-
-      processModal.close();
-
-      if (result == true) {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsRewriteRuleUpdated, 
-          color: Colors.green
-        );
-      }
-      else {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsRewriteRuleNotUpdated, 
-          color: Colors.red
-        );
-      }
-    }
-
-    void enableDisableRule(int index) async {
-      final processModal = ProcessModal();
-
-      final currentListItem = rewriteRulesProvider.rewriteRules![index];
-      currentListItem.enabled = !currentListItem.enabled;
-
-      processModal.open(AppLocalizations.of(context)!.updatingRule);
-      final result = await rewriteRulesProvider.editDnsRewrite(currentListItem, currentListItem);
-      processModal.close();
-
-      if (result == true) {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: currentListItem.enabled
-            ? AppLocalizations.of(context)!.dnsRewriteRuleEnabled
-            : AppLocalizations.of(context)!.dnsRewriteRuleDisabled, 
-          color: Colors.green
-        );
-      }
-      else {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsRewriteRuleNotUpdated, 
-          color: Colors.red
-        );
-      } 
-    }
-
-    void enableDisableAllRules(bool status) async {
-      final processModal = ProcessModal();
-
-      processModal.open(
-        status 
-          ? AppLocalizations.of(context)!.enablingDnsRewriteRule
-          : AppLocalizations.of(context)!.disablingDnsRewriteRule
+      showSnackbar(
+        appConfigProvider: appConfigProvider,
+        label: result ? l.dnsRewriteRuleAdded : l.dnsRewriteRuleNotAdded,
+        color: result ? p.green : p.red,
       );
-      final result = await rewriteRulesProvider.enableDisableRewriteRules(status);
-      processModal.close();
-
-      if (result == true) {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: status
-            ? AppLocalizations.of(context)!.allDnsRewriteRulesEnabled
-            : AppLocalizations.of(context)!.allDnsRewriteRulesDisabled, 
-          color: Colors.green
-        );
-      }
-      else {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: status 
-            ? AppLocalizations.of(context)!.errorEnablingAllDnsRewriteRules 
-            : AppLocalizations.of(context)!.errorDisablingAllDnsRewriteRules, 
-          color: Colors.red
-        );
-      } 
     }
 
-    void handleTapRow(int index) {
-      if (width > 900 || !(Platform.isAndroid || Platform.isIOS)) {
-        showDialog(
-          context: context, 
-          builder: (context) => DnsRewriteModal(
-            onConfirm: updateRewriteRule,
-            dialog: true,
-            rule: rewriteRulesProvider.rewriteRules![index],
-            onDelete: (rule) => showDialog(
-              context: context, 
-              builder: (context) => DeleteDnsRewrite(
-                onConfirm: () => deleteDnsRewrite(rule)
-              )
-            ),
+    void updateRewriteRule(RewriteRules newRule, RewriteRules previousRule) async {
+      final processModal = ProcessModal();
+      processModal.open(l.updatingRule);
+
+      final result = await rewriteRulesProvider.editDnsRewrite(newRule, previousRule);
+
+      processModal.close();
+
+      showSnackbar(
+        appConfigProvider: appConfigProvider,
+        label: result ? l.dnsRewriteRuleUpdated : l.dnsRewriteRuleNotUpdated,
+        color: result ? p.green : p.red,
+      );
+    }
+
+    // The form is a card on a wide screen and a sheet on a phone, the same way
+    // the rest of the Apple forms are presented.
+    void openForm({RewriteRules? rule, required bool isAdd}) {
+      final asDialog = isDesktop(width) || !(Platform.isAndroid || Platform.isIOS);
+
+      void onConfirm(RewriteRules newRule, RewriteRules? previousRule) {
+        if (isAdd) {
+          addDnsRewrite(newRule, previousRule);
+        }
+        else {
+          updateRewriteRule(newRule, previousRule!);
+        }
+      }
+
+      final form = DnsRewriteModal(
+        onConfirm: onConfirm,
+        dialog: asDialog,
+        rule: rule,
+        onDelete: (deleted) => showDialog(
+          context: context,
+          builder: (context) => DeleteDnsRewrite(
+            onConfirm: () => deleteDnsRewrite(deleted),
           ),
-        );
+        ),
+      );
+
+      if (asDialog) {
+        showDialog(context: context, builder: (context) => form);
       }
       else {
         showModalBottomSheet(
-          context: context, 
+          context: context,
           useRootNavigator: true,
-          builder: (context) => DnsRewriteModal(
-            onConfirm: updateRewriteRule,
-            dialog: false,
-            rule: rewriteRulesProvider.rewriteRules![index],
-            onDelete: (rule) => showDialog(
-              context: context, 
-              builder: (context) => DeleteDnsRewrite(
-                onConfirm: () => deleteDnsRewrite(rule)
-              )
-            ),
-          ),
           backgroundColor: Colors.transparent,
           isScrollControlled: true,
+          builder: (context) => form,
         );
-      }                  
+      }
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.dnsRewrites),
-        surfaceTintColor: isDesktop(width) ? Colors.transparent : null,
-        centerTitle: false,
-      ),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Builder(
-              builder: (context) {
-                switch (rewriteRulesProvider.loadStatus) {
-                  case LoadStatus.loading:
-                    return SizedBox(
-                      width: double.maxFinite,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          const CircularProgressIndicator(),
-                          const SizedBox(height: 30),
-                          Text(
-                            AppLocalizations.of(context)!.loadingRewriteRules,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 22,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          )
-                        ],
-                      ),
-                    );
-                  
-                  case LoadStatus.loaded:
-                    if (rewriteRulesProvider.rewriteRules!.isNotEmpty) {
-                      return RefreshIndicator(
-                        onRefresh: () async {
-                          final result = await rewriteRulesProvider.fetchData();
-                          if (result == false) {
-                            showSnackbar(
-                              appConfigProvider: appConfigProvider,
-                              label: AppLocalizations.of(context)!.rewriteRulesNotLoaded, 
-                              color: Colors.red
-                            );
-                          }
-                        },
-                        child: Column(
-                          children: [
-                            DnsRewriteEnableButton(
-                              enabled: rewriteRulesProvider.rewriteStatus!.enabled,
-                              setEnabled: enableDisableAllRules,
-                            ),
-                            Expanded(
-                              child: ListView.builder(
-                                shrinkWrap: true,
-                                controller: scrollController,
-                                padding: const EdgeInsets.only(top: 0),
-                                itemCount: rewriteRulesProvider.rewriteRules!.length,
-                                itemBuilder: (context, index) => ListTile(
-                                  contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 36),
-                                  onTap: () => handleTapRow(index),
-                                  title: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Text(
-                                            "${AppLocalizations.of(context)!.domain}: ",
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w500,
-                                              color: Theme.of(context).colorScheme.onSurface
-                                            ),
-                                          ),
-                                          Text(
-                                            rewriteRulesProvider.rewriteRules![index].domain,
-                                            style: TextStyle(
-                                              color: Theme.of(context).colorScheme.onSurface
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            "${AppLocalizations.of(context)!.answer}: ",
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w500,
-                                              color: Theme.of(context).colorScheme.onSurface
-                                            ),
-                                          ),
-                                          Text(
-                                            rewriteRulesProvider.rewriteRules![index].answer,
-                                            style: TextStyle(
-                                              color: Theme.of(context).colorScheme.onSurface
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  trailing: Switch(
-                                    value: rewriteRulesProvider.rewriteRules![index].enabled,
-                                    onChanged: (_) => enableDisableRule(index),
-                                  ),
-                                )
-                              ),
-                            ),
-                          ],
-                        )
-                      );
-                    }
-                    else {
-                      return Center(
-                        child: Text(
-                          AppLocalizations.of(context)!.noRewriteRules,
-                          style: TextStyle(
-                            fontSize: 22,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      );
-                    }
-        
-                  case LoadStatus.error:
-                    return SizedBox(
-                      width: double.maxFinite,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.error,
-                            color: Colors.red,
-                            size: 50,
-                          ),
-                          const SizedBox(height: 30),
-                          Text(
-                            AppLocalizations.of(context)!.rewriteRulesNotLoaded,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 22,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          )
-                        ],
-                      ),
-                    );
-        
-                  default:
-                    return const SizedBox();
-                }
-              },
+    return AppleScreen(
+      title: l.dnsRewrites,
+      subtitle: l.dnsRewritesSubtitle,
+      // A pushed route has a route to go back from; a column does not. The
+      // design layer names the capsule after the screen behind it, which the
+      // page itself cannot know, so it keeps the fallback label.
+      leading: isDesktop(width)
+        ? null
+        : AppleBackButton(
+            label: l.back,
+            onPressed: () => Navigator.pop(context),
+          ),
+      onRefresh: () async {
+        final result = await rewriteRulesProvider.fetchData();
+        if (result == false) {
+          showSnackbar(
+            appConfigProvider: appConfigProvider,
+            label: l.rewriteRulesNotLoaded,
+            color: p.red,
+          );
+        }
+      },
+      slivers: [
+        if (rewriteRulesProvider.loadStatus == LoadStatus.loading)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: AppleLoading(),
+          ),
+
+        if (rewriteRulesProvider.loadStatus == LoadStatus.error)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: AppleEmptyState(
+              icon: CupertinoIcons.exclamationmark_triangle,
+              title: l.rewriteRulesNotLoaded,
+              color: p.red,
             ),
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 100),
-              curve: Curves.easeInOut,
-              bottom: isVisible ?
-                appConfigProvider.showingSnackbar
-                  ? 70 : 20
-                  : -70,
-                right: 20,
-                child: FloatingActionButton(
-                  onPressed: () => {
-                    if (width > 900 || !(Platform.isAndroid || Platform.isIOS)) {
-                      showDialog(
-                        context: context, 
-                        builder: (context) => DnsRewriteModal(
-                          onConfirm: addDnsRewrite,
-                          dialog: true,
-                          onDelete: (rule) => showDialog(
-                            context: context, 
-                            builder: (context) => DeleteDnsRewrite(
-                              onConfirm: () => deleteDnsRewrite(rule)
-                            )
-                          ),
-                        ),
-                      )
-                    }
-                    else {
-                      showModalBottomSheet(
-                        context: context, 
-                        useRootNavigator: true,
-                        builder: (context) => DnsRewriteModal(
-                          onConfirm: addDnsRewrite,
-                          dialog: false,
-                          onDelete: (rule) => showDialog(
-                            context: context, 
-                            builder: (context) => DeleteDnsRewrite(
-                              onConfirm: () => deleteDnsRewrite(rule)
-                            )
-                          ),
-                        ),
-                        backgroundColor: Colors.transparent,
-                        isScrollControlled: true
-                      )
-                    }
-                  },
-                  child: const Icon(Icons.add),
-                ),
+          ),
+
+        if (rewriteRulesProvider.loadStatus == LoadStatus.loaded) ...[
+          if (rewriteRulesProvider.rewriteRules?.isEmpty ?? true)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: AppleEmptyState(
+                icon: CupertinoIcons.arrow_2_circlepath_circle,
+                title: l.noRewriteRules,
+                color: p.label3,
+              ),
             )
-          ],
-        ),
-      ),
+          else
+            SliverToBoxAdapter(
+              child: AppleListSection(
+                title: l.rules,
+                margin: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                headerTrailing: AppleHeaderAction(
+                  label: l.add,
+                  onPressed: () => openForm(isAdd: true),
+                ),
+                children: [
+                  for (final rule in rewriteRulesProvider.rewriteRules!)
+                    AppleListTile(
+                      // A rule that answers nothing is still worth reading, so
+                      // its state rides on the subtitle instead of a control
+                      // the design layer does not draw.
+                      title: rule.domain,
+                      subtitle: rule.enabled
+                        ? rule.answer
+                        : '${rule.answer} · ${l.disabled}',
+                      onTap: () => openForm(rule: rule, isAdd: false),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ],
     );
   }
 }

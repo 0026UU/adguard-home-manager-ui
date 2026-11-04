@@ -2897,4 +2897,14 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get configured => 'Configured';
+
+  @override
+  String get add => 'Add';
+
+  @override
+  String get dnsRewritesSubtitle =>
+      'Point a domain name at an address of your choosing';
+
+  @override
+  String get back => 'Back';
 }

@@ -2797,6 +2797,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get configured => '已配置';
+
+  @override
+  String get add => '添加';
+
+  @override
+  String get dnsRewritesSubtitle => '把域名解析指向指定地址';
+
+  @override
+  String get back => '返回';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -5500,4 +5509,13 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get configured => '已配置';
+
+  @override
+  String get add => '添加';
+
+  @override
+  String get dnsRewritesSubtitle => '把域名解析指向指定地址';
+
+  @override
+  String get back => '返回';
 }
