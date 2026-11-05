@@ -56,7 +56,7 @@ void main() {
     expect(find.byType(AppleStatGrid), findsOneWidget);
     expect(find.byType(AppleTrendChart), findsOneWidget);
     expect(find.text(l.topRanking), findsOneWidget);
-    expect(find.text(l.services.toUpperCase()), findsOneWidget);
+    expect(find.text(l.services), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await expectLater(

@@ -38,7 +38,7 @@ void main() {
     expect(find.byType(AppleBackButton), findsOneWidget);
 
     // The group caption and its add action, then one row per rule.
-    expect(find.text(l.rules.toUpperCase()), findsOneWidget);
+    expect(find.text(l.rules), findsOneWidget);
     expect(find.widgetWithText(AppleHeaderAction, l.add), findsOneWidget);
     expect(find.byType(AppleListSection), findsOneWidget);
     expect(find.byType(AppleListTile), findsNWidgets(6));

@@ -54,8 +54,8 @@ void main() {
 
     // Two groups, each with its own caption.
     expect(find.byType(AppleListSection), findsNWidgets(2));
-    expect(find.text(l.upstreamDns.toUpperCase()), findsOneWidget);
-    expect(find.text(l.advancedSettings.toUpperCase()), findsOneWidget);
+    expect(find.text(l.upstreamDns), findsOneWidget);
+    expect(find.text(l.advancedSettings), findsOneWidget);
     expect(find.widgetWithText(AppleHeaderAction, l.add), findsOneWidget);
 
     // One row per upstream, drawn as code, then the rows around them.

@@ -116,29 +116,14 @@ class AddFiltersButton extends StatelessWidget {
       );
     }
 
+    /// The rule editor is a page in the design layer, not a modal: it slides in
+    /// over the list and the capsule is named after the tab it came from.
     void openEditCustomRule() {
-      showGeneralDialog(
-        context: context, 
-        barrierColor: !(width > 700 || !(Platform.isAndroid || Platform.isIOS))
-          ?Colors.transparent 
-          : Colors.black54,
-        transitionBuilder: (context, anim1, anim2, child) {
-          return SlideTransition(
-            position: Tween(
-              begin: const Offset(0, 1), 
-              end: const Offset(0, 0)
-            ).animate(
-              CurvedAnimation(
-                parent: anim1, 
-                curve: Curves.easeInOutCubicEmphasized
-              )
-            ),
-            child: child,
-          );
-        },
-        pageBuilder: (context, animation, secondaryAnimation) => EditCustomRules(
-          fullScreen: !(width > 700 || !(Platform.isAndroid || Platform.isIOS)),
-          onConfirm: confirmEditCustomRules,
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => EditCustomRules(
+            onConfirm: confirmEditCustomRules,
+          ),
         ),
       );
     }

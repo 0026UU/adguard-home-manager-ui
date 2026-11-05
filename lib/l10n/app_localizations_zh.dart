@@ -2978,6 +2978,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String extendStatisticsTo(Object time) {
     return '把统计保留期延长到 $time';
   }
+
+  @override
+  String get customRulesEditorHint => '每行一条，支持 Adblock / hosts 语法';
+
+  @override
+  String get adblockSyntax => 'AdBlock 语法';
+
+  @override
+  String get insert => '插入';
+
+  @override
+  String get templateBlockDomain => '拦截域名及其子资源';
+
+  @override
+  String get templateAllowDomain => '允许（例外）域名';
+
+  @override
+  String get templateImportant => '提升优先级';
+
+  @override
+  String get templateInserted => '已插入模板';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -5865,4 +5886,25 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String extendStatisticsTo(Object time) {
     return '把统计保留期延长到 $time';
   }
+
+  @override
+  String get customRulesEditorHint => '每行一条，支持 Adblock / hosts 语法';
+
+  @override
+  String get adblockSyntax => 'AdBlock 语法';
+
+  @override
+  String get insert => '插入';
+
+  @override
+  String get templateBlockDomain => '拦截域名及其子资源';
+
+  @override
+  String get templateAllowDomain => '允许（例外）域名';
+
+  @override
+  String get templateImportant => '提升优先级';
+
+  @override
+  String get templateInserted => '已插入模板';
 }

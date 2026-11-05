@@ -172,4 +172,41 @@ void main() {
     expect(find.byIcon(Icons.error), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  // The design layer writes its group captions in the case of the words
+  // themselves rather than the small caps iOS uses, and all three header
+  // widgets draw the same caption, so they have to agree on it.
+  testWidgets('the group headers keep the case they are given', (tester) async {
+    await _pump(
+      tester,
+      Scaffold(
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              const AppleGroupHeader(title: 'Custom rules'),
+              const AppleFormGroupLabel('Custom rules'),
+              AppleListSection(
+                title: 'Custom rules',
+                children: const [AppleListTile(title: 'A rule')],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('CUSTOM RULES'), findsNothing);
+    expect(find.text('Custom rules'), findsNWidgets(3));
+
+    final styles = tester
+      .widgetList<Text>(find.text('Custom rules'))
+      .map((text) => text.style!)
+      .toList();
+
+    for (final style in styles) {
+      expect(style.fontSize, 13);
+      expect(style.fontWeight, FontWeight.w600);
+      expect(style.letterSpacing, 0.2);
+    }
+  });
 }

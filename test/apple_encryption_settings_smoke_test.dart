@@ -72,7 +72,7 @@ void main() {
     expect(find.byType(AppleBackButton), findsOneWidget);
 
     // The group the design layer opens with, and the switches it holds.
-    expect(find.text(l.enabledProtocols.toUpperCase()), findsOneWidget);
+    expect(find.text(l.enabledProtocols), findsOneWidget);
     expect(find.widgetWithText(AppleSwitchListTile, l.enableEncryption), findsOneWidget);
     expect(find.widgetWithText(AppleSwitchListTile, l.dnsOverTls), findsOneWidget);
     expect(find.widgetWithText(AppleSwitchListTile, l.dnsOverHttps), findsOneWidget);
@@ -119,7 +119,7 @@ void main() {
     String value(String title) =>
         tester.widget<AppleListTile>(find.widgetWithText(AppleListTile, title)).value!;
 
-    expect(find.text(l.certificates.toUpperCase()), findsOneWidget);
+    expect(find.text(l.certificates), findsOneWidget);
     expect(value(l.subject), 'CN=dns.example.com');
     expect(value(l.issuer), 'CN=Yeti, O=Yggdrasil LLC');
     expect(
@@ -134,9 +134,9 @@ void main() {
     expect(value(l.keyType), 'EC private key');
 
     // The form the page has always carried is still on it.
-    expect(find.text(l.serverConfiguration.toUpperCase()), findsOneWidget);
-    expect(find.text(l.certificateSource.toUpperCase()), findsOneWidget);
-    expect(find.text(l.privateKey.toUpperCase()), findsOneWidget);
+    expect(find.text(l.serverConfiguration), findsOneWidget);
+    expect(find.text(l.certificateSource), findsOneWidget);
+    expect(find.text(l.privateKey), findsOneWidget);
     expect(find.byType(AppleTextField), findsNWidgets(6));
     expect(fieldValue(tester, l.domainName), 'dns.example.com');
     expect(fieldValue(tester, l.tlsPort), '853');
@@ -342,7 +342,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AppleLoading), findsNothing);
-    expect(find.text(l.enabledProtocols.toUpperCase()), findsOneWidget);
+    expect(find.text(l.enabledProtocols), findsOneWidget);
   });
 
   testWidgets('a failed read reports the Apple way', (tester) async {

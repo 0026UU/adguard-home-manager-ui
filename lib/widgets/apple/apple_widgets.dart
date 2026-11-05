@@ -471,11 +471,11 @@ class AppleListSection extends StatelessWidget {
                   if (title != null)
                     Expanded(
                       child: Text(
-                        title!.toUpperCase(),
+                        title!,
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          letterSpacing: -0.08,
+                          letterSpacing: 0.2,
                           color: p.label2,
                           height: 1.25,
                         ),
@@ -541,7 +541,7 @@ class AppleGroupHeader extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                letterSpacing: -0.08,
+                letterSpacing: 0.2,
                 color: p.label2,
                 height: 1.25,
               ),

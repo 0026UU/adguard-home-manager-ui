@@ -230,8 +230,8 @@ void main() {
     expect(find.byType(SliverAppBar), findsOneWidget);
     expect(find.byType(Switch), findsNothing);
     expect(_largeTitle(l.dhcpSettings), findsOneWidget);
-    expect(find.text(l.ipv4settings.toUpperCase()), findsOneWidget);
-    expect(find.text(l.ipv6settings.toUpperCase()), findsOneWidget);
+    expect(find.text(l.ipv4settings), findsOneWidget);
+    expect(find.text(l.ipv6settings), findsOneWidget);
     // Five IPv4 fields plus three IPv6 ones.
     expect(find.byType(TextFormField), findsNWidgets(8));
     expect(find.byType(CupertinoSwitch), findsOneWidget);
@@ -311,7 +311,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // docker0 has no IPv6 addresses, so that group disappears.
-    expect(find.text(l.ipv6settings.toUpperCase()), findsNothing);
+    expect(find.text(l.ipv6settings), findsNothing);
     expect(find.byType(TextFormField), findsNWidgets(5));
     expect(find.text('docker0'), findsOneWidget);
     // The cleared range is not valid until it is filled again.

@@ -151,23 +151,31 @@ class AppleFormFooter extends StatelessWidget {
       child: Row(
         children: [
           if (leading != null) ...[leading!, const Spacer()],
-          // A narrow dialog cannot always fit two labels, so the pair gives way
-          // before the row runs off the edge.
-          Flexible(
-            child: AppleFormButton(
-              label: cancelLabel ?? l.cancel,
-              background: p.fill2,
-              foreground: p.label,
-              onPressed: cancel,
+          // The design layer splits the row evenly between the two buttons, so
+          // both get the same share of it and a long label ellipsizes.
+          Expanded(
+            child: SizedBox(
+              height: 44,
+              child: AppleFormButton(
+                label: cancelLabel ?? l.cancel,
+                background: p.fill2,
+                foreground: p.label,
+                radius: 12,
+                onPressed: cancel,
+              ),
             ),
           ),
           const SizedBox(width: 10),
-          Flexible(
-            child: AppleFormButton(
-              label: confirmLabel,
-              background: destructive ? p.red : p.tint,
-              foreground: Colors.white,
-              onPressed: confirmEnabled ? onConfirm : null,
+          Expanded(
+            child: SizedBox(
+              height: 44,
+              child: AppleFormButton(
+                label: confirmLabel,
+                background: destructive ? p.red : p.tint,
+                foreground: Colors.white,
+                radius: 12,
+                onPressed: confirmEnabled ? onConfirm : null,
+              ),
             ),
           ),
         ],
@@ -182,6 +190,7 @@ class AppleFormButton extends StatelessWidget {
   final Color foreground;
   final VoidCallback? onPressed;
   final double? width;
+  final double radius;
 
   const AppleFormButton({
     super.key,
@@ -190,6 +199,7 @@ class AppleFormButton extends StatelessWidget {
     required this.foreground,
     required this.onPressed,
     this.width,
+    this.radius = 10,
   });
 
   @override
@@ -200,9 +210,9 @@ class AppleFormButton extends StatelessWidget {
       opacity: enabled ? 1 : 0.4,
       child: Material(
         color: background,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(radius),
         child: InkWell(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(radius),
           onTap: onPressed,
           child: SizedBox(
             width: width,
@@ -303,11 +313,13 @@ class AppleFormGroupLabel extends StatelessWidget {
     return Padding(
       padding: padding,
       child: Text(
-        label.toUpperCase(),
+        // The design layer draws its group captions in the same case as the
+        // words themselves, not in the small caps iOS uses.
+        label,
         style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          letterSpacing: -0.08,
+          letterSpacing: 0.2,
           color: p.label2,
           height: 1.25,
         ),

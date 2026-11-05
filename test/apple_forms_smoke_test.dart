@@ -327,7 +327,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text(l.filters), findsOneWidget);
-    expect(find.text(l.quickFilters.toUpperCase()), findsOneWidget);
+    expect(find.text(l.quickFilters), findsOneWidget);
     expect(find.byType(AppleSegmented), findsOneWidget);
     // Clients are still loading, so that row is disabled and spins.
     expect(find.byType(CupertinoActivityIndicator), findsOneWidget);

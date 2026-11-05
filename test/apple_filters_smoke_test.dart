@@ -274,7 +274,7 @@ void main() {
     await _pumpPage(tester);
 
     expect(tester.takeException(), isNull);
-    expect(find.text(l.protectionSwitches.toUpperCase()), findsOneWidget);
+    expect(find.text(l.protectionSwitches), findsOneWidget);
     expect(find.text(l.ruleFilteringHelper), findsOneWidget);
     expect(find.text(l.safeBrowsingHelper), findsOneWidget);
 
@@ -354,7 +354,7 @@ void main() {
     await _pumpPage(tester);
     await _scrollTo(tester, find.text(l.customRulesPreview));
 
-    expect(find.text(l.customRules.toUpperCase()), findsOneWidget);
+    expect(find.text(l.customRules), findsOneWidget);
     expect(find.text(l.editRules), findsOneWidget);
     expect(find.text(l.rulesCount('3')), findsOneWidget);
 

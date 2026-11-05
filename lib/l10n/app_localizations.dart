@@ -5821,6 +5821,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep statistics for {time}'**
   String extendStatisticsTo(Object time);
+
+  /// No description provided for @customRulesEditorHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One rule per line, Adblock or hosts syntax'**
+  String get customRulesEditorHint;
+
+  /// No description provided for @adblockSyntax.
+  ///
+  /// In en, this message translates to:
+  /// **'AdBlock syntax'**
+  String get adblockSyntax;
+
+  /// No description provided for @insert.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert'**
+  String get insert;
+
+  /// No description provided for @templateBlockDomain.
+  ///
+  /// In en, this message translates to:
+  /// **'Block a domain and its subresources'**
+  String get templateBlockDomain;
+
+  /// No description provided for @templateAllowDomain.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow a domain (exception)'**
+  String get templateAllowDomain;
+
+  /// No description provided for @templateImportant.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise the priority'**
+  String get templateImportant;
+
+  /// No description provided for @templateInserted.
+  ///
+  /// In en, this message translates to:
+  /// **'Template inserted'**
+  String get templateInserted;
 }
 
 class _AppLocalizationsDelegate

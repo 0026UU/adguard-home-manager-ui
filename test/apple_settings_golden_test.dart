@@ -62,7 +62,7 @@ void main() {
   testWidgets('the appearance card is drawn as one group', (tester) async {
     await _pump(tester, const Size(390, 760));
 
-    expect(find.text(l.appearance.toUpperCase()), findsOneWidget);
+    expect(find.text(l.appearance), findsOneWidget);
     expect(find.byType(AppleSegmented), findsOneWidget);
     expect(find.text(l.autoTheme), findsOneWidget);
     expect(find.text(l.accentColor), findsOneWidget);
@@ -99,8 +99,8 @@ void main() {
       (tester) async {
     await _pump(tester, const Size(390, 1180));
 
-    expect(find.text(l.appSettings.toUpperCase()), findsOneWidget);
-    expect(find.text(l.aboutApp.toUpperCase()), findsOneWidget);
+    expect(find.text(l.appSettings), findsOneWidget);
+    expect(find.text(l.aboutApp), findsOneWidget);
     expect(find.text(l.unofficialClient), findsOneWidget);
     expect(tester.takeException(), isNull);
 

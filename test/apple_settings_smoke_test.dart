@@ -62,10 +62,10 @@ void main() {
     // The look of the app is a group of its own, above the app and the about
     // ones; the server group only appears with a server that answers.
     expect(find.byType(AppleListSection), findsNWidgets(3));
-    expect(find.text(l.appSettings.toUpperCase()), findsOneWidget);
-    expect(find.text(l.appearance.toUpperCase()), findsOneWidget);
-    expect(find.text(l.aboutApp.toUpperCase()), findsOneWidget);
-    expect(find.text(l.serverSettings.toUpperCase()), findsNothing);
+    expect(find.text(l.appSettings), findsOneWidget);
+    expect(find.text(l.appearance), findsOneWidget);
+    expect(find.text(l.aboutApp), findsOneWidget);
+    expect(find.text(l.serverSettings), findsNothing);
     // The rows the design puts in the app group and the about one, and
     // nothing else.
     expect(find.text(l.language), findsOneWidget);

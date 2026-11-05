@@ -51,7 +51,7 @@ void main() {
 
     // One card of value rows, then the group holding the address row.
     expect(find.byType(AppleListSection), findsNWidgets(2));
-    expect(find.text(l.dnsAddresses.toUpperCase()), findsOneWidget);
+    expect(find.text(l.dnsAddresses), findsOneWidget);
     expect(find.widgetWithText(AppleListTile, l.serverVersion), findsOneWidget);
     expect(find.widgetWithText(AppleListTile, l.seeDnsAddresses), findsOneWidget);
 

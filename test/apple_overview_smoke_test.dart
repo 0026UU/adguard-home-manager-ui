@@ -45,7 +45,7 @@ void main() {
       expect(find.text(l.activeRules), findsOneWidget);
       expect(find.text(l.trafficTrend), findsOneWidget);
       expect(find.text(l.topRanking), findsOneWidget);
-      expect(find.text(l.services.toUpperCase()), findsOneWidget);
+      expect(find.text(l.services), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       // Nothing the design layer does not draw may stay on the page.

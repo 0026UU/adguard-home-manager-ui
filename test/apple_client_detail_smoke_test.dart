@@ -77,8 +77,8 @@ void main() {
     expect(find.text(l.deviceName), findsNothing);
 
     // The two groups of real data, nothing else.
-    expect(find.text(l.clientSettings.toUpperCase()), findsOneWidget);
-    expect(find.text(l.identity.toUpperCase()), findsOneWidget);
+    expect(find.text(l.clientSettings), findsOneWidget);
+    expect(find.text(l.identity), findsOneWidget);
     expect(find.byType(AppleListSection), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });

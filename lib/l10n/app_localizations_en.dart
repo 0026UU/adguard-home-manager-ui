@@ -3062,4 +3062,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String extendStatisticsTo(Object time) {
     return 'Keep statistics for $time';
   }
+
+  @override
+  String get customRulesEditorHint =>
+      'One rule per line, Adblock or hosts syntax';
+
+  @override
+  String get adblockSyntax => 'AdBlock syntax';
+
+  @override
+  String get insert => 'Insert';
+
+  @override
+  String get templateBlockDomain => 'Block a domain and its subresources';
+
+  @override
+  String get templateAllowDomain => 'Allow a domain (exception)';
+
+  @override
+  String get templateImportant => 'Raise the priority';
+
+  @override
+  String get templateInserted => 'Template inserted';
 }

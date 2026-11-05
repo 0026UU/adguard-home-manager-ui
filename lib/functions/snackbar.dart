@@ -9,7 +9,7 @@ import 'package:adguard_home_manager/widgets/apple/apple.dart';
 void showSnackbar({
   required AppConfigProvider appConfigProvider,
   required String label,
-  required Color color,
+  Color? color,
   Color? labelColor,
   GlobalKey<ScaffoldMessengerState>? key,
   Duration? duration,
@@ -18,7 +18,8 @@ void showSnackbar({
 
   // The Apple shell has no bottom bar to clear, so a result is announced with
   // the floating pill instead of a Material snack bar. The context has to come
-  // from below MaterialApp's theme, which the messenger key is not.
+  // from below MaterialApp's theme, which the messenger key is not. A label
+  // with no colour is a plain confirmation, so the pill carries no accent.
   if (appConfigProvider.useAppleStyle) {
     final BuildContext? context = globalNavigatorKey.currentContext;
     if (context == null) return;
@@ -45,7 +46,7 @@ void showSnackbar({
         color: labelColor ?? Colors.white
       ),
     ),
-    backgroundColor: color,
+    backgroundColor: color ?? Colors.black87,
     // Leaving this null keeps the framework default of four seconds, which is
     // what every existing call relies on.
     duration: duration ?? const Duration(seconds: 4),

@@ -131,7 +131,7 @@ void main() {
       l.rules,
       l.answers
     ]) {
-      expect(find.text(section.toUpperCase()), findsOneWidget);
+      expect(find.text(section), findsOneWidget);
     }
     // Blocked by a rule, cached, and the answer carries its own type pill.
     expect(find.text(l.blockedBlacklistRow), findsOneWidget);
@@ -176,7 +176,7 @@ void main() {
   testWidgets('rules from an unknown list are left out', (tester) async {
     await _pump(tester, log: _log(), dialog: true, status: _status());
 
-    expect(find.text(l.rules.toUpperCase()), findsNothing);
+    expect(find.text(l.rules), findsNothing);
     expect(find.text('AdGuard DNS filter'), findsNothing);
     expect(tester.takeException(), isNull);
   });

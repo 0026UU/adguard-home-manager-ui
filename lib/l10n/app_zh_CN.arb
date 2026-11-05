@@ -925,4 +925,11 @@
     "unofficialClient": "非官方客户端",
     "days": "{time} 天",
     "statisticsWindowShort": "服务器只保留 {time} 的统计",
-    "extendStatisticsTo": "把统计保留期延长到 {time}"}
+    "extendStatisticsTo": "把统计保留期延长到 {time}",
+    "customRulesEditorHint": "每行一条，支持 Adblock / hosts 语法",
+    "adblockSyntax": "AdBlock 语法",
+    "insert": "插入",
+    "templateBlockDomain": "拦截域名及其子资源",
+    "templateAllowDomain": "允许（例外）域名",
+    "templateImportant": "提升优先级",
+    "templateInserted": "已插入模板"}

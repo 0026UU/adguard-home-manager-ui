@@ -137,7 +137,7 @@ void main() {
     expect(find.byType(AddServerModal), findsOneWidget);
     expect(find.text(l.createConnection), findsOneWidget);
     for (final group in [l.general, l.connection, l.authentication, l.other]) {
-      expect(find.text(group.toUpperCase()), findsOneWidget);
+      expect(find.text(group), findsOneWidget);
     }
     // Name, address, path, port, username, password.
     expect(find.byType(TextFormField), findsNWidgets(6));

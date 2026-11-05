@@ -952,4 +952,11 @@
     "unofficialClient": "Unofficial client",
     "days": "{time} days",
     "statisticsWindowShort": "The server keeps only {time} of statistics",
-    "extendStatisticsTo": "Keep statistics for {time}"}
+    "extendStatisticsTo": "Keep statistics for {time}",
+    "customRulesEditorHint": "One rule per line, Adblock or hosts syntax",
+    "adblockSyntax": "AdBlock syntax",
+    "insert": "Insert",
+    "templateBlockDomain": "Block a domain and its subresources",
+    "templateAllowDomain": "Allow a domain (exception)",
+    "templateImportant": "Raise the priority",
+    "templateInserted": "Template inserted"}

@@ -109,9 +109,9 @@ ThemeData appleTheme(Brightness brightness) {
         TargetPlatform.android: CupertinoPageTransitionsBuilder(),
         TargetPlatform.fuchsia: CupertinoPageTransitionsBuilder(),
         TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+        TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
         TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+        TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
       },
     ),
     appBarTheme: AppBarTheme(
