@@ -9,4 +9,5 @@ export 'package:adguard_home_manager/widgets/apple/apple_chips.dart';
 export 'package:adguard_home_manager/widgets/apple/apple_forms.dart';
 export 'package:adguard_home_manager/widgets/apple/apple_nav.dart';
 export 'package:adguard_home_manager/widgets/apple/apple_sheets.dart';
+export 'package:adguard_home_manager/widgets/apple/apple_toast.dart';
 export 'package:adguard_home_manager/widgets/apple/apple_widgets.dart';

@@ -247,6 +247,7 @@ class _LogsListWidgetState extends State<LogsListWidget> {
             child: AppleSegmented(
               labels: [localizations.historyLogs, localizations.liveLogs],
               selectedIndex: _view,
+              large: true,
               onChanged: _setView,
             ),
           ),

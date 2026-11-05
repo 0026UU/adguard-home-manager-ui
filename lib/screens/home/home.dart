@@ -957,7 +957,7 @@ class _RankingSheetState extends State<_RankingSheet> {
         AppleSegmented(
           labels: [l.blockedDomainsShort, l.queriedDomainsShort, l.activeDevices],
           selectedIndex: _rank,
-          height: 38,
+          large: true,
           onChanged: (index) => setState(() => _rank = index),
         ),
         const SizedBox(height: 12),

@@ -1084,88 +1084,130 @@ class AppleSegmented extends StatelessWidget {
   final List<String> labels;
   final int selectedIndex;
   final ValueChanged<int> onChanged;
-  final double height;
-  final bool scrollable;
+
+  /// Left unset, the control sizes itself from the label padding, which is how
+  /// the prototype does it and keeps both variants at their real height.
+  final double? height;
+  final bool large;
 
   const AppleSegmented({
     super.key,
     required this.labels,
     required this.selectedIndex,
     required this.onChanged,
-    this.height = 32,
-    this.scrollable = false,
+    this.height,
+    this.large = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final p = ApplePalette.of(context);
+    final ApplePalette p = ApplePalette.of(context);
+    final int count = labels.length;
 
-    final children = <Widget>[];
-    for (var i = 0; i < labels.length; i++) {
-      final selected = i == selectedIndex;
-      final segment = GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => onChanged(i),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          margin: EdgeInsets.symmetric(
-            horizontal: selected ? 0 : 2,
-            vertical: 2,
-          ),
-          // A scrollable control shrink-wraps its segments, so each one needs
-          // its own breathing room.
-          padding: EdgeInsets.symmetric(horizontal: scrollable ? 14 : 0),
-          decoration: BoxDecoration(
-            color: selected ? p.card : Colors.transparent,
-            borderRadius: BorderRadius.circular(height / 2 - 2),
-            boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: const Color(0x0F000000).withValues(alpha: 0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  )
-                ]
-              : null,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            labels[i],
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
+    return Container(
+      height: height,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: p.fill3,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          // One capsule slides between segments rather than each segment
+          // repainting itself, which is what makes the control read as a
+          // single object. The overshooting curve is the iOS spring.
+          final double segmentWidth = constraints.maxWidth / count;
+
+          return Stack(
+            children: <Widget>[
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 300),
+                curve: const Cubic(0.3, 1.2, 0.4, 1.0),
+                left: selectedIndex * segmentWidth,
+                top: 0,
+                bottom: 0,
+                width: segmentWidth,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: p.card,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: const Color(0xFF000000).withValues(alpha: 0.12),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                      const BoxShadow(
+                        color: Color(0x33000000),
+                        blurRadius: 0.5,
+                      ),
+                    ],
+                  ),
+                  child: const SizedBox.expand(),
+                ),
+              ),
+              Row(
+                children: <Widget>[
+                  for (var i = 0; i < count; i++)
+                    Expanded(
+                      child: _AppleSegment(
+                        label: labels[i],
+                        selected: i == selectedIndex,
+                        fontSize: large ? 15 : 13,
+                        verticalPadding: large ? 9 : 7,
+                        onTap: () => onChanged(i),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _AppleSegment extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final double fontSize;
+  final double verticalPadding;
+  final VoidCallback onTap;
+
+  const _AppleSegment({
+    required this.label,
+    required this.selected,
+    required this.fontSize,
+    required this.verticalPadding,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final ApplePalette p = ApplePalette.of(context);
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: verticalPadding, horizontal: 4),
+        child: Center(
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 200),
             style: TextStyle(
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-              color: selected ? p.label : p.label2,
+              fontSize: fontSize,
+              fontWeight: FontWeight.w600,
+              color: p.label.withValues(alpha: selected ? 1 : 0.75),
+            ),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
             ),
           ),
         ),
-      );
-
-      // Expanded is illegal inside an unbounded horizontal viewport.
-      children.add(scrollable ? segment : Expanded(child: segment));
-    }
-
-    final control = AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      height: height,
-      padding: EdgeInsets.zero,
-      decoration: BoxDecoration(
-        color: p.fill3,
-        borderRadius: BorderRadius.circular(height / 2),
-      ),
-      child: Row(children: children),
-    );
-
-    if (!scrollable) return control;
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(minWidth: MediaQuery.sizeOf(context).width - 32),
-        child: control,
       ),
     );
   }

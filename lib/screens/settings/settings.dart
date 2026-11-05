@@ -373,7 +373,7 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
                 ),
                 const SizedBox(height: 11),
                 AppleSegmented(
-                  height: 36,
+                  large: true,
                   labels: [l.autoTheme, l.light, l.dark],
                   selectedIndex: appConfigProvider.selectedThemeNumber,
                   onChanged: (value) =>
