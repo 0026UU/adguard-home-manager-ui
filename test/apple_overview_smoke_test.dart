@@ -122,7 +122,7 @@ void main() {
       expect(find.text(l.queriesTotal(compactFormat(509032, locale))), findsOneWidget);
     });
 
-    testWidgets('the window is clamped to what the server keeps', (tester) async {
+    testWidgets('a window longer than the server keeps asks first', (tester) async {
       final h = await pumpOverview(
         tester,
         statisticsIntervalMs: 24 * 60 * 60 * 1000,
@@ -131,8 +131,64 @@ void main() {
       await tester.tap(find.text(l.days30));
       await tester.pumpAndSettle();
 
-      // A month cannot be asked of a server that keeps a day.
-      expect(h.api.trendRequests.last, 86400000);
+      // Nothing is requested yet: a month cannot be asked of a server that
+      // keeps a day, and the answer would look exactly like a real month.
+      expect(h.api.trendRequests, hasLength(1));
+      expect(
+        find.text(l.statisticsWindowShort(l.hours24)),
+        findsOneWidget,
+      );
+      expect(find.text(l.extendStatisticsTo(l.days30)), findsOneWidget);
+
+      // Backing out leaves the selection where it was.
+      final cancel = MaterialLocalizations.of(
+        tester.element(find.byType(AppleSegmented).first),
+      ).cancelButtonLabel;
+      await tester.tap(find.text(cancel));
+      await tester.pumpAndSettle();
+
+      expect(h.api.retentionUpdates, isEmpty);
+      expect(h.api.trendRequests, hasLength(1));
+      expect(
+        tester.widget<AppleSegmented>(find.byType(AppleSegmented).first).selectedIndex,
+        0,
+      );
+    });
+
+    testWidgets('agreeing extends the retention and asks for the real window', (tester) async {
+      final h = await pumpOverview(
+        tester,
+        statisticsIntervalMs: 24 * 60 * 60 * 1000,
+      );
+
+      await tester.tap(find.text(l.days30));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(l.extendStatisticsTo(l.days30)));
+      await tester.pumpAndSettle();
+
+      // The retention is written first, so the longer trend is answerable.
+      expect(h.api.retentionUpdates, [2592000000]);
+      expect(h.api.trendRequests.last, 2592000000);
+      expect(
+        tester.widget<AppleTrendChart>(find.byType(AppleTrendChart)).queries.length,
+        30,
+      );
+      expect(
+        tester.widget<AppleSegmented>(find.byType(AppleSegmented).first).selectedIndex,
+        2,
+      );
+      expect(find.text(l.statisticsConfigUpdated), findsOneWidget);
+    });
+
+    testWidgets('a retention the server already keeps needs no asking', (tester) async {
+      final h = await pumpOverview(tester);
+
+      await tester.tap(find.text(l.days30));
+      await tester.pumpAndSettle();
+
+      expect(h.api.retentionUpdates, isEmpty);
+      expect(h.api.trendRequests.last, 2592000000);
     });
 
     testWidgets('touching the chart names the bucket it touched', (tester) async {

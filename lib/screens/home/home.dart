@@ -143,16 +143,92 @@ class _HomeState extends State<Home> {
   }
 
   /// The trend of another window: a real request, not a rescaled answer.
-  void _setRange(int index) {
+  ///
+  /// AdGuard Home keeps a rolling window, so a longer range is a change to the
+  /// server's retention rather than a query. The selection stays where it was
+  /// until that change is agreed to: a range that quietly shows another
+  /// range's data is a difference the design layer cannot tell apart.
+  Future<void> _setRange(int index) async {
     if (index == _range) return;
+
+    final l = AppLocalizations.of(context)!;
+    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
+    final int wanted = _rangesMs[index];
+
+    if (!statusProvider.needsLongerWindow(wanted)) {
+      setState(() {
+        _range = index;
+        _tip = -1;
+      });
+
+      await statusProvider.getTrend(recentMs: wanted);
+      return;
+    }
+
+    final int kept = statusProvider.statisticsIntervalMs ?? wanted;
+
+    await showAppleActionSheet(
+      context,
+      title: l.statisticsWindowShort(_windowLabel(l, kept)),
+      actions: [
+        AppleSheetAction(
+          label: l.extendStatisticsTo(_rangeLabel(l, index)),
+          onTap: () => _extendWindow(index, wanted),
+        ),
+      ],
+    );
+  }
+
+  /// Raises the retention, then asks the server for the window it can now
+  /// answer.
+  Future<void> _extendWindow(int index, int wanted) async {
+    final l = AppLocalizations.of(context)!;
+    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
+    final appConfigProvider = Provider.of<AppConfigProvider>(context, listen: false);
+
+    final extended = await statusProvider.extendStatisticsInterval(wanted);
+    if (!mounted) return;
+
+    if (!extended) {
+      showSnackbar(
+        appConfigProvider: appConfigProvider,
+        label: l.statisticsConfigNotUpdated,
+        color: AppleColors.red(Theme.of(context).brightness),
+      );
+      return;
+    }
 
     setState(() {
       _range = index;
       _tip = -1;
     });
 
-    Provider.of<StatusProvider>(context, listen: false)
-      .getTrend(recentMs: _rangesMs[index]);
+    await statusProvider.getTrend(recentMs: wanted);
+    if (!mounted) return;
+
+    showSnackbar(
+      appConfigProvider: appConfigProvider,
+      label: l.statisticsConfigUpdated,
+      color: AppleColors.green(Theme.of(context).brightness),
+    );
+  }
+
+  /// The name the design layer gives the trend window [index].
+  static String _rangeLabel(AppLocalizations l, int index) =>
+      [l.hours24, l.days7, l.days30][index];
+
+  /// How a retention period of [ms] is written out.
+  static String _windowLabel(AppLocalizations l, int ms) {
+    if (ms == Duration(hours: 24).inMilliseconds) return l.hours24;
+    if (ms == Duration(days: 3).inMilliseconds) return l.days3;
+    if (ms == Duration(days: 7).inMilliseconds) return l.days7;
+    if (ms == Duration(days: 30).inMilliseconds) return l.days30;
+    if (ms == Duration(days: 90).inMilliseconds) return l.days90;
+    if (ms < Duration(hours: 24).inMilliseconds) {
+      return l.hours(Duration(milliseconds: ms).inHours);
+    }
+
+    return l.days(Duration(milliseconds: ms).inDays);
   }
 
   /// The shield button. Running, it asks what to do about the protection;

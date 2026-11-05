@@ -33,7 +33,7 @@ class StatusProvider with ChangeNotifier {
   int? _trendRecentMs;
   bool _trendLoading = false;
   bool _trendFailed = false;
-  int? _statisticsIntervalMs;
+  StatisticsConfig? _statisticsConfig;
 
   // Countdown
   DateTime? _currentDeadline;
@@ -76,7 +76,7 @@ class StatusProvider with ChangeNotifier {
   /// The statistics interval the server keeps, in milliseconds, or null while
   /// it is unknown. `recent` may not be asked for longer than this.
   int? get statisticsIntervalMs {
-    return _statisticsIntervalMs;
+    return _statisticsConfig?.interval;
   }
 
   /// Clamps [recentMs] to a whole number of hours the server can answer.
@@ -86,7 +86,7 @@ class StatusProvider with ChangeNotifier {
   /// only keeps a day asks for the day it does have.
   int recentWithinInterval(int recentMs) {
     final int hours = Duration(milliseconds: recentMs).inHours;
-    final int? interval = _statisticsIntervalMs;
+    final int? interval = statisticsIntervalMs;
     final int kept = interval == null
       ? hours
       : math.min(hours, Duration(milliseconds: interval).inHours);
@@ -101,9 +101,43 @@ class StatusProvider with ChangeNotifier {
 
     final result = await api.getStatisticsConfig();
     if (result.successful == true) {
-      _statisticsIntervalMs = (result.content as StatisticsConfig).interval;
+      _statisticsConfig = result.content as StatisticsConfig;
       notifyListeners();
     }
+  }
+
+  /// True when the server cannot answer a trend of [recentMs] as it stands.
+  bool needsLongerWindow(int recentMs) {
+    final int? interval = statisticsIntervalMs;
+    return interval != null && interval < recentMs;
+  }
+
+  /// Lengthens the window the server keeps so a longer trend becomes real.
+  ///
+  /// Retention is a server-wide setting, so this is only ever called after the
+  /// user agreed to it. Everything else in the configuration is written back
+  /// unchanged, because `PUT /stats/config/update` replaces the whole object.
+  Future<bool> extendStatisticsInterval(int recentMs) async {
+    final api = _serversProvider?.apiClient2;
+    final StatisticsConfig? current = _statisticsConfig;
+    if (api == null || current == null) return false;
+
+    final result = await api.updateStatisticsSettings(
+      body: <String, dynamic>{
+        'enabled': current.enabled ?? true,
+        'interval': recentMs,
+        'ignored': current.ignored ?? <String>[],
+      },
+    );
+    if (result.successful != true) return false;
+
+    _statisticsConfig = StatisticsConfig(
+      enabled: current.enabled ?? true,
+      interval: recentMs,
+      ignored: current.ignored ?? <String>[],
+    );
+    notifyListeners();
+    return true;
   }
 
   /// Fetches the statistics of the last [recentMs] milliseconds.

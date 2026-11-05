@@ -5803,6 +5803,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unofficial client'**
   String get unofficialClient;
+
+  /// No description provided for @days.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} days'**
+  String days(Object time);
+
+  /// No description provided for @statisticsWindowShort.
+  ///
+  /// In en, this message translates to:
+  /// **'The server keeps only {time} of statistics'**
+  String statisticsWindowShort(Object time);
+
+  /// No description provided for @extendStatisticsTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep statistics for {time}'**
+  String extendStatisticsTo(Object time);
 }
 
 class _AppLocalizationsDelegate

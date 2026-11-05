@@ -922,4 +922,7 @@
     "openSourceLicenses": "开源许可",
     "diagnosticsLog": "诊断日志",
     "noDiagnosticsLog": "暂无诊断日志",
-    "unofficialClient": "非官方客户端"}
+    "unofficialClient": "非官方客户端",
+    "days": "{time} 天",
+    "statisticsWindowShort": "服务器只保留 {time} 的统计",
+    "extendStatisticsTo": "把统计保留期延长到 {time}"}

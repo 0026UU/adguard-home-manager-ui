@@ -3047,4 +3047,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unofficialClient => 'Unofficial client';
+
+  @override
+  String days(Object time) {
+    return '$time days';
+  }
+
+  @override
+  String statisticsWindowShort(Object time) {
+    return 'The server keeps only $time of statistics';
+  }
+
+  @override
+  String extendStatisticsTo(Object time) {
+    return 'Keep statistics for $time';
+  }
 }

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:adguard_home_manager/config/apple_theme.dart';
+import 'package:adguard_home_manager/config/globals.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/models/clients.dart';
@@ -225,6 +226,9 @@ class OverviewApi extends ApiClientV2 {
   /// How long the server keeps statistics; a month, as the design layer's one.
   int statisticsIntervalMs = 30 * 24 * 60 * 60 * 1000;
 
+  /// The retention the page asked the server for, in the order it arrived.
+  final List<int> retentionUpdates = [];
+
   @override
   Future<ApiResponse> getStatistics({int? recentMs}) async {
     trendRequests.add(recentMs ?? 0);
@@ -243,6 +247,16 @@ class OverviewApi extends ApiClientV2 {
       enabled: true,
     ),
   );
+
+  @override
+  Future<ApiResponse> updateStatisticsSettings({
+    required Map<String, dynamic> body,
+  }) async {
+    final interval = body['interval'] as int;
+    retentionUpdates.add(interval);
+    statisticsIntervalMs = interval;
+    return const ApiResponse(successful: true);
+  }
 
   @override
   Future<ApiResponse> getEncryptionSettings() async => ApiResponse(
@@ -380,6 +394,10 @@ Future<OverviewHarness> pumpOverview(
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
+        // The same keys the real shell passes, so the app-level helpers that
+        // announce results reach an overlay here exactly as they do in the app.
+        scaffoldMessengerKey: scaffoldMessengerKey,
+        navigatorKey: globalNavigatorKey,
         theme: brightness == Brightness.dark ? appleDarkTheme() : appleLightTheme(),
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,

@@ -2963,6 +2963,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get unofficialClient => '非官方客户端';
+
+  @override
+  String days(Object time) {
+    return '$time 天';
+  }
+
+  @override
+  String statisticsWindowShort(Object time) {
+    return '服务器只保留 $time 的统计';
+  }
+
+  @override
+  String extendStatisticsTo(Object time) {
+    return '把统计保留期延长到 $time';
+  }
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -5835,4 +5850,19 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get unofficialClient => '非官方客户端';
+
+  @override
+  String days(Object time) {
+    return '$time 天';
+  }
+
+  @override
+  String statisticsWindowShort(Object time) {
+    return '服务器只保留 $time 的统计';
+  }
+
+  @override
+  String extendStatisticsTo(Object time) {
+    return '把统计保留期延长到 $time';
+  }
 }

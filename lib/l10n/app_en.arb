@@ -949,4 +949,7 @@
     "openSourceLicenses": "Open-source licenses",
     "diagnosticsLog": "Diagnostics log",
     "noDiagnosticsLog": "No diagnostics have been recorded",
-    "unofficialClient": "Unofficial client"}
+    "unofficialClient": "Unofficial client",
+    "days": "{time} days",
+    "statisticsWindowShort": "The server keeps only {time} of statistics",
+    "extendStatisticsTo": "Keep statistics for {time}"}
