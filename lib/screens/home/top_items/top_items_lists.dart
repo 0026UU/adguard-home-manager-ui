@@ -38,26 +38,30 @@ class TopItemsLists extends StatelessWidget {
     const List<Widget> bottom = <Widget>[];
 
     void filterDomainLogs({required String value}) {
+      final applied = logsProvider.appliedFilters;
       logsProvider.setSearchText(value);
       logsProvider.setSelectedClients(null);
       logsProvider.setAppliedFilters(
         AppliedFiters(
-          selectedResultStatus: 'all', 
+          statuses: applied.statuses,
           searchText: value,
-          clients: []
+          clients: [],
+          timeRange: applied.timeRange
         )
       );
       appConfigProvider.setSelectedScreen(2);
     }
 
     void filterClientLogs({required String value}) {
+      final applied = logsProvider.appliedFilters;
       logsProvider.setSearchText(null);
       logsProvider.setSelectedClients([value]);
       logsProvider.setAppliedFilters(
         AppliedFiters(
-          selectedResultStatus: 'all', 
+          statuses: applied.statuses,
           searchText: null,
-          clients: [value]
+          clients: [value],
+          timeRange: applied.timeRange
         )
       );
       appConfigProvider.setSelectedScreen(2);

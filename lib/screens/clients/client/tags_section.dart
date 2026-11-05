@@ -1,8 +1,11 @@
-import 'package:adguard_home_manager/screens/clients/client/client_screen_functions.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/screens/clients/client/client_screen_functions.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+/// The row that opens the tag sheet, carrying the current selection as its
+/// value so the form shows what the device already wears.
 class TagsSection extends StatelessWidget {
   final List<String> selectedTags;
   final void Function(List<String>) onTagsSelected;
@@ -10,54 +13,25 @@ class TagsSection extends StatelessWidget {
   const TagsSection({
     super.key,
     required this.selectedTags,
-    required this.onTagsSelected
+    required this.onTagsSelected,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => openTagsModal(
-          context: context,
-          selectedTags: selectedTags,
-          onSelectedTags: onTagsSelected
-        ) ,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: 0, horizontal: 16
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.label_rounded,
-                color: Theme.of(context).listTileTheme.iconColor
-              ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    AppLocalizations.of(context)!.selectTags,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Theme.of(context).colorScheme.onSurface
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    selectedTags.isNotEmpty
-                      ? "${selectedTags.length} ${AppLocalizations.of(context)!.tagsSelected}"
-                      : AppLocalizations.of(context)!.noTagsSelected,
-                    style: TextStyle(
-                      color: Theme.of(context).listTileTheme.iconColor
-                    ),
-                  )
-                ],
-              )
-            ],
-          ),
-        ),
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
+
+    return AppleListTile(
+      icon: CupertinoIcons.tag,
+      iconColor: p.orange,
+      title: l.selectTags,
+      subtitle: selectedTags.isNotEmpty
+          ? "${selectedTags.length} ${l.tagsSelected}"
+          : l.noTagsSelected,
+      onTap: () => openTagsModal(
+        context: context,
+        selectedTags: selectedTags,
+        onSelectedTags: onTagsSelected,
       ),
     );
   }

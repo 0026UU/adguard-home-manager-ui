@@ -403,35 +403,73 @@ class StatusProvider with ChangeNotifier {
     required String domain,
     required String newStatus
   }) async {
-    if (_serverStatus == null) return false;
+    final api = _serversProvider?.apiClient2;
+    final current = _serverStatus;
+    if (api == null || current == null) return false;
+    if (newStatus != 'block' && newStatus != 'unblock') return false;
+    if (RegExp(r'[^A-Za-z0-9_.-]').hasMatch(domain)) return false;
 
-    final rules = await _serversProvider!.apiClient2!.getFilteringRules();
-
-    if (rules.successful == true) {
-      FilteringStatus oldStatus = _serverStatus!.filteringStatus;
-
-      List<String> newRules = (rules.content as FilteringStatus).userRules.where((d) => !d.contains(domain)).toList();
-      if (newStatus == 'block') {
-        newRules.add("||$domain^");
-      }
-      else if (newStatus == 'unblock') {
-        newRules.add("@@||$domain^");
-      }
-      FilteringStatus newObj = _serverStatus!.filteringStatus;
-      newObj.userRules = newRules;
-      _filteringStatus = newObj;
-
-      final result = await _serversProvider!.apiClient2!.postFilteringRules(data: {'rules': newRules});
-        
-      if (result.successful == true) {
-        return true;
-      }
-      else {
-        _filteringStatus = oldStatus;
-        return false;
-      }
+    final normalizedDomain = (domain.endsWith('.')
+      ? domain.substring(0, domain.length - 1)
+      : domain).toLowerCase();
+    final label = RegExp(r'^[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?$');
+    if (normalizedDomain.isEmpty || normalizedDomain.length > 253 ||
+        normalizedDomain.split('.').any((part) => !label.hasMatch(part))) {
+      return false;
     }
-    else {
+
+    try {
+      final rules = await api.getFilteringRules();
+      if (!rules.successful || rules.content is! FilteringStatus) return false;
+      final latest = rules.content as FilteringStatus;
+      final simpleRule = RegExp(
+        r'^(?:@@)?\|\|' + RegExp.escape(normalizedDomain) + r'\.?\^$',
+        caseSensitive: false,
+      );
+      final newRules = latest.userRules.where((rule) {
+        final match = simpleRule.firstMatch(rule);
+        return match == null || match.end != rule.length;
+      }).toList();
+      newRules.add(newStatus == 'block'
+        ? '||$normalizedDomain^'
+        : '@@||$normalizedDomain^');
+
+      final result = await api.postFilteringRules(data: {'rules': newRules});
+      if (!result.successful) return false;
+
+      final updated = FilteringStatus(
+        filters: latest.filters,
+        whitelistFilters: latest.whitelistFilters,
+        userRules: newRules,
+        interval: latest.interval,
+        enabled: latest.enabled,
+      );
+      _serverStatus = ServerStatus(
+        stats: current.stats,
+        clients: current.clients,
+        filteringStatus: updated,
+        timeGeneralDisabled: current.timeGeneralDisabled,
+        disabledUntil: current.disabledUntil,
+        generalEnabled: current.generalEnabled,
+        filteringEnabled: current.filteringEnabled,
+        safeSearchEnabled: current.safeSearchEnabled,
+        safeBrowsingEnabled: current.safeBrowsingEnabled,
+        parentalControlEnabled: current.parentalControlEnabled,
+        serverVersion: current.serverVersion,
+        safeSeachBing: current.safeSeachBing,
+        safeSearchGoogle: current.safeSearchGoogle,
+        safeSearchDuckduckgo: current.safeSearchDuckduckgo,
+        safeSearchEcosia: current.safeSearchEcosia,
+        safeSearchPixabay: current.safeSearchPixabay,
+        safeSearchYandex: current.safeSearchYandex,
+        safeSearchYoutube: current.safeSearchYoutube,
+        dhcpAvailable: current.dhcpAvailable,
+      );
+      _filteringStatus = updated;
+      notifyListeners();
+      return true;
+    }
+    catch (_) {
       return false;
     }
   }

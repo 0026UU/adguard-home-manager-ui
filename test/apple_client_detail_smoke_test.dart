@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/screens/clients/client/client_detail.dart';
+import 'package:adguard_home_manager/screens/clients/client/client_rules_modal.dart';
 import 'package:adguard_home_manager/screens/clients/client/client_screen.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
@@ -282,14 +283,11 @@ void main() {
     expect(find.byType(ClientScreen), findsOneWidget);
     // The form starts from the entry the page is showing.
     expect(find.text('MacBook Pro'), findsWidgets);
+    expect(tester.takeException(), isNull);
 
-    // The add/edit form is not this page, and two of its rows overflow inside
-    // the 500pt dialog the app opens it in (client_screen.dart:346 and
-    // blocking_schedule.dart:88). That is the form's own bug to answer for, so
-    // it is taken off the record here: this page only asked the form to open.
-    tester.takeException();
-
-    await tester.tap(find.byType(CloseButton));
+    // This surface is a narrow one, so the form is the centred card and its
+    // close button is the only way out of it that writes nothing.
+    await tester.tap(find.byTooltip(l.close));
     await tester.pumpAndSettle();
 
     expect(find.byType(ClientScreen), findsNothing);
@@ -306,5 +304,113 @@ void main() {
     expect(find.byType(AppleLargeTitle), findsNothing);
     expect(find.text(l.deleteThisDevice), findsNothing);
     expect(find.text('open'), findsOneWidget);
+  });
+
+  group('the rules of the device itself', () {
+    /// The count a row of the group carries on its right edge.
+    String countOf(WidgetTester tester, String title) => tester
+        .widget<AppleListTile>(find.widgetWithText(AppleListTile, title))
+        .value!;
+
+    Finder ruleRow(String rule) => find.widgetWithText(AppleListTile, rule);
+
+    testWidgets('are left out on a server that would drop them',
+        (tester) async {
+      // A stock server takes the rules it is sent and forgets them, so the
+      // group is left out rather than offering a write that filters nothing.
+      await pumpClientDetail(
+        tester,
+        client: clientFixture(rules: const ['||tracker.example^']),
+      );
+
+      expect(find.text(l.clientRules), findsNothing);
+      expect(find.text(l.allowList), findsNothing);
+      expect(find.text(l.blockList), findsNothing);
+      expect(find.byType(AppleListSection), findsNWidgets(2));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('are counted as exceptions and blocks', (tester) async {
+      await pumpClientDetail(
+        tester,
+        supportsClientRules: true,
+        client: clientFixture(
+          rules: const [
+            '||tracker.example^',
+            '@@||allowed.example^',
+            '||ads.example^',
+          ],
+        ),
+      );
+
+      expect(find.text(l.clientRules), findsOneWidget);
+      expect(find.byType(AppleListSection), findsNWidgets(3));
+
+      expect(countOf(tester, l.blockList), '2');
+      expect(countOf(tester, l.allowList), '1');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('are edited in a sheet and written back with the entry',
+        (tester) async {
+      final h = await pumpClientDetail(
+        tester,
+        supportsClientRules: true,
+        client: clientFixture(rules: const ['||tracker.example^']),
+      );
+
+      await tester.tap(ruleRow(l.blockList));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ClientRulesModal), findsOneWidget);
+      expect(ruleRow('||tracker.example^'), findsOneWidget);
+      expect(h.clients.edited, isEmpty);
+
+      await tester.tap(
+        find.descendant(
+          of: ruleRow('||tracker.example^'),
+          matching: find.byTooltip(l.delete),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(l.confirm));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ClientRulesModal), findsNothing);
+      expect(h.clients.edited, hasLength(1));
+
+      // The whole entry is sent, so what the group does not show is kept.
+      final saved = h.clients.edited.single;
+      expect(saved.rules, isEmpty);
+      expect(saved.name, 'MacBook Pro');
+      expect(saved.ids, ['192.168.1.12', 'a0:cc:83:12:34:56']);
+      expect(saved.filteringEnabled, true);
+
+      // The counts on the page follow the write.
+      expect(countOf(tester, l.blockList), '0');
+      expect(countOf(tester, l.allowList), '0');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('are reachable from the header of the group too',
+        (tester) async {
+      final h = await pumpClientDetail(tester, supportsClientRules: true);
+
+      expect(find.text(l.noClientRules), findsNothing);
+
+      await tester.tap(find.widgetWithText(AppleHeaderAction, l.add));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ClientRulesModal), findsOneWidget);
+      expect(find.text(l.noClientRules), findsOneWidget);
+
+      await tester.tap(find.text(l.cancel));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ClientRulesModal), findsNothing);
+      expect(h.clients.edited, isEmpty);
+      expect(tester.takeException(), isNull);
+    });
   });
 }

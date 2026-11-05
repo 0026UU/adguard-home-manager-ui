@@ -1,8 +1,8 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
-
 
 import 'package:adguard_home_manager/screens/clients/client/client_form.dart';
 import 'package:adguard_home_manager/screens/clients/client/client_screen_functions.dart';
@@ -20,7 +20,7 @@ class ClientInitialData {
     required this.name,
     required this.ip,
   });
-}  
+}
 
 class ControllerListItem {
   final String id;
@@ -28,10 +28,13 @@ class ControllerListItem {
 
   const ControllerListItem({
     required this.id,
-    required this.controller
+    required this.controller,
   });
 }
 
+/// The add/edit form of one device: a pushed Apple page on a phone, a centred
+/// card on the wide layouts. Saving hands the whole entry back through
+/// [onConfirm]; the server is only touched by the caller.
 class ClientScreen extends StatefulWidget {
   final Client? client;
   final void Function(Client) onConfirm;
@@ -56,22 +59,19 @@ class _ClientScreenState extends State<ClientScreen> {
   final _scrollController = ScrollController();
 
   final Uuid uuid = const Uuid();
-  
-  bool validValues = false;
 
   TextEditingController nameController = TextEditingController();
 
   List<String> selectedTags = [];
 
   List<ControllerListItem> identifiersControllers = [
-    ControllerListItem(id: "0", controller: TextEditingController())
+    ControllerListItem(id: "0", controller: TextEditingController()),
   ];
 
   bool useGlobalSettingsFiltering = true;
   bool? enableFiltering;
   bool? enableSafeBrowsing;
   bool? enableParentalControl;
-  bool? enableSafeSearch;
   SafeSearch? safeSearch;
 
   final SafeSearch defaultSafeSearch = SafeSearch(
@@ -82,7 +82,7 @@ class _ClientScreenState extends State<ClientScreen> {
     google: false,
     pixabay: false,
     yandex: false,
-    youtube: false
+    youtube: false,
   );
 
   bool useGlobalSettingsServices = true;
@@ -96,7 +96,7 @@ class _ClientScreenState extends State<ClientScreen> {
   bool _enableDnsCache = false;
   final _dnsCacheField = TextEditingController();
   String? _dnsCacheError;
-  
+
   BlockedServicesSchedule _blockedServicesSchedule = BlockedServicesSchedule();
 
   // VALIDATIONS
@@ -108,22 +108,19 @@ class _ClientScreenState extends State<ClientScreen> {
     if (useGlobalSettingsFiltering == true) {
       setState(() {
         useGlobalSettingsFiltering = false;
-          
+
         enableFiltering = false;
         enableSafeBrowsing = false;
         enableParentalControl = false;
-        enableSafeSearch = false;
         safeSearch = defaultSafeSearch;
       });
-    }
-    else if (useGlobalSettingsFiltering == false) {
+    } else if (useGlobalSettingsFiltering == false) {
       setState(() {
         useGlobalSettingsFiltering = true;
-         
+
         enableFiltering = null;
         enableSafeBrowsing = null;
         enableParentalControl = null;
-        enableSafeSearch = null;
         safeSearch = null;
       });
     }
@@ -132,14 +129,16 @@ class _ClientScreenState extends State<ClientScreen> {
   @override
   void initState() {
     if (widget.client != null) {
-      validValues = true;
-
       nameController.text = widget.client!.name;
       selectedTags = widget.client!.tags;
-      identifiersControllers = widget.client!.ids.map((e) => ControllerListItem(
-        id: uuid.v4(), 
-        controller: TextEditingController(text: e)
-      )).toList();
+      identifiersControllers = widget.client!.ids
+          .map(
+            (e) => ControllerListItem(
+              id: uuid.v4(),
+              controller: TextEditingController(text: e),
+            ),
+          )
+          .toList();
       useGlobalSettingsFiltering = widget.client!.useGlobalSettings;
       enableFiltering = widget.client!.filteringEnabled;
       enableParentalControl = widget.client!.parentalEnabled;
@@ -147,16 +146,20 @@ class _ClientScreenState extends State<ClientScreen> {
       safeSearch = widget.client!.safeSearch;
       useGlobalSettingsServices = widget.client!.useGlobalBlockedServices;
       blockedServices = widget.client!.blockedServices;
-      upstreamServers = widget.client!.upstreams.map((e) => ControllerListItem(
-        id: uuid.v4(), 
-        controller: TextEditingController(text: e)
-      )).toList();
+      upstreamServers = widget.client!.upstreams
+          .map(
+            (e) => ControllerListItem(
+              id: uuid.v4(),
+              controller: TextEditingController(text: e),
+            ),
+          )
+          .toList();
       _ignoreClientQueryLog = widget.client!.ignoreQuerylog ?? false;
       _ignoreClientStatistics = widget.client!.ignoreStatistics ?? false;
       _enableDnsCache = widget.client!.upstreamsCacheEnabled ?? false;
       _dnsCacheField.text = widget.client!.upstreamsCacheSize != null
-        ? widget.client!.upstreamsCacheSize.toString()
-        : "";
+          ? widget.client!.upstreamsCacheSize.toString()
+          : "";
       if (widget.client!.blockedServicesSchedule != null) {
         _blockedServicesSchedule = widget.client!.blockedServicesSchedule!;
       }
@@ -164,267 +167,194 @@ class _ClientScreenState extends State<ClientScreen> {
     if (widget.initialData != null) {
       nameController.text = widget.initialData!.name;
       identifiersControllers[0] = ControllerListItem(
-        id: uuid.v4(), 
-        controller: TextEditingController(text: widget.initialData!.ip)
+        id: uuid.v4(),
+        controller: TextEditingController(text: widget.initialData!.ip),
       );
     }
     super.initState();
   }
-    
+
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
     final clientsProvider = Provider.of<ClientsProvider>(context);
 
     void createClient() {
       final Client client = Client(
-        name: nameController.text, 
-        ids: List<String>.from(identifiersControllers.map((e) => e.controller.text)), 
-        useGlobalSettings: useGlobalSettingsFiltering, 
-        filteringEnabled: enableFiltering ?? false, 
-        parentalEnabled: enableParentalControl ?? false, 
-        safebrowsingEnabled: enableSafeBrowsing ?? false, 
+        name: nameController.text,
+        ids: List<String>.from(
+          identifiersControllers.map((e) => e.controller.text),
+        ),
+        useGlobalSettings: useGlobalSettingsFiltering,
+        filteringEnabled: enableFiltering ?? false,
+        parentalEnabled: enableParentalControl ?? false,
+        safebrowsingEnabled: enableSafeBrowsing ?? false,
         safeSearch: safeSearch,
-        useGlobalBlockedServices: useGlobalSettingsServices, 
-        blockedServices: blockedServices, 
-        upstreams: List<String>.from(upstreamServers.map((e) => e.controller.text)), 
+        useGlobalBlockedServices: useGlobalSettingsServices,
+        blockedServices: blockedServices,
+        upstreams: List<String>.from(
+          upstreamServers.map((e) => e.controller.text),
+        ),
+        // The form draws no field for the rules of the device, so the ones it
+        // carries are written back as they are.
+        rules: widget.client?.rules ?? const [],
         tags: selectedTags,
         ignoreQuerylog: _ignoreClientQueryLog,
         ignoreStatistics: _ignoreClientStatistics,
         upstreamsCacheEnabled: _enableDnsCache,
-        upstreamsCacheSize: _dnsCacheField.text != ""
-          ? int.parse(_dnsCacheField.text)
-          : null,
-        blockedServicesSchedule: _blockedServicesSchedule
+        upstreamsCacheSize:
+            _dnsCacheField.text != "" ? int.parse(_dnsCacheField.text) : null,
+        blockedServicesSchedule: _blockedServicesSchedule,
       );
       widget.onConfirm(client);
     }
 
     void validateValues() {
       _nameValid = nameController.text != '';
-      _identifiersValid = identifiersControllers.isNotEmpty && identifiersControllers[0].controller.text != '';
-      _dnsCacheValid = (_dnsCacheField.text == "" || _dnsCacheField.text != "" && RegExp(r'^\d+$').hasMatch(_dnsCacheField.text));
+      _identifiersValid = identifiersControllers.isNotEmpty &&
+          identifiersControllers[0].controller.text != '';
+      _dnsCacheValid = validateNumber(_dnsCacheField.text);
       if (_nameValid && _identifiersValid && _dnsCacheValid) {
         createClient();
         Navigator.pop(context);
-      }
-      else {
-        _scrollController.animateTo(
-          0, 
-          curve: Curves.easeOut,
-          duration: const Duration(milliseconds: 500)
-        );
+      } else {
+        // The reasons sit at the top of the form, so bring them into view.
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            0,
+            curve: Curves.easeOut,
+            duration: const Duration(milliseconds: 400),
+          );
+        }
         setState(() => {});
       }
     }
 
-    List<Widget> actions() {
-      return [
-        IconButton(
-          onPressed: validateValues,
-          icon: const Icon(Icons.save_rounded),
-          tooltip: AppLocalizations.of(context)!.save,
-        ),
-        if (widget.client != null) IconButton(
-          onPressed: () => openDeleteClientScreen(
-            context: context,
-            onDelete: () => clientsProvider.deleteClient(widget.client!),
-          ), 
-          icon: const Icon(Icons.delete_rounded),
-          tooltip: AppLocalizations.of(context)!.delete,
-        ),
-        const SizedBox(width: 10),
-      ];
-    }
+    void remove() => openDeleteClientScreen(
+          context: context,
+          onDelete: () => clientsProvider.deleteClient(widget.client!),
+        );
 
+    Widget form() => ClientForm(
+          client: widget.client,
+          nameController: nameController,
+          identifiersControllers: identifiersControllers,
+          selectedTags: selectedTags,
+          useGlobalSettingsFiltering: useGlobalSettingsFiltering,
+          enableFiltering: enableFiltering,
+          enableParentalControl: enableParentalControl,
+          enableSafeBrowsing: enableSafeBrowsing,
+          safeSearch: safeSearch,
+          blockedServices: blockedServices,
+          updateBlockedServices: (v) => setState(() => blockedServices = v),
+          upstreamServers: upstreamServers,
+          updateUpstreamServers: (v) => setState(() => upstreamServers = v),
+          defaultSafeSearch: defaultSafeSearch,
+          useGlobalSettingsServices: useGlobalSettingsServices,
+          updateSelectedTags: (v) => setState(() => selectedTags = v),
+          updateIdentifiersControllers: (v) =>
+              setState(() => identifiersControllers = v),
+          enableDisableGlobalSettingsFiltering:
+              enableDisableGlobalSettingsFiltering,
+          updateEnableFiltering: (v) => setState(() => enableFiltering = v),
+          updateEnableParentalControl: (v) =>
+              setState(() => enableParentalControl = v),
+          updateEnableSafeBrowsing: (v) =>
+              setState(() => enableSafeBrowsing = v),
+          updateSafeSearch: (v) => setState(() => safeSearch = v),
+          updateUseGlobalSettingsServices: (v) =>
+              setState(() => useGlobalSettingsServices = v),
+          ignoreClientQueryLog: _ignoreClientQueryLog,
+          ignoreClientStatistics: _ignoreClientStatistics,
+          updateIgnoreClientQueryLog: (v) =>
+              setState(() => _ignoreClientQueryLog = v),
+          updateIgnoreClientStatistics: (v) =>
+              setState(() => _ignoreClientStatistics = v),
+          enableDnsCache: _enableDnsCache,
+          updateEnableDnsCache: (v) => setState(() => _enableDnsCache = v),
+          dnsCacheField: _dnsCacheField,
+          dnsCacheError: _dnsCacheError,
+          updateDnsCacheError: (v) => setState(() => _dnsCacheError = v),
+          blockedServicesSchedule: _blockedServicesSchedule,
+          setBlockedServicesSchedule: (v) =>
+              setState(() => _blockedServicesSchedule = v),
+        );
+
+    final errors = !_nameValid || !_identifiersValid || !_dnsCacheValid
+        ? _Errors(
+            nameValid: _nameValid,
+            identifiersValid: _identifiersValid,
+            dnsCacheValid: _dnsCacheValid,
+          )
+        : null;
+
+    final title =
+        widget.client != null ? l.client : l.addClient;
 
     if (widget.fullScreen == true) {
-      return Material(
-        child: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) => [
-            SliverOverlapAbsorber(
-              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-              sliver: SliverAppBar.large(
-                pinned: true,
-                floating: true,
-                centerTitle: true,
-                forceElevated: innerBoxIsScrolled,
-                backgroundColor: Colors.transparent,
-                surfaceTintColor: Colors.transparent,
-                scrolledUnderElevation: 0,
-                flexibleSpace: AppleLargeTitle(
-                  title: widget.client != null
-                      ? AppLocalizations.of(context)!.client
-                      : AppLocalizations.of(context)!.addClient,
-                ),
-                leading: IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close)
-                ),
-                title: Text(
-                  widget.client != null 
-                    ? AppLocalizations.of(context)!.client
-                    : AppLocalizations.of(context)!.addClient
-                ),
-                actions: actions(),
-              )
-            )
-          ], 
-          body: SafeArea(
-            top: false,
-            bottom: false,
-            child: Builder(
-              builder: (context) => CustomScrollView(
-                slivers: [
-                  SliverOverlapInjector(
-                    handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-                  ),
-                  SliverList.list(
-                    children: [
-                      if (!_nameValid || !_identifiersValid || !_dnsCacheValid) _Errors(
-                        nameValid: _nameValid, 
-                        identifiersValid: _identifiersValid, 
-                        dnsCacheValid: _dnsCacheValid
-                      ),
-                      ClientForm(
-                        isFullScreen: true,
-                        client: widget.client, 
-                        nameController: nameController,
-                        identifiersControllers: identifiersControllers, 
-                        selectedTags: selectedTags, 
-                        useGlobalSettingsFiltering: useGlobalSettingsFiltering, 
-                        enableFiltering: enableFiltering, 
-                        enableParentalControl: enableParentalControl, 
-                        enableSafeBrowsing: enableSafeBrowsing, 
-                        enableSafeSearch: enableSafeSearch, 
-                        safeSearch: safeSearch, 
-                        blockedServices: blockedServices, 
-                        updateBlockedServices: (v) => setState(() => blockedServices = v), 
-                        upstreamServers: upstreamServers, 
-                        updateUpstreamServers: (v) => setState(() => upstreamServers = v), 
-                        defaultSafeSearch: defaultSafeSearch, 
-                        useGlobalSettingsServices: useGlobalSettingsServices, 
-                        updateSelectedTags: (v) => setState(() => selectedTags = v),
-                        updateIdentifiersControllers: (v) => setState(() => identifiersControllers = v), 
-                        enableDisableGlobalSettingsFiltering: enableDisableGlobalSettingsFiltering, 
-                        updateEnableFiltering: (v) => setState(() => enableFiltering = v), 
-                        updateEnableParentalControl: (v) => setState(() => enableParentalControl = v), 
-                        updateEnableSafeBrowsing: (v) => setState(() => enableSafeBrowsing = v), 
-                        updateEnableSafeSearch: (v) => setState(() => enableSafeSearch = v), 
-                        updateSafeSearch: (v) => setState(() => safeSearch = v), 
-                        updateUseGlobalSettingsServices: (v) => setState(() => useGlobalSettingsServices = v), 
-                        ignoreClientQueryLog: _ignoreClientQueryLog,
-                        ignoreClientStatistics: _ignoreClientStatistics,
-                        updateIgnoreClientQueryLog: (v) => setState(() => _ignoreClientQueryLog = v),
-                        updateIgnoreClientStatistics: (v) => setState(() => _ignoreClientStatistics = v),
-                        enableDnsCache: _enableDnsCache,
-                        updateEnableDnsCache: (v) => setState(() => _enableDnsCache = v),
-                        dnsCacheField: _dnsCacheField,
-                        dnsCacheError: _dnsCacheError,
-                        updateDnsCacheError: (v) => setState(() => _dnsCacheError = v),
-                        blockedServicesSchedule: _blockedServicesSchedule,
-                        setBlockedServicesSchedule: (v) => setState(() => _blockedServicesSchedule = v),
-                      ),
-                    ],
-                  )
-                ],
-              ),
-            )
-          )
+      return AppleScreen(
+        title: title,
+        scrollController: _scrollController,
+        leading: AppleHeaderAction(
+          label: l.cancel,
+          onPressed: () => Navigator.pop(context),
         ),
-      );
-    } 
-    else {
-      return Dialog(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: 500
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        CloseButton(onPressed: () => Navigator.pop(context)),
-                        const SizedBox(width: 8),
-                        Text(
-                          widget.client != null 
-                            ? AppLocalizations.of(context)!.client
-                            : AppLocalizations.of(context)!.addClient,
-                          style: const TextStyle(
-                            fontSize: 22
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: actions()
-                    )
-                  ],
-                ),
-              ),
-              Flexible(
-                child: ListView(
-                  controller: _scrollController,
-                  children: [
-                    if (!_nameValid || !_identifiersValid || !_dnsCacheValid) _Errors(
-                      nameValid: _nameValid, 
-                      identifiersValid: _identifiersValid, 
-                      dnsCacheValid: _dnsCacheValid
-                    ),
-                    ClientForm(
-                      isFullScreen: false,
-                      client: widget.client, 
-                      nameController: nameController,
-                      identifiersControllers: identifiersControllers, 
-                      selectedTags: selectedTags, 
-                      useGlobalSettingsFiltering: useGlobalSettingsFiltering, 
-                      enableFiltering: enableFiltering, 
-                      enableParentalControl: enableParentalControl, 
-                      enableSafeBrowsing: enableSafeBrowsing, 
-                      enableSafeSearch: enableSafeSearch, 
-                      safeSearch: safeSearch, 
-                      blockedServices: blockedServices, 
-                      updateBlockedServices: (v) => setState(() => blockedServices = v), 
-                      upstreamServers: upstreamServers, 
-                      updateUpstreamServers: (v) => setState(() => upstreamServers = v), 
-                      defaultSafeSearch: defaultSafeSearch, 
-                      useGlobalSettingsServices: useGlobalSettingsServices, 
-                      updateSelectedTags: (v) => setState(() => selectedTags = v),
-                      updateIdentifiersControllers: (v) => setState(() => identifiersControllers = v), 
-                      enableDisableGlobalSettingsFiltering: enableDisableGlobalSettingsFiltering, 
-                      updateEnableFiltering: (v) => setState(() => enableFiltering = v), 
-                      updateEnableParentalControl: (v) => setState(() => enableParentalControl = v), 
-                      updateEnableSafeBrowsing: (v) => setState(() => enableSafeBrowsing = v), 
-                      updateEnableSafeSearch: (v) => setState(() => enableSafeSearch = v), 
-                      updateSafeSearch: (v) => setState(() => safeSearch = v), 
-                      updateUseGlobalSettingsServices: (v) => setState(() => useGlobalSettingsServices = v), 
-                      ignoreClientQueryLog: _ignoreClientQueryLog,
-                      ignoreClientStatistics: _ignoreClientStatistics,
-                      updateIgnoreClientQueryLog: (v) => setState(() => _ignoreClientQueryLog = v),
-                      updateIgnoreClientStatistics: (v) => setState(() => _ignoreClientStatistics = v),
-                      enableDnsCache: _enableDnsCache,
-                      updateEnableDnsCache: (v) => setState(() => _enableDnsCache = v),
-                      dnsCacheField: _dnsCacheField,
-                      dnsCacheError: _dnsCacheError,
-                      updateDnsCacheError: (v) => setState(() => _dnsCacheError = v), 
-                      blockedServicesSchedule: _blockedServicesSchedule,
-                      setBlockedServicesSchedule: (v) => setState(() => _blockedServicesSchedule = v),
-                    ),
-                  ],
-                ),
-              )
-            ],
-          ),
+        actions: [
+          AppleHeaderAction(label: l.save, onPressed: validateValues),
+          if (widget.client != null)
+            AppleHeaderAction(
+              label: l.delete,
+              destructive: true,
+              onPressed: remove,
+            ),
+        ],
+        body: ListView(
+          padding: EdgeInsets.zero,
+          children: [if (errors != null) errors, form()],
         ),
       );
     }
+
+    return AppleFormModal(
+      title: title,
+      icon: CupertinoIcons.person,
+      dialog: true,
+      maxWidth: 500,
+      trailing: IconButton(
+        tooltip: l.close,
+        onPressed: () => Navigator.pop(context),
+        icon: Icon(CupertinoIcons.xmark, size: 18, color: p.label2),
+      ),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: ListView(
+              controller: _scrollController,
+              padding: EdgeInsets.zero,
+              children: [if (errors != null) errors, form()],
+            ),
+          ),
+          AppleFormFooter(
+            confirmLabel: l.save,
+            onConfirm: validateValues,
+            cancelLabel: l.cancel,
+            leading: widget.client != null
+                ? IconButton(
+                    tooltip: l.delete,
+                    onPressed: remove,
+                    icon: Icon(CupertinoIcons.trash, size: 20, color: p.red),
+                  )
+                : null,
+          ),
+        ],
+      ),
+    );
   }
 }
 
+/// The reasons a save was refused, in one tinted card at the top of the form.
 class _Errors extends StatelessWidget {
   final bool nameValid;
   final bool identifiersValid;
@@ -438,42 +368,52 @@ class _Errors extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      color: Colors.red.withValues(alpha: 0.2),
-      margin: const EdgeInsets.all(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              AppLocalizations.of(context)!.errors,
-              style: const TextStyle(
-                fontSize: 18
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
+
+    final messages = <String>[
+      if (!nameValid) l.nameInvalid,
+      if (!identifiersValid) l.oneIdentifierRequired,
+      if (!dnsCacheValid) l.dnsCacheNumber,
+    ];
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: p.red.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                CupertinoIcons.exclamationmark_circle_fill,
+                size: 18,
+                color: p.red,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                l.errors,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: p.label,
+                ),
+              ),
+            ],
+          ),
+          for (final message in messages)
+            Padding(
+              padding: const EdgeInsets.only(top: 6, left: 26),
+              child: Text(
+                message,
+                style: TextStyle(fontSize: 13.5, color: p.label2),
               ),
             ),
-            const SizedBox(height: 8),
-            if (!nameValid) Text(
-              "● ${AppLocalizations.of(context)!.nameInvalid}",
-              style: const TextStyle(
-                fontSize: 14
-              ),
-            ),
-            if (!identifiersValid) Text(
-              "● ${AppLocalizations.of(context)!.oneIdentifierRequired}",
-              style: const TextStyle(
-                fontSize: 14
-              ),
-            ),
-            if (!dnsCacheValid) Text(
-              "● ${AppLocalizations.of(context)!.dnsCacheNumber}",
-              style: const TextStyle(
-                fontSize: 14
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }

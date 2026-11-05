@@ -1,6 +1,8 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/l10n/app_localizations.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 class TagsModal extends StatefulWidget {
   final List<String> selectedTags;
@@ -19,130 +21,91 @@ class TagsModal extends StatefulWidget {
 }
 
 class _TagsModalState extends State<TagsModal> {
-  List<String> selectedTags = [];
+  late final List<String> _selectedTags;
+  bool _finished = false;
 
   @override
   void initState() {
-    selectedTags = widget.selectedTags;
     super.initState();
+    _selectedTags = List<String>.of(widget.selectedTags);
+  }
+
+  void _toggleTag(String tag) {
+    if (_finished) return;
+    setState(() {
+      if (_selectedTags.contains(tag)) {
+        _selectedTags.removeWhere((selected) => selected == tag);
+      } else {
+        _selectedTags.add(tag);
+      }
+    });
+  }
+
+  void _cancel() {
+    if (_finished) return;
+    _finished = true;
+    Navigator.pop(context);
+  }
+
+  void _confirm() {
+    if (_finished) return;
+    setState(() => _finished = true);
+    // Give the caller its own list, including an empty one to clear all tags.
+    widget.onConfirm(List<String>.of(_selectedTags));
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
-    void checkUncheckTag(bool value, String tag) {
-      if (value == true) {
-        setState(() {
-          selectedTags.add(tag);
-        });
-      }
-      else if (value == false) {
-        setState(() {
-          selectedTags = selectedTags.where((s) => s != tag).toList();
-        });
-      }
-    }
-    return AlertDialog(
-      scrollable: true,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 0,
-        vertical: 16
+    return AppleSheet(
+      title: l.tags,
+      leading: AppleIconBadge(icon: CupertinoIcons.tag, color: p.tint),
+      trailing: IconButton(
+        onPressed: _finished ? null : _cancel,
+        tooltip: l.close,
+        icon: Icon(CupertinoIcons.xmark, size: 20, color: p.label2),
       ),
-      title: Column(
-        children: [
-          Icon(
-            Icons.label_rounded,
-            color: Theme.of(context).listTileTheme.iconColor
-          ),
-          const SizedBox(height: 16),
-          Text(
-            AppLocalizations.of(context)!.tags,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface
-            ),
-          )
-        ],
-      ),
-      content: SizedBox(
-        width: double.minPositive,
-        height: MediaQuery.of(context).size.height*0.5,
-        child: ListView.builder(
-          shrinkWrap: true,
-          itemCount: widget.tags.length,
-          itemBuilder: (context, index) => Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => checkUncheckTag(!selectedTags.contains(widget.tags[index]), widget.tags[index]),
-              child: Container(
-                padding: const EdgeInsets.only(
-                  left: 24,
-                  top: 8,
-                  bottom: 8,
-                  right: 12
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        widget.tags[index],
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w400,
-                          color: Theme.of(context).colorScheme.onSurface,
+      body: widget.tags.isEmpty
+          ? AppleEmptyState(icon: CupertinoIcons.tag, title: l.noItems)
+          : Material(
+              color: Colors.transparent,
+              child: AppleListSection(
+                background: p.window,
+                children: [
+                  for (final tag in widget.tags)
+                    Semantics(
+                      checked: _selectedTags.contains(tag),
+                      label: tag,
+                      child: AppleListTile(
+                        title: tag,
+                        showChevron: false,
+                        onTap: _finished ? null : () => _toggleTag(tag),
+                        trailing: SizedBox(
+                          width: 24,
+                          child: _selectedTags.contains(tag)
+                              ? Icon(CupertinoIcons.checkmark,
+                                  size: 20, color: p.tint)
+                              : null,
                         ),
                       ),
                     ),
-                    Checkbox(
-                      value: selectedTags.contains(widget.tags[index]), 
-                      onChanged: (value) => checkUncheckTag(value!, widget.tags[index]),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5)
-                      ),
-                    )
-                  ],
-                ),
+                ],
               ),
             ),
-          ),
-          // itemBuilder: (context, index) => CheckboxListTile(
-          //   title: Text(
-          //     widget.tags[index],
-          //     style: TextStyle(
-          //       fontWeight: FontWeight.normal,
-          //       color: Theme.of(context).colorScheme.onSurface
-          //     ),
-          //   ),
-          //   value: selectedTags.contains(widget.tags[index]), 
-          //   checkboxShape: RoundedRectangleBorder(
-          //     borderRadius: BorderRadius.circular(5)
-          //   ),
-          //   onChanged: (value) => checkUncheckTag(value!, widget.tags[index])
-          // )
+      footer: SafeArea(
+        top: false,
+        child: AppleFormFooter(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+          confirmLabel: l.confirm,
+          confirmEnabled: !_finished,
+          cancelEnabled: !_finished,
+          onConfirm: _confirm,
+          onCancel: _cancel,
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context), 
-          child: Text(AppLocalizations.of(context)!.cancel)
-        ),
-        TextButton(
-          onPressed: selectedTags.isNotEmpty
-            ? () {
-                widget.onConfirm(selectedTags);
-                Navigator.pop(context);
-              }
-            : null, 
-          child: Text(
-            AppLocalizations.of(context)!.confirm,
-            style: TextStyle(
-              color: selectedTags.isNotEmpty
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38)
-            ),
-          )
-        ),
-      ],
     );
   }
 }

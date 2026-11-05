@@ -1,9 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
-
 import 'package:adguard_home_manager/screens/clients/client/client_screen_functions.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+/// The services group: whether the device follows the server, and the row
+/// that opens the picker when it does not.
 class BlockedServicesSection extends StatelessWidget {
   final bool useGlobalSettingsServices;
   final List<String> blockedServices;
@@ -15,103 +17,44 @@ class BlockedServicesSection extends StatelessWidget {
     required this.useGlobalSettingsServices,
     required this.blockedServices,
     required this.onUpdatedBlockedServices,
-    required this.onUpdateServicesGlobalSettings
+    required this.onUpdateServicesGlobalSettings,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
+
+    return AppleListSection(
+      title: l.blockedServices,
+      margin: const EdgeInsets.fromLTRB(16, 22, 16, 0),
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Material(
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(28),
-            child: InkWell(
-              onTap: () => onUpdateServicesGlobalSettings(!useGlobalSettingsServices),
-              borderRadius: BorderRadius.circular(28),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 6
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        AppLocalizations.of(context)!.useGlobalSettings,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Theme.of(context).colorScheme.onSurface
-                        ),
-                      ),
-                    ),
-                    Switch(
-                      value: useGlobalSettingsServices, 
-                      onChanged: (value) => onUpdateServicesGlobalSettings(value),
-                    )
-                  ],
-                ),
-              ),
-            ),
-          ),
+        AppleSwitchListTile(
+          icon: CupertinoIcons.checkmark_alt,
+          iconColor: p.tint,
+          title: l.useGlobalSettings,
+          subtitle: l.useGlobalSettingsHelper,
+          value: useGlobalSettingsServices,
+          onChanged: onUpdateServicesGlobalSettings,
         ),
-        const SizedBox(height: 12),
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: useGlobalSettingsServices == false
-              ? () => openServicesModal(
-                  context: context,
-                  blockedServices: blockedServices,
-                  onUpdateBlockedServices: onUpdatedBlockedServices
-                )
-              : null,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                vertical: 8, horizontal: 32
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.public,
-                    color: useGlobalSettingsServices == false
-                      ? Theme.of(context).listTileTheme.iconColor
-                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38),
+        AppleListTile(
+          icon: CupertinoIcons.globe,
+          iconColor: useGlobalSettingsServices ? p.label3 : p.red,
+          title: l.selectBlockedServices,
+          subtitle: useGlobalSettingsServices
+              ? l.servicesSameAsServer
+              : blockedServices.isNotEmpty
+                  ? l.blockedServicesCount(blockedServices.length)
+                  : l.noBlockedServicesSelected,
+          enabled: !useGlobalSettingsServices,
+          showChevron: !useGlobalSettingsServices,
+          onTap: useGlobalSettingsServices
+              ? null
+              : () => openServicesModal(
+                    context: context,
+                    blockedServices: blockedServices,
+                    onUpdateBlockedServices: onUpdatedBlockedServices,
                   ),
-                  const SizedBox(width: 16),
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          AppLocalizations.of(context)!.selectBlockedServices,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: useGlobalSettingsServices == false
-                              ? Theme.of(context).colorScheme.onSurface
-                              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38),
-                          ),
-                        ),
-                        if (useGlobalSettingsServices == false) ...[
-                          const SizedBox(height: 5),
-                          Text(
-                            blockedServices.isNotEmpty
-                              ? "${blockedServices.length} ${AppLocalizations.of(context)!.servicesBlocked}"
-                              :  AppLocalizations.of(context)!.noBlockedServicesSelected,
-                            style: TextStyle(
-                              color: Theme.of(context).listTileTheme.iconColor  
-                            ),
-                          )
-                        ]
-                      ],
-                    ),
-                  )
-                ],
-              ),
-            ),
-          ),
         ),
       ],
     );

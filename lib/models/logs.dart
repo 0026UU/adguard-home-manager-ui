@@ -52,6 +52,10 @@ class Log {
   final String? rule;
   final List<Answer>? originalAnswer;
 
+  /// Wire size of the DNS reply in bytes. Only servers built from the fork
+  /// answer it, so a stock server leaves it null.
+  final int? size;
+
   Log({
     this.answerDnssec,
     required this.cached,
@@ -69,6 +73,7 @@ class Log {
     this.filterId,
     this.rule,
     this.originalAnswer,
+    this.size,
   });
 
   factory Log.fromJson(Map<String, dynamic> json) => Log(
@@ -88,6 +93,7 @@ class Log {
     filterId: json["filterId"],
     rule: json["rule"],
     originalAnswer: json["original_answer"] == null ? null : List<Answer>.from(json["original_answer"].map((x) => Answer.fromJson(x))),
+    size: json["size"],
   );
 
   Map<String, dynamic> toJson() => {
@@ -107,6 +113,7 @@ class Log {
     "filterId": filterId,
     "rule": rule,
     "original_answer": originalAnswer == null ? null : List<dynamic>.from(originalAnswer!.map((x) => x.toJson())),
+    "size": size,
   };
 }
 

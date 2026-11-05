@@ -72,3 +72,59 @@ class AppleFilterChip extends StatelessWidget {
     );
   }
 }
+
+/// Selectable capsule of the log filter sheet: outlined while off, solid tint
+/// while on, the way the prototype's `.chip` and `.chip.on` read.
+class AppleToggleChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+  final Color? activeColor;
+
+  const AppleToggleChip({
+    super.key,
+    required this.label,
+    required this.selected,
+    this.onTap,
+    this.activeColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+    final active = activeColor ?? p.tint;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected ? active : p.card,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              width: 0.5,
+              color: selected ? Colors.transparent : p.separator,
+            ),
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              height: 1.2,
+              color: selected ? Colors.white : p.label2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

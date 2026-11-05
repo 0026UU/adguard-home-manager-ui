@@ -21,7 +21,7 @@ void main() {
     // switches and the certificate rows of `/tls/status` are the frame.
     expect(find.byType(AppleListSection), findsNWidgets(2));
     expect(find.byType(AppleSwitchListTile), findsNWidgets(4));
-    expect(find.byType(AppleListTile), findsNWidgets(6));
+    expect(find.byType(AppleListTile), findsNWidgets(7));
     expect(find.byType(AppleBackButton), findsOneWidget);
     expect(tester.takeException(), isNull);
 

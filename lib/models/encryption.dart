@@ -19,6 +19,7 @@ class EncryptionData {
   final bool validChain;
   final String? subject;
   final String? issuer;
+  final String? fingerprintSha256;
   final DateTime? notBefore;
   final DateTime? notAfter;
   final List<String> dnsNames;
@@ -46,6 +47,7 @@ class EncryptionData {
     required this.validChain,
     this.subject,
     this.issuer,
+    this.fingerprintSha256,
     this.notBefore,
     this.notAfter,
     required this.dnsNames,
@@ -87,6 +89,7 @@ class EncryptionData {
     validChain: json["valid_chain"] ?? false,
     subject: json["subject"],
     issuer: json["issuer"],
+    fingerprintSha256: json["fingerprint_sha256"],
     notBefore: json["not_before"] == null ? null : DateTime.parse(json["not_before"]),
     notAfter: json["not_after"] == null ? null : DateTime.parse(json["not_after"]),
     dnsNames: json["dns_names"] != null ? List<String>.from(json["dns_names"].map((x) => x)) : [],
@@ -115,6 +118,7 @@ class EncryptionData {
     "valid_chain": validChain,
     "subject": subject,
     "issuer": issuer,
+    "fingerprint_sha256": fingerprintSha256,
     "not_before": notBefore?.toIso8601String(),
     "not_after": notAfter?.toIso8601String(),
     "dns_names": List<dynamic>.from(dnsNames.map((x) => x)),
@@ -155,6 +159,7 @@ class EncryptionValidationResult {
 class EncryptionValidation {
   final String? subject;
   final String? issuer;
+  final String? fingerprintSha256;
   final String? keyType;
   final DateTime? notBefore;
   final DateTime? notAfter;
@@ -182,6 +187,7 @@ class EncryptionValidation {
   EncryptionValidation({
     this.subject,
     this.issuer,
+    this.fingerprintSha256,
     this.keyType,
     this.notBefore,
     this.notAfter,
@@ -210,6 +216,7 @@ class EncryptionValidation {
   factory EncryptionValidation.fromJson(Map<String, dynamic> json) => EncryptionValidation(
     subject: json["subject"],
     issuer: json["issuer"],
+    fingerprintSha256: json["fingerprint_sha256"],
     keyType: json["key_type"],
     notBefore: json["not_before"] == null ? null : DateTime.parse(json["not_before"]),
     notAfter: json["not_after"] == null ? null : DateTime.parse(json["not_after"]),
@@ -238,6 +245,7 @@ class EncryptionValidation {
   Map<String, dynamic> toJson() => {
     "subject": subject,
     "issuer": issuer,
+    "fingerprint_sha256": fingerprintSha256,
     "key_type": keyType,
     "not_before": notBefore?.toIso8601String(),
     "not_after": notAfter?.toIso8601String(),

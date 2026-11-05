@@ -12,8 +12,9 @@ import 'server_info_harness.dart';
 
 // Server information is a definition list, not a dashboard: the page answers
 // what the box reports about itself and nothing else. The tests below check the
-// header line, the seven values `/status` really carries, the sheet the address
-// row opens, and that the Material chrome the page used to be built from is gone.
+// header line, the values `/status` really carries, the three rows only the
+// forked server can answer, the sheet the address row opens, and that the
+// Material chrome the page used to be built from is gone.
 
 void main() {
   late AppLocalizations l;
@@ -95,6 +96,63 @@ void main() {
           .valueColor,
       isNotNull,
     );
+  });
+
+  testWidgets('the device count comes from the clients the server registered', (tester) async {
+    await pumpServerInfo(tester, registeredClients: 5);
+
+    expect(
+      tester.widget<AppleListTile>(find.widgetWithText(AppleListTile, l.clients)).value,
+      '5',
+    );
+  });
+
+  testWidgets('a stock server leaves the platform and uptime rows out', (tester) async {
+    await pumpServerInfo(tester);
+
+    expect(find.widgetWithText(AppleListTile, l.cpuArchitecture), findsNothing);
+    expect(find.widgetWithText(AppleListTile, l.uptime), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a forked server also answers its platform and its uptime', (tester) async {
+    await pumpServerInfo(
+      tester,
+      data: serverInfoFixture(
+        arch: 'amd64',
+        goos: 'linux',
+        startTime: DateTime.now().subtract(const Duration(days: 12, hours: 4)),
+      ),
+    );
+
+    String valueOf(String title) =>
+        tester.widget<AppleListTile>(find.widgetWithText(AppleListTile, title)).value!;
+
+    expect(valueOf(l.cpuArchitecture), 'linux/amd64');
+    expect(valueOf(l.uptime), l.uptimeDaysHours(12, 4));
+  });
+
+  testWidgets('a server up for less than a day reads in hours', (tester) async {
+    await pumpServerInfo(
+      tester,
+      data: serverInfoFixture(
+        startTime: DateTime.now().subtract(const Duration(hours: 3, minutes: 12)),
+      ),
+    );
+
+    expect(
+      tester.widget<AppleListTile>(find.widgetWithText(AppleListTile, l.uptime)).value,
+      l.uptimeHoursMinutes(3, 12),
+    );
+    // The platform row is drawn from both answers together, so a server that
+    // only says when it started gets the uptime row and nothing else.
+    expect(find.widgetWithText(AppleListTile, l.cpuArchitecture), findsNothing);
+  });
+
+  test('an uptime the server has not reached yet is not drawn', () {
+    expect(formatUptime(null, l), isNull);
+    expect(formatUptime(DateTime.now().add(const Duration(hours: 1)), l), isNull);
+    expect(formatUptime(DateTime.now().subtract(const Duration(minutes: 7)), l), l.uptimeMinutes(7));
   });
 
   testWidgets('a server that publishes no language drops that row', (tester) async {

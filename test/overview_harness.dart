@@ -328,10 +328,16 @@ class OverviewClients extends ClientsProvider {
   }
 }
 
-/// The log page owns the filtering, so only the state change matters here.
+/// The log page owns the filtering, so only the state change matters here: the
+/// promotion of the draft into the applied filters runs, the request does not.
 class OverviewLogs extends LogsProvider {
   @override
-  Future<bool> filterLogs() async => true;
+  Future<bool> fetchLogs({
+    int? inOffset,
+    bool? loadingMore,
+    String? searchText,
+  }) async =>
+      true;
 }
 
 class OverviewHarness {

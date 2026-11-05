@@ -121,6 +121,8 @@ class AppleFormFooter extends StatelessWidget {
   final bool confirmEnabled;
   final VoidCallback? onCancel;
   final String? cancelLabel;
+  final bool cancelEnabled;
+  final EdgeInsetsGeometry padding;
 
   /// Rendered on the leading edge, e.g. a delete action.
   final Widget? leading;
@@ -135,6 +137,8 @@ class AppleFormFooter extends StatelessWidget {
     this.confirmEnabled = true,
     this.cancelLabel,
     this.onCancel,
+    this.cancelEnabled = true,
+    this.padding = const EdgeInsets.fromLTRB(16, 4, 16, 16),
     this.leading,
     this.destructive = false,
   });
@@ -147,7 +151,7 @@ class AppleFormFooter extends StatelessWidget {
     final cancel = onCancel ?? () => Navigator.pop(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      padding: padding,
       child: Row(
         children: [
           if (leading != null) ...[leading!, const Spacer()],
@@ -161,7 +165,7 @@ class AppleFormFooter extends StatelessWidget {
                 background: p.fill2,
                 foreground: p.label,
                 radius: 12,
-                onPressed: cancel,
+                onPressed: cancelEnabled ? cancel : null,
               ),
             ),
           ),

@@ -1,11 +1,9 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
-
-
 import 'package:adguard_home_manager/screens/clients/client/blocking_schedule_modal.dart';
-import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
-import 'package:adguard_home_manager/widgets/section_label.dart';
-
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/models/clients.dart';
 
 class EditBlockingSchedule {
@@ -22,6 +20,8 @@ class EditBlockingSchedule {
   });
 }
 
+/// The "pause service blocking" windows of a device: one row per weekday, each
+/// reading the hours it covers.
 class BlockingSchedule extends StatelessWidget {
   final BlockedServicesSchedule blockedServicesSchedule;
   final void Function(BlockedServicesSchedule) setBlockedServicesSchedule;
@@ -34,6 +34,9 @@ class BlockingSchedule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
+
     void updateSchedule(EditBlockingSchedule v) {
       final scheduleJson = blockedServicesSchedule.toJson();
       for (var weekday in v.weekday) {
@@ -47,8 +50,8 @@ class BlockingSchedule extends StatelessWidget {
     }
 
     void openAddScheduleModal() {
-      showDialog(
-        context: context, 
+      showDialog<void>(
+        context: context,
         builder: (context) => BlockingScheduleModal(
           onConfirm: updateSchedule,
         ),
@@ -56,14 +59,15 @@ class BlockingSchedule extends StatelessWidget {
     }
 
     void openEditScheduleModal(String weekday) {
-      showDialog(
-        context: context, 
+      final scheduleJson = blockedServicesSchedule.toJson();
+      showDialog<void>(
+        context: context,
         builder: (context) => BlockingScheduleModal(
           schedule: EditBlockingSchedule(
-            timezone: blockedServicesSchedule.timeZone!, 
-            weekday: [weekday], 
-            start: blockedServicesSchedule.toJson()[weekday]['start'], 
-            end: blockedServicesSchedule.toJson()[weekday]['end'], 
+            timezone: blockedServicesSchedule.timeZone!,
+            weekday: [weekday],
+            start: scheduleJson[weekday]['start'],
+            end: scheduleJson[weekday]['end'],
           ),
           onConfirm: updateSchedule,
         ),
@@ -76,135 +80,72 @@ class BlockingSchedule extends StatelessWidget {
       setBlockedServicesSchedule(BlockedServicesSchedule.fromJson(scheduleJson));
     }
 
-    String formatTime(int time) {
-      final formatted = Duration(milliseconds: time);
-      final hours = formatted.inHours;
-      final minutes = formatted.inMinutes - hours*60;
-      return "${hours.toString().padLeft(2 , '0')}:${minutes.toString().padLeft(2, '0')}";
-    }
+    // Insertion ordered, so the rows always read Monday to Sunday whatever the
+    // order the schedule came back in.
+    final days = <String, String>{
+      "mon": l.monday,
+      "tue": l.tuesday,
+      "wed": l.wednesday,
+      "thu": l.thursday,
+      "fri": l.friday,
+      "sat": l.saturday,
+      "sun": l.sunday,
+    };
+
+    final windows = <MapEntry<String, BlockedServicesScheduleDay>>[
+      if (blockedServicesSchedule.mon != null) MapEntry("mon", blockedServicesSchedule.mon!),
+      if (blockedServicesSchedule.tue != null) MapEntry("tue", blockedServicesSchedule.tue!),
+      if (blockedServicesSchedule.wed != null) MapEntry("wed", blockedServicesSchedule.wed!),
+      if (blockedServicesSchedule.thu != null) MapEntry("thu", blockedServicesSchedule.thu!),
+      if (blockedServicesSchedule.fri != null) MapEntry("fri", blockedServicesSchedule.fri!),
+      if (blockedServicesSchedule.sat != null) MapEntry("sat", blockedServicesSchedule.sat!),
+      if (blockedServicesSchedule.sun != null) MapEntry("sun", blockedServicesSchedule.sun!),
+    ];
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            SectionLabel(label: AppLocalizations.of(context)!.pauseServiceBlocking),
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: IconButton(
-                onPressed: openAddScheduleModal, 
-                icon: const Icon(Icons.add)
-              ),
-            )
-          ],
-        ),
-        const SizedBox(height: 2),
-        if (
-          blockedServicesSchedule.mon == null &&
-          blockedServicesSchedule.tue == null &&
-          blockedServicesSchedule.wed == null &&
-          blockedServicesSchedule.thu == null &&
-          blockedServicesSchedule.fri == null &&
-          blockedServicesSchedule.sat == null &&
-          blockedServicesSchedule.sun == null
-        ) Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            AppLocalizations.of(context)!.noBlockingScheduleThisDevice,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 18,
-              color: Theme.of(context).colorScheme.onSurfaceVariant
-            ),
+        AppleGroupHeader(
+          title: l.pauseServiceBlocking,
+          trailingWidget: AppleHeaderAction(
+            label: l.add,
+            onPressed: openAddScheduleModal,
           ),
         ),
-        if (blockedServicesSchedule.mon != null) _ScheduleTile(
-          weekday: AppLocalizations.of(context)!.monday, 
-          schedule: "${formatTime(blockedServicesSchedule.mon!.start!)} - ${formatTime(blockedServicesSchedule.mon!.end!)}", 
-          onEdit: () => openEditScheduleModal("mon"), 
-          onDelete: () => onDeleteSchedule("mon")
-        ),
-        if (blockedServicesSchedule.tue != null) _ScheduleTile(
-          weekday: AppLocalizations.of(context)!.tuesday, 
-          schedule: "${formatTime(blockedServicesSchedule.tue!.start!)} - ${formatTime(blockedServicesSchedule.tue!.end!)}", 
-          onEdit: () => openEditScheduleModal("tue"), 
-          onDelete: () => onDeleteSchedule("tue")
-        ),
-        if (blockedServicesSchedule.wed != null) _ScheduleTile(
-          weekday: AppLocalizations.of(context)!.wednesday, 
-          schedule: "${formatTime(blockedServicesSchedule.wed!.start!)} - ${formatTime(blockedServicesSchedule.wed!.end!)}", 
-          onEdit: () => openEditScheduleModal("wed"), 
-          onDelete: () => onDeleteSchedule("wed")
-        ),
-        if (blockedServicesSchedule.thu != null) _ScheduleTile(
-          weekday: AppLocalizations.of(context)!.thursday, 
-          schedule: "${formatTime(blockedServicesSchedule.thu!.start!)} - ${formatTime(blockedServicesSchedule.thu!.end!)}", 
-          onEdit: () => openEditScheduleModal("thu"), 
-          onDelete: () => onDeleteSchedule("thu")
-        ),
-        if (blockedServicesSchedule.fri != null) _ScheduleTile(
-          weekday: AppLocalizations.of(context)!.friday, 
-          schedule: "${formatTime(blockedServicesSchedule.fri!.start!)} - ${formatTime(blockedServicesSchedule.fri!.end!)}", 
-          onEdit: () => openEditScheduleModal("fri"), 
-          onDelete: () => onDeleteSchedule("fri")
-        ),
-        if (blockedServicesSchedule.sat != null) _ScheduleTile(
-          weekday: AppLocalizations.of(context)!.saturday, 
-          schedule: "${formatTime(blockedServicesSchedule.sat!.start!)} - ${formatTime(blockedServicesSchedule.sat!.end!)}", 
-          onEdit: () => openEditScheduleModal("sat"), 
-          onDelete: () => onDeleteSchedule("sat")
-        ),
-        if (blockedServicesSchedule.sun != null) _ScheduleTile(
-          weekday: AppLocalizations.of(context)!.sunday, 
-          schedule: "${formatTime(blockedServicesSchedule.sun!.start!)} - ${formatTime(blockedServicesSchedule.sun!.end!)}", 
-          onEdit: () => openEditScheduleModal("sun"), 
-          onDelete: () => onDeleteSchedule("sun")
-        ),
+        if (windows.isEmpty)
+          AppleEmptyState(
+            icon: CupertinoIcons.clock,
+            title: l.noBlockingScheduleThisDevice,
+          )
+        else
+          AppleListSection(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            children: [
+              for (final window in windows)
+                AppleListTile(
+                  title: days[window.key]!,
+                  subtitle:
+                      "${formatScheduleTime(window.value.start!)} - ${formatScheduleTime(window.value.end!)}",
+                  showChevron: false,
+                  onTap: () => openEditScheduleModal(window.key),
+                  trailing: IconButton(
+                    onPressed: () => onDeleteSchedule(window.key),
+                    tooltip: l.delete,
+                    icon: Icon(CupertinoIcons.trash, size: 19, color: p.red),
+                  ),
+                ),
+            ],
+          ),
       ],
     );
   }
 }
 
-class _ScheduleTile extends StatelessWidget {
-  final String weekday;
-  final String schedule;
-  final void Function() onEdit;
-  final void Function() onDelete;
-
-  const _ScheduleTile({
-    required this.weekday,
-    required this.schedule,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomListTile(
-      title: weekday,
-      subtitle: schedule,
-      trailing: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          IconButton(
-            onPressed: onEdit, 
-            icon: const Icon(Icons.edit_rounded),
-            tooltip: AppLocalizations.of(context)!.edit,
-          ),
-          const SizedBox(width: 4),
-          IconButton(
-            onPressed: onDelete, 
-            icon: const Icon(Icons.delete_rounded),
-            tooltip: AppLocalizations.of(context)!.delete,
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.only(
-        left: 16, 
-        top: 6,
-        right: 12,
-        bottom: 6
-      )
-    );
-  }
+/// Reads a schedule hour, which AdGuard Home stores as milliseconds since
+/// midnight, as the `hh:mm` the rows show.
+String formatScheduleTime(int time) {
+  final formatted = Duration(milliseconds: time);
+  final hours = formatted.inHours;
+  final minutes = formatted.inMinutes - hours*60;
+  return "${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}";
 }

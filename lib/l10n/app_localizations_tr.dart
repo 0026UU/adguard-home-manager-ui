@@ -2502,22 +2502,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get addPersistentClient => 'Kalıcı istemci olarak ekle';
 
   @override
-  String get blockThisClientOnly => 'Yalnızca bu istemci için engelle';
-
-  @override
-  String get unblockThisClientOnly => 'Yalnızca bu istemci için engeli kaldır';
-
-  @override
-  String domainBlockedThisClient(Object domain) {
-    return 'Bu istemci için $domain engellendi';
-  }
-
-  @override
-  String domainUnblockedThisClient(Object domain) {
-    return 'Bu istemci için $domain engeli kaldırıldı';
-  }
-
-  @override
   String get disallowThisClient => 'Bu istemciye izin verme';
 
   @override
@@ -3098,4 +3082,102 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get templateInserted => 'Template inserted';
+
+  @override
+  String get sourceIp => 'Source IP';
+
+  @override
+  String get responseSize => 'Response size';
+
+  @override
+  String get ttl => 'TTL';
+
+  @override
+  String get copyDomain => 'Copy domain';
+
+  @override
+  String get addToBlockList => 'Add to block list';
+
+  @override
+  String get addedToBlockList => 'Added to the block list';
+
+  @override
+  String get queryBlocked => 'Blocked';
+
+  @override
+  String get queryAllowed => 'Allowed';
+
+  @override
+  String get queryUpstream => 'Upstream resolution';
+
+  @override
+  String get filterLogs => 'Filter logs';
+
+  @override
+  String get timeRange => 'Time range';
+
+  @override
+  String get lastHour => '1 hour';
+
+  @override
+  String get lastSixHours => '6 hours';
+
+  @override
+  String get lastTwentyFourHours => '24 hours';
+
+  @override
+  String get lastSevenDays => '7 days';
+
+  @override
+  String get allClients => 'All clients';
+
+  @override
+  String onlyStatus(Object status) {
+    return 'Only $status';
+  }
+
+  @override
+  String get cpuArchitecture => 'CPU architecture';
+
+  @override
+  String get uptime => 'Uptime';
+
+  @override
+  String uptimeDaysHours(Object days, Object hours) {
+    return '$days d $hours h';
+  }
+
+  @override
+  String uptimeHoursMinutes(Object hours, Object minutes) {
+    return '$hours h $minutes m';
+  }
+
+  @override
+  String uptimeMinutes(Object minutes) {
+    return '$minutes m';
+  }
+
+  @override
+  String get sha256Fingerprint => 'SHA-256 fingerprint';
+
+  @override
+  String get clientRules => 'Rules for this device';
+
+  @override
+  String get clientRulesHelper => 'Matched before the lists of the server';
+
+  @override
+  String get allowList => 'Allow list';
+
+  @override
+  String get blockList => 'Block list';
+
+  @override
+  String get addClientRule => 'Add rule';
+
+  @override
+  String get noClientRules => 'No rules for this device';
+
+  @override
+  String get ruleAlreadyOnList => 'That rule is already on the list';
 }

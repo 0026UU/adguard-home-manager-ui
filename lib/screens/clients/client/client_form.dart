@@ -1,6 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
-
 
 import 'package:adguard_home_manager/screens/clients/client/blocked_services_section.dart';
 import 'package:adguard_home_manager/screens/clients/client/client_screen.dart';
@@ -11,15 +10,14 @@ import 'package:adguard_home_manager/screens/clients/client/tags_section.dart';
 import 'package:adguard_home_manager/screens/clients/client/upstream_servers_section.dart';
 import 'package:adguard_home_manager/screens/clients/client/blocking_schedule.dart';
 
-import 'package:adguard_home_manager/widgets/custom_switch_list_tile.dart';
-import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
-import 'package:adguard_home_manager/widgets/section_label.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/models/clients.dart';
 import 'package:adguard_home_manager/models/safe_search.dart';
 
+/// The add/edit form of one device, as an inset-grouped Apple form: the name
+/// field, then a group per concern the server stores on the client entry.
 class ClientForm extends StatelessWidget {
-  final bool isFullScreen;
   final Client? client;
   final TextEditingController nameController;
   final List<ControllerListItem> identifiersControllers;
@@ -28,7 +26,6 @@ class ClientForm extends StatelessWidget {
   final bool? enableFiltering;
   final bool? enableSafeBrowsing;
   final bool? enableParentalControl;
-  final bool? enableSafeSearch;
   final SafeSearch? safeSearch;
   final SafeSearch defaultSafeSearch;
   final bool useGlobalSettingsServices;
@@ -42,7 +39,6 @@ class ClientForm extends StatelessWidget {
   final void Function(bool) updateEnableFiltering;
   final void Function(bool) updateEnableSafeBrowsing;
   final void Function(bool) updateEnableParentalControl;
-  final void Function(bool) updateEnableSafeSearch;
   final void Function(SafeSearch) updateSafeSearch;
   final void Function(bool) updateUseGlobalSettingsServices;
   final bool ignoreClientQueryLog;
@@ -59,7 +55,6 @@ class ClientForm extends StatelessWidget {
 
   const ClientForm({
     super.key,
-    required this.isFullScreen,
     required this.client,
     required this.nameController,
     required this.identifiersControllers,
@@ -68,7 +63,6 @@ class ClientForm extends StatelessWidget {
     required this.enableFiltering,
     required this.enableParentalControl,
     required this.enableSafeBrowsing,
-    required this.enableSafeSearch,
     required this.safeSearch,
     required this.blockedServices,
     required this.updateBlockedServices,
@@ -82,7 +76,6 @@ class ClientForm extends StatelessWidget {
     required this.updateEnableFiltering,
     required this.updateEnableParentalControl,
     required this.updateEnableSafeBrowsing,
-    required this.updateEnableSafeSearch,
     required this.updateSafeSearch,
     required this.updateUseGlobalSettingsServices,
     required this.ignoreClientQueryLog,
@@ -100,193 +93,143 @@ class ClientForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
+
     return Column(
       children: [
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: TextFormField(
-            enabled: client != null ? false : true,
-            controller: nameController,
-            onChanged: (_) => {},
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.badge_rounded),
-              border: const OutlineInputBorder(
-                borderRadius: BorderRadius.all(
-                  Radius.circular(10)
-                )
-              ),
-              labelText: AppLocalizations.of(context)!.name,
+        AppleTextField(
+          label: l.name,
+          icon: CupertinoIcons.person,
+          controller: nameController,
+          // The server keys a client by its name, so an edit keeps it read-only.
+          enabled: client == null,
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+        ),
+        AppleListSection(
+          title: l.tags,
+          margin: const EdgeInsets.fromLTRB(16, 22, 16, 0),
+          children: [
+            TagsSection(
+              selectedTags: selectedTags,
+              onTagsSelected: updateSelectedTags,
             ),
-          ),
-        ),
-        SectionLabel(
-          label: AppLocalizations.of(context)!.tags,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        ),
-        TagsSection(
-          selectedTags: selectedTags, 
-          onTagsSelected: updateSelectedTags
+          ],
         ),
         IdentifiersSection(
           identifiersControllers: identifiersControllers,
-          onUpdateIdentifiersControllers: (c) {
-            updateIdentifiersControllers(c);
-          },
-          onCheckValidValues: () => {}
+          onUpdateIdentifiersControllers: updateIdentifiersControllers,
+          onCheckValidValues: () => {},
         ),
-        SectionLabel(
-          label: AppLocalizations.of(context)!.settings,
-          padding: const  EdgeInsets.only(
-            left: 16, right: 16, top: 12, bottom: 24
-          )
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Material(
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(28),
-            child: InkWell(
-              onTap: enableDisableGlobalSettingsFiltering,
-              borderRadius: BorderRadius.circular(28),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 6
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        AppLocalizations.of(context)!.useGlobalSettings,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Theme.of(context).colorScheme.onSurface
-                        ),
+        AppleListSection(
+          title: l.clientSettings,
+          margin: const EdgeInsets.fromLTRB(16, 22, 16, 0),
+          children: [
+            AppleSwitchListTile(
+              icon: CupertinoIcons.checkmark_alt,
+              iconColor: p.tint,
+              title: l.useGlobalSettings,
+              subtitle: l.useGlobalSettingsHelper,
+              value: useGlobalSettingsFiltering,
+              onChanged: (_) => enableDisableGlobalSettingsFiltering(),
+            ),
+            SettingsTile(
+              label: l.enableFiltering,
+              icon: CupertinoIcons.nosign,
+              iconColor: p.red,
+              value: enableFiltering,
+              onChange: updateEnableFiltering,
+              useGlobalSettingsFiltering: useGlobalSettingsFiltering,
+            ),
+            SettingsTile(
+              label: l.enableSafeBrowsing,
+              icon: CupertinoIcons.lock,
+              iconColor: p.green,
+              value: enableSafeBrowsing,
+              onChange: updateEnableSafeBrowsing,
+              useGlobalSettingsFiltering: useGlobalSettingsFiltering,
+            ),
+            SettingsTile(
+              label: l.enableParentalControl,
+              icon: CupertinoIcons.person_crop_square,
+              iconColor: p.orange,
+              value: enableParentalControl,
+              onChange: updateEnableParentalControl,
+              useGlobalSettingsFiltering: useGlobalSettingsFiltering,
+            ),
+            AppleListTile(
+              icon: CupertinoIcons.search,
+              iconColor: useGlobalSettingsFiltering ? p.label3 : p.tint,
+              title: l.safeSearch,
+              subtitle: useGlobalSettingsFiltering
+                  ? null
+                  : (safeSearch?.enabled ?? false)
+                      ? l.enabled
+                      : l.disabled,
+              enabled: !useGlobalSettingsFiltering,
+              showChevron: !useGlobalSettingsFiltering,
+              onTap: useGlobalSettingsFiltering
+                  ? null
+                  : () => openSafeSearchModal(
+                        context: context,
+                        defaultSafeSearch: defaultSafeSearch,
+                        safeSearch: safeSearch,
+                        onUpdateSafeSearch: updateSafeSearch,
                       ),
-                    ),
-                    Switch(
-                      value: useGlobalSettingsFiltering, 
-                      onChanged: (value) => enableDisableGlobalSettingsFiltering()
-                    )
-                  ],
-                ),
-              ),
             ),
-          ),
+          ],
         ),
-        const SizedBox(height: 8),
-        SettingsTile(
-          label: AppLocalizations.of(context)!.enableFiltering,
-          value: enableFiltering, 
-          onChange: (value) => updateEnableFiltering(value),
-          useGlobalSettingsFiltering: useGlobalSettingsFiltering,
-        ),
-        SettingsTile(
-          label: AppLocalizations.of(context)!.enableSafeBrowsing,
-          value: enableSafeBrowsing, 
-          onChange: (value) => updateEnableSafeBrowsing(value),
-          useGlobalSettingsFiltering: useGlobalSettingsFiltering,
-        ),
-        SettingsTile(
-          label: AppLocalizations.of(context)!.enableParentalControl,
-          value: enableParentalControl, 
-          onChange: (value) => updateEnableParentalControl(value),
-          useGlobalSettingsFiltering: useGlobalSettingsFiltering,
-        ),
-        CustomListTile(
-          title: AppLocalizations.of(context)!.safeSearch,
-          padding: const  EdgeInsets.symmetric(
-            horizontal: 34,
-            vertical: 16
-          ),
-          trailing: Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Icon(
-              Icons.chevron_right_rounded,
-              color: useGlobalSettingsFiltering == true
-                ? Colors.grey
-                : Theme.of(context).colorScheme.onSurfaceVariant,
+        AppleListSection(
+          title: l.queryLogsAndStatistics,
+          margin: const EdgeInsets.fromLTRB(16, 22, 16, 0),
+          children: [
+            AppleSwitchListTile(
+              title: l.ignoreClientQueryLog,
+              value: ignoreClientQueryLog,
+              onChanged: updateIgnoreClientQueryLog,
             ),
-          ),
-          onTap: useGlobalSettingsFiltering == false
-            ? () => openSafeSearchModal(
-                context: context,
-                blockedServices: blockedServices,
-                defaultSafeSearch: defaultSafeSearch,
-                safeSearch: safeSearch,
-                onUpdateSafeSearch: updateSafeSearch
-              )
-            : null,
-        ),
-        SectionLabel(
-          label: AppLocalizations.of(context)!.queryLogsAndStatistics,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        ),
-        CustomSwitchListTile(
-          title: AppLocalizations.of(context)!.ignoreClientQueryLog,
-          value: ignoreClientQueryLog,
-          onChanged: updateIgnoreClientQueryLog,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 6
-          ),
-        ),
-        CustomSwitchListTile(
-          title: AppLocalizations.of(context)!.ignoreClientStatistics,
-          value: ignoreClientStatistics,
-          onChanged: updateIgnoreClientStatistics,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 6
-          ),
-        ),
-        SectionLabel(
-          label: AppLocalizations.of(context)!.blockedServices,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            AppleSwitchListTile(
+              title: l.ignoreClientStatistics,
+              value: ignoreClientStatistics,
+              onChanged: updateIgnoreClientStatistics,
+            ),
+          ],
         ),
         BlockedServicesSection(
-          useGlobalSettingsServices: useGlobalSettingsServices, 
-          blockedServices: blockedServices, 
+          useGlobalSettingsServices: useGlobalSettingsServices,
+          blockedServices: blockedServices,
           onUpdatedBlockedServices: updateBlockedServices,
           onUpdateServicesGlobalSettings: updateUseGlobalSettingsServices,
         ),
         UpstreamServersSection(
-          upstreamServers: upstreamServers, 
+          upstreamServers: upstreamServers,
           onCheckValidValues: () => {},
-          onUpdateUpstreamServers: updateUpstreamServers
+          onUpdateUpstreamServers: updateUpstreamServers,
         ),
-        SectionLabel(
-          label: AppLocalizations.of(context)!.upstreamDnsCacheConfiguration,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        ),
-        CustomSwitchListTile(
-          title: AppLocalizations.of(context)!.enableDnsCachingClient,
-          value: enableDnsCache,
-          onChanged: updateEnableDnsCache,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 6
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          child: TextFormField(
-            controller: dnsCacheField,
-            onChanged: (v) => updateDnsCacheError(!validateNumber(v) ? AppLocalizations.of(context)!.invalidValue : null),
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.storage_rounded),
-              border: const OutlineInputBorder(
-                borderRadius: BorderRadius.all(
-                  Radius.circular(10)
-                )
-              ),
-              labelText: AppLocalizations.of(context)!.dnsCacheSize,
-              errorText: dnsCacheError
+        AppleListSection(
+          title: l.upstreamDnsCacheConfiguration,
+          margin: const EdgeInsets.fromLTRB(16, 22, 16, 0),
+          children: [
+            AppleSwitchListTile(
+              title: l.enableDnsCachingClient,
+              value: enableDnsCache,
+              onChanged: updateEnableDnsCache,
             ),
-            keyboardType: TextInputType.number,
-          ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: AppleTextField(
+                label: l.dnsCacheSize,
+                icon: CupertinoIcons.number,
+                controller: dnsCacheField,
+                error: dnsCacheError,
+                keyboardType: TextInputType.number,
+                onChanged: (value) => updateDnsCacheError(
+                  !validateNumber(value) ? l.invalidValue : null,
+                ),
+                padding: EdgeInsets.zero,
+              ),
+            ),
+          ],
         ),
         BlockingSchedule(
           blockedServicesSchedule: blockedServicesSchedule,

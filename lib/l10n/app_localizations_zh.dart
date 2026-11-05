@@ -435,7 +435,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dnsServer => 'DNS 服务器';
 
   @override
-  String get elapsedTime => '处理时间';
+  String get elapsedTime => '处理耗时';
 
   @override
   String get responseCode => '响应代码';
@@ -2409,22 +2409,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get addPersistentClient => '添加为持久客户端';
 
   @override
-  String get blockThisClientOnly => '仅为此客户端封锁';
-
-  @override
-  String get unblockThisClientOnly => '仅为此客户端解封';
-
-  @override
-  String domainBlockedThisClient(Object domain) {
-    return '$domain 已为此客户端封锁';
-  }
-
-  @override
-  String domainUnblockedThisClient(Object domain) {
-    return '$domain 已为此客户端解封';
-  }
-
-  @override
   String get disallowThisClient => '禁止此客户端';
 
   @override
@@ -2999,6 +2983,104 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get templateInserted => '已插入模板';
+
+  @override
+  String get sourceIp => '来源 IP';
+
+  @override
+  String get responseSize => '响应大小';
+
+  @override
+  String get ttl => 'TTL';
+
+  @override
+  String get copyDomain => '复制域名';
+
+  @override
+  String get addToBlockList => '加入拦截列表';
+
+  @override
+  String get addedToBlockList => '已加入拦截列表';
+
+  @override
+  String get queryBlocked => '已拦截';
+
+  @override
+  String get queryAllowed => '已放行';
+
+  @override
+  String get queryUpstream => '上游解析';
+
+  @override
+  String get filterLogs => '筛选日志';
+
+  @override
+  String get timeRange => '时间范围';
+
+  @override
+  String get lastHour => '1 小时';
+
+  @override
+  String get lastSixHours => '6 小时';
+
+  @override
+  String get lastTwentyFourHours => '24 小时';
+
+  @override
+  String get lastSevenDays => '7 天';
+
+  @override
+  String get allClients => '全部客户端';
+
+  @override
+  String onlyStatus(Object status) {
+    return '仅$status';
+  }
+
+  @override
+  String get cpuArchitecture => 'CPU 架构';
+
+  @override
+  String get uptime => '运行时长';
+
+  @override
+  String uptimeDaysHours(Object days, Object hours) {
+    return '$days 天 $hours 小时';
+  }
+
+  @override
+  String uptimeHoursMinutes(Object hours, Object minutes) {
+    return '$hours 小时 $minutes 分钟';
+  }
+
+  @override
+  String uptimeMinutes(Object minutes) {
+    return '$minutes 分钟';
+  }
+
+  @override
+  String get sha256Fingerprint => 'SHA-256 指纹';
+
+  @override
+  String get clientRules => '单独规则';
+
+  @override
+  String get clientRulesHelper => '在服务器的过滤列表之前生效';
+
+  @override
+  String get allowList => '允许列表';
+
+  @override
+  String get blockList => '拦截列表';
+
+  @override
+  String get addClientRule => '添加规则';
+
+  @override
+  String get noClientRules => '暂无单独规则';
+
+  @override
+  String get ruleAlreadyOnList => '该规则已在列表中';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -3429,7 +3511,7 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get dnsServer => 'DNS 服务器';
 
   @override
-  String get elapsedTime => '处理时间';
+  String get elapsedTime => '处理耗时';
 
   @override
   String get responseCode => '响应代码';
@@ -5397,22 +5479,6 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get addPersistentClient => '添加为持久客户端';
 
   @override
-  String get blockThisClientOnly => '仅为此客户端封锁';
-
-  @override
-  String get unblockThisClientOnly => '仅为此客户端解封';
-
-  @override
-  String domainBlockedThisClient(Object domain) {
-    return '$domain 已为此客户端封锁';
-  }
-
-  @override
-  String domainUnblockedThisClient(Object domain) {
-    return '$domain 已为此客户端解封';
-  }
-
-  @override
   String get disallowThisClient => '禁止此客户端';
 
   @override
@@ -5907,4 +5973,102 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get templateInserted => '已插入模板';
+
+  @override
+  String get sourceIp => '来源 IP';
+
+  @override
+  String get responseSize => '响应大小';
+
+  @override
+  String get ttl => 'TTL';
+
+  @override
+  String get copyDomain => '复制域名';
+
+  @override
+  String get addToBlockList => '加入拦截列表';
+
+  @override
+  String get addedToBlockList => '已加入拦截列表';
+
+  @override
+  String get queryBlocked => '已拦截';
+
+  @override
+  String get queryAllowed => '已放行';
+
+  @override
+  String get queryUpstream => '上游解析';
+
+  @override
+  String get filterLogs => '筛选日志';
+
+  @override
+  String get timeRange => '时间范围';
+
+  @override
+  String get lastHour => '1 小时';
+
+  @override
+  String get lastSixHours => '6 小时';
+
+  @override
+  String get lastTwentyFourHours => '24 小时';
+
+  @override
+  String get lastSevenDays => '7 天';
+
+  @override
+  String get allClients => '全部客户端';
+
+  @override
+  String onlyStatus(Object status) {
+    return '仅$status';
+  }
+
+  @override
+  String get cpuArchitecture => 'CPU 架构';
+
+  @override
+  String get uptime => '运行时长';
+
+  @override
+  String uptimeDaysHours(Object days, Object hours) {
+    return '$days 天 $hours 小时';
+  }
+
+  @override
+  String uptimeHoursMinutes(Object hours, Object minutes) {
+    return '$hours 小时 $minutes 分钟';
+  }
+
+  @override
+  String uptimeMinutes(Object minutes) {
+    return '$minutes 分钟';
+  }
+
+  @override
+  String get sha256Fingerprint => 'SHA-256 指纹';
+
+  @override
+  String get clientRules => '单独规则';
+
+  @override
+  String get clientRulesHelper => '在服务器的过滤列表之前生效';
+
+  @override
+  String get allowList => '允许列表';
+
+  @override
+  String get blockList => '拦截列表';
+
+  @override
+  String get addClientRule => '添加规则';
+
+  @override
+  String get noClientRules => '暂无单独规则';
+
+  @override
+  String get ruleAlreadyOnList => '该规则已在列表中';
 }

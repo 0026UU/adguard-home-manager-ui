@@ -4825,30 +4825,6 @@ abstract class AppLocalizations {
   /// **'Add as a persistent client'**
   String get addPersistentClient;
 
-  /// No description provided for @blockThisClientOnly.
-  ///
-  /// In en, this message translates to:
-  /// **'Block for this client only'**
-  String get blockThisClientOnly;
-
-  /// No description provided for @unblockThisClientOnly.
-  ///
-  /// In en, this message translates to:
-  /// **'Unblock for this client only'**
-  String get unblockThisClientOnly;
-
-  /// No description provided for @domainBlockedThisClient.
-  ///
-  /// In en, this message translates to:
-  /// **'{domain} blocked for this client'**
-  String domainBlockedThisClient(Object domain);
-
-  /// No description provided for @domainUnblockedThisClient.
-  ///
-  /// In en, this message translates to:
-  /// **'{domain} unblocked for this client'**
-  String domainUnblockedThisClient(Object domain);
-
   /// No description provided for @disallowThisClient.
   ///
   /// In en, this message translates to:
@@ -5863,6 +5839,186 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Template inserted'**
   String get templateInserted;
+
+  /// No description provided for @sourceIp.
+  ///
+  /// In en, this message translates to:
+  /// **'Source IP'**
+  String get sourceIp;
+
+  /// No description provided for @responseSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Response size'**
+  String get responseSize;
+
+  /// No description provided for @ttl.
+  ///
+  /// In en, this message translates to:
+  /// **'TTL'**
+  String get ttl;
+
+  /// No description provided for @copyDomain.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy domain'**
+  String get copyDomain;
+
+  /// No description provided for @addToBlockList.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to block list'**
+  String get addToBlockList;
+
+  /// No description provided for @addedToBlockList.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to the block list'**
+  String get addedToBlockList;
+
+  /// No description provided for @queryBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked'**
+  String get queryBlocked;
+
+  /// No description provided for @queryAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Allowed'**
+  String get queryAllowed;
+
+  /// No description provided for @queryUpstream.
+  ///
+  /// In en, this message translates to:
+  /// **'Upstream resolution'**
+  String get queryUpstream;
+
+  /// No description provided for @filterLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter logs'**
+  String get filterLogs;
+
+  /// No description provided for @timeRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Time range'**
+  String get timeRange;
+
+  /// No description provided for @lastHour.
+  ///
+  /// In en, this message translates to:
+  /// **'1 hour'**
+  String get lastHour;
+
+  /// No description provided for @lastSixHours.
+  ///
+  /// In en, this message translates to:
+  /// **'6 hours'**
+  String get lastSixHours;
+
+  /// No description provided for @lastTwentyFourHours.
+  ///
+  /// In en, this message translates to:
+  /// **'24 hours'**
+  String get lastTwentyFourHours;
+
+  /// No description provided for @lastSevenDays.
+  ///
+  /// In en, this message translates to:
+  /// **'7 days'**
+  String get lastSevenDays;
+
+  /// No description provided for @allClients.
+  ///
+  /// In en, this message translates to:
+  /// **'All clients'**
+  String get allClients;
+
+  /// No description provided for @onlyStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Only {status}'**
+  String onlyStatus(Object status);
+
+  /// No description provided for @cpuArchitecture.
+  ///
+  /// In en, this message translates to:
+  /// **'CPU architecture'**
+  String get cpuArchitecture;
+
+  /// No description provided for @uptime.
+  ///
+  /// In en, this message translates to:
+  /// **'Uptime'**
+  String get uptime;
+
+  /// No description provided for @uptimeDaysHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} d {hours} h'**
+  String uptimeDaysHours(Object days, Object hours);
+
+  /// No description provided for @uptimeHoursMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h {minutes} m'**
+  String uptimeHoursMinutes(Object hours, Object minutes);
+
+  /// No description provided for @uptimeMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} m'**
+  String uptimeMinutes(Object minutes);
+
+  /// No description provided for @sha256Fingerprint.
+  ///
+  /// In en, this message translates to:
+  /// **'SHA-256 fingerprint'**
+  String get sha256Fingerprint;
+
+  /// No description provided for @clientRules.
+  ///
+  /// In en, this message translates to:
+  /// **'Rules for this device'**
+  String get clientRules;
+
+  /// No description provided for @clientRulesHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Matched before the lists of the server'**
+  String get clientRulesHelper;
+
+  /// No description provided for @allowList.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow list'**
+  String get allowList;
+
+  /// No description provided for @blockList.
+  ///
+  /// In en, this message translates to:
+  /// **'Block list'**
+  String get blockList;
+
+  /// No description provided for @addClientRule.
+  ///
+  /// In en, this message translates to:
+  /// **'Add rule'**
+  String get addClientRule;
+
+  /// No description provided for @noClientRules.
+  ///
+  /// In en, this message translates to:
+  /// **'No rules for this device'**
+  String get noClientRules;
+
+  /// No description provided for @ruleAlreadyOnList.
+  ///
+  /// In en, this message translates to:
+  /// **'That rule is already on the list'**
+  String get ruleAlreadyOnList;
 }
 
 class _AppLocalizationsDelegate

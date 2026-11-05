@@ -7,17 +7,29 @@ class Clients {
   final List<String> supportedTags;
   ClientsAllowedBlocked? clientsAllowedBlocked;
 
+  /// True when the server answers `/clients` with a `rules` key on its clients,
+  /// which only the forked server does. A stock server accepts the rules it is
+  /// sent and then drops them, so the device page hides its rules group rather
+  /// than offering a write that would look saved and filter nothing.
+  final bool supportsClientRules;
+
   Clients({
     required this.clients,
     required this.autoClients,
     required this.supportedTags,
-    this.clientsAllowedBlocked
+    this.clientsAllowedBlocked,
+    this.supportsClientRules = false
   });
 
   factory Clients.fromJson(Map<String, dynamic> json) => Clients(
     clients: json["clients"] != null ? List<Client>.from(json["clients"].map((x) => Client.fromJson(x))) : [],
     autoClients: json["auto_clients"] != null ? List<AutoClient>.from(json["auto_clients"].map((x) => AutoClient.fromJson(x))) : [],
     supportedTags: json["supported_tags"] != null ? List<String>.from(json["supported_tags"].map((x) => x)) : [],
+    supportsClientRules: json["clients"] is List
+      ? (json["clients"] as List).any(
+          (client) => client is Map && client.containsKey("rules"),
+        )
+      : false,
   );
 
   Map<String, dynamic> toJson() => {
@@ -81,6 +93,11 @@ class Client {
   final List<String> ids;
   final List<String> tags;
   final List<dynamic> upstreams;
+
+  /// The filtering rules of this device alone, in the Adblock syntax. The
+  /// forked server keeps them on the client and matches them before every
+  /// global list, so an exception here whitelists a host the server blocks.
+  final List<String> rules;
   final bool filteringEnabled;
   final bool parentalEnabled;
   final bool safebrowsingEnabled;
@@ -99,6 +116,7 @@ class Client {
     required this.ids,
     required this.tags,
     required this.upstreams,
+    required this.rules,
     required this.filteringEnabled,
     required this.parentalEnabled,
     required this.safebrowsingEnabled,
@@ -118,6 +136,7 @@ class Client {
     ids: json["ids"] != null ? List<String>.from(json["ids"].map((x) => x)) : [],
     tags: json["tags"] != null ? List<String>.from(json["tags"].map((x) => x)) : [],
     upstreams: json["upstreams"] != null ? List<dynamic>.from(json["upstreams"].map((x) => x)) : [],
+    rules: json["rules"] != null ? List<String>.from(json["rules"].map((x) => x)) : [],
     filteringEnabled: json["filtering_enabled"],
     parentalEnabled: json["parental_enabled"],
     safebrowsingEnabled: json["safebrowsing_enabled"],
@@ -141,6 +160,7 @@ class Client {
     "ids": List<dynamic>.from(ids.map((x) => x)),
     "tags": List<dynamic>.from(tags.map((x) => x)),
     "upstreams": List<dynamic>.from(upstreams.map((x) => x)),
+    "rules": List<dynamic>.from(rules.map((x) => x)),
     "filtering_enabled": filteringEnabled,
     "parental_enabled": parentalEnabled,
     "safebrowsing_enabled": safebrowsingEnabled,

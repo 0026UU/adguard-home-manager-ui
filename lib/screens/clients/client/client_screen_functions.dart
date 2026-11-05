@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:adguard_home_manager/screens/clients/client/client_rules_modal.dart';
 import 'package:adguard_home_manager/screens/clients/client/client_screen.dart';
 import 'package:adguard_home_manager/screens/clients/client/remove_client_modal.dart';
 import 'package:adguard_home_manager/screens/clients/client/safe_search_modal.dart';
@@ -18,12 +19,34 @@ void openTagsModal({
   required List<String> selectedTags,
   required void Function(List<String>) onSelectedTags
 }) {
-  showDialog(
-    context: context, 
+  showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    barrierColor: const Color(0x66000000),
     builder: (context) => TagsModal(
       selectedTags: selectedTags,
       tags: Provider.of<ClientsProvider>(context, listen: false).clients!.supportedTags,
       onConfirm: onSelectedTags,
+    )
+  );
+}
+
+void openClientRulesModal({
+  required BuildContext context,
+  required List<String> rules,
+  required void Function(List<String>) onRules
+}) {
+  showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    barrierColor: const Color(0x66000000),
+    builder: (context) => ClientRulesModal(
+      rules: rules,
+      onConfirm: onRules,
     )
   );
 }
@@ -33,13 +56,32 @@ void openServicesModal({
   required List<String> blockedServices,
   required void Function(List<String>) onUpdateBlockedServices
 }) {
-  showDialog(
-    context: context, 
-    builder: (context) => ServicesModal(
-      blockedServices: blockedServices,
-      onConfirm: onUpdateBlockedServices,
-    )
-  );
+  final width = MediaQuery.of(context).size.width;
+  final asDialog = width > 700 || !(Platform.isAndroid || Platform.isIOS);
+
+  if (asDialog) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => ServicesModal(
+        dialog: true,
+        blockedServices: blockedServices,
+        onConfirm: onUpdateBlockedServices,
+      )
+    );
+  } else {
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ServicesModal(
+        dialog: false,
+        blockedServices: blockedServices,
+        onConfirm: onUpdateBlockedServices,
+      )
+    );
+  }
 }
 
 void openDeleteClientScreen({
@@ -59,19 +101,37 @@ void openDeleteClientScreen({
 
 void openSafeSearchModal({
   required BuildContext context,
-  required List<String> blockedServices,
   required void Function(SafeSearch) onUpdateSafeSearch,
   required SafeSearch? safeSearch,
   required SafeSearch defaultSafeSearch
 }) {
-  showDialog(
-    context: context, 
-    builder: (context) => SafeSearchModal(
-      safeSearch: safeSearch ?? defaultSafeSearch, 
-      disabled: false,
-      onConfirm: onUpdateSafeSearch
-    )
-  );
+  final width = MediaQuery.of(context).size.width;
+  final asDialog = width > 700 || !(Platform.isAndroid || Platform.isIOS);
+  final settings = safeSearch ?? defaultSafeSearch;
+
+  if (asDialog) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => SafeSearchModal(
+        dialog: true,
+        safeSearch: settings,
+        onConfirm: onUpdateSafeSearch,
+      )
+    );
+  } else {
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SafeSearchModal(
+        dialog: false,
+        safeSearch: settings,
+        onConfirm: onUpdateSafeSearch,
+      )
+    );
+  }
 }
 
 void openClientFormModal({

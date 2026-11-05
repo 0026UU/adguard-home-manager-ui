@@ -18,7 +18,7 @@ void main() {
     await pumpServerInfo(tester, surface: const Size(390, 840));
 
     expect(find.byType(AppleListSection), findsNWidgets(2));
-    expect(find.byType(AppleListTile), findsNWidgets(8));
+    expect(find.byType(AppleListTile), findsNWidgets(9));
     expect(find.byType(AppleBackButton), findsOneWidget);
     expect(tester.takeException(), isNull);
 

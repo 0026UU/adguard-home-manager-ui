@@ -36,6 +36,7 @@ Client clientFixture({
   bool parentalEnabled = false,
   bool useGlobalBlockedServices = false,
   List<String> blockedServices = const ['netflix', 'youtube'],
+  List<String> rules = const [],
 }) =>
     Client(
       name: name,
@@ -43,6 +44,7 @@ Client clientFixture({
       ids: ids,
       tags: const ['laptop'],
       upstreams: const [],
+      rules: rules,
       filteringEnabled: filteringEnabled,
       parentalEnabled: parentalEnabled,
       safebrowsingEnabled: safebrowsingEnabled,
@@ -108,10 +110,18 @@ ServerStatus statusFixture({int queries = 18432}) => ServerStatus(
 
 /// A clients provider that never touches the API client.
 class ClientsStub extends ClientsProvider {
-  ClientsStub(this.stored, {this.succeeds = true});
+  ClientsStub(
+    this.stored, {
+    this.succeeds = true,
+    this.supportsClientRules = false,
+  });
 
   final Client stored;
   final bool succeeds;
+
+  /// Whether the stubbed server is the forked one, which is what the page reads
+  /// to decide if the rules group is drawn at all.
+  final bool supportsClientRules;
 
   /// Every entry the page sent to be written, in the order it sent them.
   final List<Client> edited = [];
@@ -131,7 +141,12 @@ class ClientsStub extends ClientsProvider {
 
   void seed() {
     setClientsData(
-      Clients(clients: [stored], autoClients: const [], supportedTags: const []),
+      Clients(
+        clients: [stored],
+        autoClients: const [],
+        supportedTags: const [],
+        supportsClientRules: supportsClientRules,
+      ),
       false,
     );
     setClientsLoadStatus(LoadStatus.loaded, false);
@@ -150,6 +165,7 @@ class ClientsStub extends ClientsProvider {
         clients: [client],
         autoClients: const [],
         supportedTags: const [],
+        supportsClientRules: supportsClientRules,
       ),
       true,
     );
@@ -196,6 +212,7 @@ Future<ClientDetailHarness> pumpClientDetail(
   int? queries,
   bool succeeds = true,
   bool blockWrites = false,
+  bool supportsClientRules = false,
   Brightness brightness = Brightness.light,
   Size surface = const Size(390, 1500),
 }) async {
@@ -205,7 +222,11 @@ Future<ClientDetailHarness> pumpClientDetail(
   await tester.binding.setSurfaceSize(surface);
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
-  final clients = ClientsStub(client ?? clientFixture(), succeeds: succeeds)
+  final clients = ClientsStub(
+    client ?? clientFixture(),
+    succeeds: succeeds,
+    supportsClientRules: supportsClientRules,
+  )
     ..blockWrites = blockWrites
     ..seed();
   final status = StatusProvider()

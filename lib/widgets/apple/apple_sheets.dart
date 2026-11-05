@@ -39,6 +39,10 @@ class AppleSheet extends StatelessWidget {
   /// Buttons rendered in the head row (e.g. a segmented control).
   final Widget? headTrailingWidget;
 
+  /// Action row pinned under the scrolling body, above a hairline, the way the
+  /// design layer ends every sheet with its cancel/confirm pair.
+  final Widget? footer;
+
   final double initialFraction;
 
   /// Snap floor for the draggable sheet.
@@ -53,9 +57,10 @@ class AppleSheet extends StatelessWidget {
     this.trailing,
     this.headTrailingWidget,
     this.leading,
+    this.footer,
     this.initialFraction = 0.6,
     this.minFraction = 0.4,
-    this.maxFraction = 0.95,
+    this.maxFraction = 0.88,
   });
 
   @override
@@ -70,9 +75,9 @@ class AppleSheet extends StatelessWidget {
       snap: true,
       builder: (context, controller) {
         return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           child: ColoredBox(
-            color: p.window,
+            color: p.card,
             child: Column(
               children: [
                 // Grabber + title
@@ -81,7 +86,7 @@ class AppleSheet extends StatelessWidget {
                   child: Column(
                     children: [
                       Container(
-                        width: 36,
+                        width: 38,
                         height: 5,
                         decoration: BoxDecoration(
                           color: p.fill2,
@@ -89,26 +94,34 @@ class AppleSheet extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      if (title != null || trailing != null || headTrailingWidget != null)
+                      if (title != null || leading != null || trailing != null || headTrailingWidget != null)
                         Row(
                           children: [
-                            if (leading != null) ...[
-                              leading!,
-                              const SizedBox(width: 10),
-                            ],
-                            if (title != null)
-                              Expanded(
-                                child: Text(
-                                  title!,
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w700,
-                                    color: p.label,
-                                  ),
-                                ),
-                              )
-                            else
-                              const Spacer(),
+                            // A single flexible child absorbs every leftover
+                            // pixel, so `trailing` really ends at the inset;
+                            // two flex siblings would each take half the slack
+                            // and strand the unused part on the right.
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  if (leading != null) Flexible(child: leading!),
+                                  if (leading != null && title != null)
+                                    const SizedBox(width: 10),
+                                  if (title != null)
+                                    Flexible(
+                                      child: Text(
+                                        title!,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w700,
+                                          color: p.label,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
                             if (headTrailingWidget != null) headTrailingWidget!,
                             if (trailing != null) ...[
                               const SizedBox(width: 8),
@@ -138,6 +151,10 @@ class AppleSheet extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (footer != null) ...[
+                  Container(height: 0.5, color: p.separator),
+                  footer!,
+                ],
               ],
             ),
           ),
@@ -156,9 +173,10 @@ Future<T?> showAppleSheet<T>(
   Widget? trailing,
   Widget? headTrailingWidget,
   Widget? leading,
+  Widget? footer,
   double initialFraction = 0.6,
   double minFraction = 0.4,
-  double maxFraction = 0.95,
+  double maxFraction = 0.88,
   bool useRootNavigator = false,
 }) {
   return showModalBottomSheet<T>(
@@ -174,6 +192,7 @@ Future<T?> showAppleSheet<T>(
       trailing: trailing,
       headTrailingWidget: headTrailingWidget,
       leading: leading,
+      footer: footer,
       initialFraction: initialFraction,
       minFraction: minFraction,
       maxFraction: maxFraction,

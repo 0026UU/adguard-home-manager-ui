@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:adguard_home_manager/services/api_client.dart';
 import 'package:adguard_home_manager/models/clients.dart';
-import 'package:adguard_home_manager/functions/maps_fns.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/models/clients_allowed_blocked.dart';
@@ -139,7 +138,7 @@ class ClientsProvider with ChangeNotifier {
     final result = await _serversProvider!.apiClient2!.postUpdateClient(
       data: {
         'name': client.name,
-        'data': removePropFromMap(client.toJson(), 'safe_search')
+        'data': client.toJson()
       }
     );
 
@@ -166,7 +165,7 @@ class ClientsProvider with ChangeNotifier {
 
   Future<bool> addClient(Client client) async {
     final result = await _serversProvider!.apiClient2!.postAddClient(
-      data: removePropFromMap(client.toJson(), 'safe_search')
+      data: client.toJson()
     );
 
     if (result.successful == true) {

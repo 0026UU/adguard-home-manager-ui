@@ -131,6 +131,7 @@ void main() {
           ids: ['192.168.1.24'],
           tags: const [],
           upstreams: const [],
+          rules: const [],
           filteringEnabled: true,
           parentalEnabled: false,
           safebrowsingEnabled: true,

@@ -1,9 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:provider/provider.dart';
-import 'package:provider/single_child_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:adguard_home_manager/config/apple_theme.dart';
@@ -12,10 +9,8 @@ import 'package:adguard_home_manager/models/dhcp.dart';
 import 'package:adguard_home_manager/models/filtering.dart';
 import 'package:adguard_home_manager/models/rewrite_rules.dart';
 import 'package:adguard_home_manager/providers/clients_provider.dart';
-import 'package:adguard_home_manager/providers/logs_provider.dart';
 import 'package:adguard_home_manager/screens/filters/details/add_list_modal.dart';
 import 'package:adguard_home_manager/screens/filters/modals/update_interval_lists_modal.dart';
-import 'package:adguard_home_manager/screens/logs/filters/logs_filters_modal.dart';
 import 'package:adguard_home_manager/screens/settings/access_settings/add_client_modal.dart';
 import 'package:adguard_home_manager/screens/settings/dhcp/add_static_lease_modal.dart';
 import 'package:adguard_home_manager/screens/settings/dns/comment_modal.dart';
@@ -44,36 +39,6 @@ Future<void> _pump(WidgetTester tester, Widget home) async {
 }
 
 late BuildContext _hostContext;
-
-/// Like [_pump] but with the providers above `MaterialApp`, the way `main.dart`
-/// wires them, so routes pushed by the navigator can still read them.
-Future<void> _pumpWithProviders(WidgetTester tester, List<SingleChildWidget> providers) async {
-  SharedPreferences.setMockInitialValues({});
-
-  await tester.pumpWidget(
-    MultiProvider(
-      providers: providers,
-      child: MaterialApp(
-        theme: appleLightTheme(),
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-          AppLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Builder(
-          builder: (ctx) {
-            _hostContext = ctx;
-            return const SizedBox.shrink();
-          },
-        ),
-      ),
-    ),
-  );
-
-  await tester.pumpAndSettle();
-}
 
 /// Shows [modal] the way the screens do: a dialog on wide layouts, a bottom
 /// sheet on phones.
@@ -306,31 +271,6 @@ void main() {
 
     expect(edited?.name, 'Allowlist');
     expect(edited?.url, original.url);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('the log filter sheet groups its rows and quick filters', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(900, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    await _pumpWithProviders(tester, [
-      ChangeNotifierProvider(create: (_) => LogsProvider()),
-      ChangeNotifierProvider(create: (_) => ClientsProvider()),
-    ]);
-
-    showDialog(
-      context: _hostContext,
-      builder: (_) => const LogsFiltersModal(dialog: true),
-    );
-    // The loading row spins, so settle on fixed frames instead.
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-
-    expect(find.text(l.filters), findsOneWidget);
-    expect(find.text(l.quickFilters), findsOneWidget);
-    expect(find.byType(AppleSegmented), findsOneWidget);
-    // Clients are still loading, so that row is disabled and spins.
-    expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

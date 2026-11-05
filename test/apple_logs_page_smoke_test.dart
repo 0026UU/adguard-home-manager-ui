@@ -151,17 +151,18 @@ void main() {
     expect(find.byType(LogsListWidget), findsOneWidget);
     expect(find.byType(AppleFilterChip), findsNothing);
 
-    logs.setSelectedResultStatus(value: 'blocked');
+    logs.setSelectedStatuses(const [LogStatus.blocked]);
     logs.setAppliedFilters(
       AppliedFiters(
-        selectedResultStatus: 'blocked',
+        statuses: const [LogStatus.blocked],
         searchText: null,
-        clients: [],
+        clients: const [],
+        timeRange: LogTimeRange.twentyFourHours,
       ),
     );
     await tester.pumpAndSettle();
 
     expect(find.byType(AppleFilterChip), findsOneWidget);
-    expect(find.text(l.blocked), findsOneWidget);
+    expect(find.text(l.onlyStatus(l.queryBlocked)), findsOneWidget);
   });
 }

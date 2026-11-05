@@ -1,11 +1,13 @@
-import 'package:adguard_home_manager/screens/clients/client/client_screen.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/screens/clients/client/client_screen.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
-import 'package:adguard_home_manager/widgets/section_label.dart';
-
+/// The upstreams this device alone is resolved through. Left empty, the
+/// server's own upstreams answer for it.
 class UpstreamServersSection extends StatefulWidget {
   final List<ControllerListItem> upstreamServers;
   final void Function() onCheckValidValues;
@@ -15,7 +17,7 @@ class UpstreamServersSection extends StatefulWidget {
     super.key,
     required this.upstreamServers,
     required this.onCheckValidValues,
-    required this.onUpdateUpstreamServers
+    required this.onUpdateUpstreamServers,
   });
 
   @override
@@ -25,88 +27,61 @@ class UpstreamServersSection extends StatefulWidget {
 class _UpstreamServersSectionState extends State<UpstreamServersSection> {
   final Uuid uuid = const Uuid();
 
+  void _add() => widget.onUpdateUpstreamServers([
+        ...widget.upstreamServers,
+        ControllerListItem(
+          id: uuid.v4(),
+          controller: TextEditingController(),
+        ),
+      ]);
+
+  void _remove(ControllerListItem item) => widget.onUpdateUpstreamServers(
+        widget.upstreamServers
+            .where((entry) => entry.id != item.id)
+            .toList(),
+      );
+
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
+    final items = widget.upstreamServers;
+
+    return AppleListSection(
+      title: l.upstreamServers,
+      headerTrailing: AppleHeaderAction(label: l.add, onPressed: _add),
+      margin: const EdgeInsets.fromLTRB(16, 22, 16, 0),
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            SectionLabel(
-              label: AppLocalizations.of(context)!.upstreamServers,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-            ),
+        if (items.isEmpty)
+          AppleEmptyState(
+            icon: CupertinoIcons.link,
+            title: l.noUpstreamServers,
+            message: l.willBeUsedGeneralServers,
+          )
+        else
+          for (final item in items)
             Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: IconButton(
-                onPressed: () => setState(() => widget.upstreamServers.add(
-                  ControllerListItem(
-                    id: uuid.v4(), 
-                    controller: TextEditingController()
-                  )
-                )),
-                icon: const Icon(Icons.add)
-              ),
-            )
-          ],
-        ),
-        if (widget.upstreamServers.isNotEmpty) ...widget.upstreamServers.map((controller) => Padding(
-          padding: const EdgeInsets.only(left: 16, right: 12),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 20),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: controller.controller,
-                    onChanged: (_) => widget.onCheckValidValues,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.dns_rounded),
-                      border: const OutlineInputBorder(
-                        borderRadius: BorderRadius.all(
-                          Radius.circular(10)
-                        )
-                      ),
-                      labelText: AppLocalizations.of(context)!.serverAddress,
+              padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: AppleTextField(
+                      label: l.serverAddress,
+                      icon: CupertinoIcons.link,
+                      controller: item.controller,
+                      onChanged: (_) => widget.onCheckValidValues(),
+                      padding: EdgeInsets.zero,
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                IconButton(
-                  onPressed: () => widget.onUpdateUpstreamServers(
-                    widget.upstreamServers.where((e) => e.id != controller.id).toList()
+                  IconButton(
+                    tooltip: l.delete,
+                    onPressed: () => _remove(item),
+                    icon: Icon(CupertinoIcons.trash, size: 19, color: p.red),
                   ),
-                  icon: const Icon(Icons.remove_circle_outline_outlined)
-                )
-              ],
+                ],
+              ),
             ),
-          ),
-        )),
-        if (widget.upstreamServers.isEmpty) Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            children: [
-              Text(
-                AppLocalizations.of(context)!.noUpstreamServers,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                AppLocalizations.of(context)!.willBeUsedGeneralServers,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }

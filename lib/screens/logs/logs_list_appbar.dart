@@ -13,7 +13,6 @@ import 'package:adguard_home_manager/screens/logs/filters/logs_filters_modal.dar
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/constants/enums.dart';
-import 'package:adguard_home_manager/models/applied_filters.dart';
 import 'package:adguard_home_manager/providers/logs_provider.dart';
 
 class LogsListAppBar extends StatelessWidget {
@@ -64,21 +63,10 @@ class LogsListAppBar extends StatelessWidget {
       }
     }
 
-    final Map<String, String> translatedString = {
-      "all": localizations.all, 
-      "filtered": localizations.filtered, 
-      "processed": localizations.processedRow, 
-      "whitelisted": localizations.processedWhitelistRow, 
-      "blocked": localizations.blocked, 
-      "blocked_safebrowsing": localizations.blockedSafeBrowsingRow, 
-      "blocked_parental": localizations.blockedParentalRow, 
-      "safe_search": localizations.safeSearch, 
-    };
-
     final applied = logsProvider.appliedFilters;
     // The search lives in the field under the title now, so only the filters
     // that have no home of their own get a chip.
-    final hasFilters = applied.selectedResultStatus != 'all'
+    final hasFilters = applied.statuses.isNotEmpty
       || applied.clients.isNotEmpty;
 
     return SliverAppBar.large(
@@ -115,25 +103,13 @@ class LogsListAppBar extends StatelessWidget {
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                if (applied.selectedResultStatus != 'all')
+                for (final status in applied.statuses)
                   AppleFilterChip(
-                    icon: CupertinoIcons.checkmark_shield,
-                    color: palette.tint,
-                    label: translatedString[applied.selectedResultStatus]!,
-                    onDeleted: () {
-                      logsProvider.setAppliedFilters(
-                        AppliedFiters(
-                          selectedResultStatus: 'all', 
-                          searchText: applied.searchText,
-                          clients: applied.clients
-                        )
-                      );
-                      logsProvider.setSelectedResultStatus(value: 'all');
-                      logsProvider.fetchLogs(
-                        inOffset: 0,
-                        responseStatus: 'all'
-                      );
-                    },
+                    color: logStatusColor(palette, status),
+                    label: localizations.onlyStatus(
+                      logStatusLabel(localizations, status),
+                    ),
+                    onDeleted: () => logsProvider.removeAppliedStatus(status),
                   ),
                 if (applied.clients.isNotEmpty)
                   AppleFilterChip(
@@ -141,20 +117,7 @@ class LogsListAppBar extends StatelessWidget {
                     label: applied.clients.length == 1
                       ? applied.clients[0]
                       : "${applied.clients.length} ${localizations.clients}",
-                    onDeleted: () {
-                      logsProvider.setAppliedFilters(
-                        AppliedFiters(
-                          selectedResultStatus: applied.selectedResultStatus, 
-                          searchText: applied.searchText,
-                          clients: []
-                        )
-                      );
-                      logsProvider.setSelectedClients(null);
-                      logsProvider.fetchLogs(
-                        inOffset: 0,
-                        responseStatus: applied.selectedResultStatus
-                      );
-                    },
+                    onDeleted: () => logsProvider.removeAppliedClients(),
                   ),
               ],
             ),

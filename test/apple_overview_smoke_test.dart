@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:adguard_home_manager/functions/number_format.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
+import 'package:adguard_home_manager/models/applied_filters.dart';
 import 'package:adguard_home_manager/screens/home/management_modal/management_modal.dart';
 import 'package:adguard_home_manager/screens/home/server_status.dart';
 import 'package:adguard_home_manager/screens/settings/server_info/server_info.dart';
@@ -335,7 +336,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(h.appConfig.selectedScreen, 2);
-      expect(h.logs.selectedResultStatus, 'all');
+      expect(h.logs.appliedFilters.statuses, isEmpty);
     });
 
     testWidgets('the blocked tile opens the log tab on the blocked rows', (tester) async {
@@ -345,7 +346,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(h.appConfig.selectedScreen, 2);
-      expect(h.logs.selectedResultStatus, 'blocked');
+      expect(h.logs.appliedFilters.statuses, [LogStatus.blocked]);
     });
 
     testWidgets('the service group carries the state the server answers', (tester) async {

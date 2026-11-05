@@ -22,13 +22,19 @@ import 'package:adguard_home_manager/providers/status_provider.dart';
 
 /// One device of the clients list, drawn as the pushed page of the design
 /// layer: its name, the queries the server counted for it, the four switches
-/// written on its entry and the identifiers it is known by.
+/// written on its entry, the rules it carries of its own and the identifiers it
+/// is known by.
 ///
-/// The design layer also counts the queries a device had blocked and keeps an
-/// allow and a block list per client. AdGuard Home answers neither for a single
-/// client — the block totals only exist for the whole server and the access
-/// lists belong to the server, not to a device — so those parts are left out
-/// here instead of being filled with numbers that were never read.
+/// The design layer also counts the queries a device had blocked. AdGuard Home
+/// answers that for the whole server and never for one device, so that half of
+/// the card is left out instead of being filled with a number that was never
+/// read.
+///
+/// Two rows of the design layer are left out for want of anything to put in
+/// them: the host name of the device and the network it is on. A client is
+/// known to AdGuard Home by the identifiers it was configured with, which the
+/// identity group below already lists, and the server answers no host name and
+/// no network for one.
 class ClientDetailScreen extends StatelessWidget {
   final Client client;
 
@@ -51,6 +57,14 @@ class ClientDetailScreen extends StatelessWidget {
     // switch saved from this page reads the state the server kept.
     final current = _stored(clientsProvider);
     final queries = _queries(statusProvider.serverStatus?.stats, current);
+
+    // A stock server takes the rules of a client and drops them, so the group
+    // is only drawn where the server answered `/clients` with the key itself.
+    final supportsClientRules =
+        clientsProvider.clients?.supportsClientRules == true;
+    final allowRules =
+        current.rules.where((rule) => rule.startsWith('@@')).length;
+    final blockRules = current.rules.length - allowRules;
 
     void save(Client updated) async {
       final processModal = ProcessModal();
@@ -93,6 +107,12 @@ class ClientDetailScreen extends StatelessWidget {
         },
       );
     }
+
+    void openRules() => openClientRulesModal(
+      context: context,
+      rules: current.rules,
+      onRules: (rules) => save(_written(current, rules: rules)),
+    );
 
     return AppleScreen(
       title: current.name,
@@ -197,6 +217,34 @@ class ClientDetailScreen extends StatelessWidget {
           ),
         ),
 
+        if (supportsClientRules)
+          SliverToBoxAdapter(
+            child: AppleListSection(
+              title: l.clientRules,
+              margin: const EdgeInsets.fromLTRB(16, 22, 16, 0),
+              headerTrailing: AppleHeaderAction(
+                label: l.add,
+                onPressed: openRules,
+              ),
+              children: [
+                AppleListTile(
+                  icon: CupertinoIcons.plus_circle,
+                  iconColor: p.green,
+                  title: l.allowList,
+                  value: '$allowRules',
+                  onTap: openRules,
+                ),
+                AppleListTile(
+                  icon: CupertinoIcons.nosign,
+                  iconColor: p.red,
+                  title: l.blockList,
+                  value: '$blockRules',
+                  onTap: openRules,
+                ),
+              ],
+            ),
+          ),
+
         SliverToBoxAdapter(
           child: AppleListSection(
             title: l.identity,
@@ -282,6 +330,7 @@ Client _written(
   bool? filteringEnabled,
   bool? safebrowsingEnabled,
   bool? parentalEnabled,
+  List<String>? rules,
 }) =>
     Client(
       name: client.name,
@@ -289,6 +338,7 @@ Client _written(
       ids: client.ids,
       tags: client.tags,
       upstreams: client.upstreams,
+      rules: rules ?? client.rules,
       filteringEnabled: filteringEnabled ?? client.filteringEnabled,
       parentalEnabled: parentalEnabled ?? client.parentalEnabled,
       safebrowsingEnabled: safebrowsingEnabled ?? client.safebrowsingEnabled,

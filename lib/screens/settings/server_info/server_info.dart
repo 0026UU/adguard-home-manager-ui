@@ -13,6 +13,7 @@ import 'package:adguard_home_manager/screens/settings/server_info/dns_addresses_
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/functions/desktop_mode.dart';
 import 'package:adguard_home_manager/models/server_info.dart';
+import 'package:adguard_home_manager/providers/clients_provider.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
 
 /// What the server says about itself: its version, the ports it listens on and
@@ -20,8 +21,10 @@ import 'package:adguard_home_manager/providers/servers_provider.dart';
 ///
 /// The design layer also shows the run mode, how long the process has been up,
 /// the CPU architecture and how many clients are registered. `/status` answers
-/// none of that, so those lines are left out instead of being filled with
-/// numbers the server never sent.
+/// the last three of those only on a server carrying the fork's `arch`, `goos`
+/// and `start_time`, and no API answers the run mode at all, so a row whose
+/// answer the server did not send is left out instead of being filled with a
+/// number it never reported.
 class ServerInformation extends StatefulWidget {
   const ServerInformation({super.key});
 
@@ -58,7 +61,14 @@ class _ServerInformationState extends State<ServerInformation> {
     final p = ApplePalette.of(context);
     final width = MediaQuery.of(context).size.width;
     final serversProvider = Provider.of<ServersProvider>(context);
+    final clientsProvider = Provider.of<ClientsProvider>(context);
     final data = serverInfo.data;
+
+    // The entries the server has registered, which is a different list from
+    // the devices the statistics window counted, and one the page does not
+    // fetch again: the clients list already loaded it.
+    final registered = clientsProvider.clients?.clients.length;
+    final uptime = formatUptime(data?.startTime, l);
 
     // The design layer puts the address of the server under its name. The
     // addresses `/status` reports come first; the connection the app opened is
@@ -134,6 +144,18 @@ class _ServerInformationState extends State<ServerInformation> {
                   value: data.version,
                   showChevron: false,
                 ),
+                if (data.goos != null && data.arch != null)
+                  AppleListTile(
+                    title: l.cpuArchitecture,
+                    value: '${data.goos}/${data.arch}',
+                    showChevron: false,
+                  ),
+                if (uptime != null)
+                  AppleListTile(
+                    title: l.uptime,
+                    value: uptime,
+                    showChevron: false,
+                  ),
                 AppleListTile(
                   title: l.httpPort,
                   value: data.httpPort.toString(),
@@ -168,6 +190,12 @@ class _ServerInformationState extends State<ServerInformation> {
                     value: data.language,
                     showChevron: false,
                   ),
+                if (registered != null)
+                  AppleListTile(
+                    title: l.clients,
+                    value: registered.toString(),
+                    showChevron: false,
+                  ),
               ],
             ),
           ),
@@ -192,4 +220,22 @@ class _ServerInformationState extends State<ServerInformation> {
       ],
     );
   }
+}
+
+/// How long the server process has been up, in the two units that carry the
+/// most weight at its scale. Null when the server never said when it started,
+/// or when its answer is a start that has not happened yet.
+String? formatUptime(DateTime? start, AppLocalizations l) {
+  if (start == null) return null;
+
+  final elapsed = DateTime.now().difference(start);
+  if (elapsed.isNegative) return null;
+
+  if (elapsed.inDays >= 1) {
+    return l.uptimeDaysHours(elapsed.inDays, elapsed.inHours % 24);
+  }
+  if (elapsed.inHours >= 1) {
+    return l.uptimeHoursMinutes(elapsed.inHours, elapsed.inMinutes % 60);
+  }
+  return l.uptimeMinutes(elapsed.inMinutes);
 }

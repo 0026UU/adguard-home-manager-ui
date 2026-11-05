@@ -1,21 +1,27 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
-
-
+import 'package:adguard_home_manager/models/safe_search.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/widgets/custom_checkbox_list_tile.dart';
 
-import 'package:adguard_home_manager/models/safe_search.dart';
-
+/// Safe search picker for a single device: a master switch plus one row per
+/// search engine.
+///
+/// The engines are only reachable while the master switch is on, which is how
+/// AdGuard Home reads the setting: an engine ticked under a disabled safe
+/// search has no effect.
 class SafeSearchModal extends StatefulWidget {
   final SafeSearch safeSearch;
-  final bool disabled;
   final void Function(SafeSearch) onConfirm;
-  
+  final bool dialog;
+
   const SafeSearchModal({
     super.key,
     required this.safeSearch,
-    required this.disabled,
-    required this.onConfirm
+    required this.onConfirm,
+    required this.dialog,
   });
 
   @override
@@ -23,193 +29,140 @@ class SafeSearchModal extends StatefulWidget {
 }
 
 class _SafeSearchModalState extends State<SafeSearchModal> {
-  bool generalEnabled = false;
-  bool bingEnabled = false;
-  bool duckduckgoEnabled = false;
-  bool ecosiaEnabled = false;
-  bool googleEnabled = false;
-  bool pixabayEnabled = false;
-  bool yandexEnabled = false;
-  bool youtubeEnabled = false;
+  late final SafeSearch _draft;
+  bool _finished = false;
 
   @override
   void initState() {
-    generalEnabled = widget.safeSearch.enabled;
-    bingEnabled = widget.safeSearch.bing;
-    duckduckgoEnabled = widget.safeSearch.duckduckgo;
-    ecosiaEnabled = widget.safeSearch.ecosia;
-    googleEnabled = widget.safeSearch.google;
-    pixabayEnabled = widget.safeSearch.pixabay;
-    yandexEnabled = widget.safeSearch.yandex;
-    youtubeEnabled = widget.safeSearch.youtube;
-
     super.initState();
+    final source = widget.safeSearch;
+    _draft = SafeSearch(
+      enabled: source.enabled,
+      bing: source.bing,
+      duckduckgo: source.duckduckgo,
+      ecosia: source.ecosia,
+      google: source.google,
+      pixabay: source.pixabay,
+      yandex: source.yandex,
+      youtube: source.youtube,
+    );
+  }
+
+  void _set(void Function(SafeSearch) change) {
+    if (_finished) return;
+    setState(() => change(_draft));
+  }
+
+  void _cancel() {
+    if (_finished) return;
+    _finished = true;
+    Navigator.pop(context);
+  }
+
+  void _confirm() {
+    if (_finished) return;
+    _finished = true;
+    widget.onConfirm(
+      SafeSearch(
+        enabled: _draft.enabled,
+        bing: _draft.bing,
+        duckduckgo: _draft.duckduckgo,
+        ecosia: _draft.ecosia,
+        google: _draft.google,
+        pixabay: _draft.pixabay,
+        yandex: _draft.yandex,
+        youtube: _draft.youtube,
+      )
+    );
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 16),
-      title: Column(
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
+
+    Widget engine(String label, bool value, ValueChanged<bool> onChanged) {
+      return CustomCheckboxListTile(
+        title: label,
+        value: value,
+        disabled: !_draft.enabled,
+        onChanged: onChanged,
+      );
+    }
+
+    return AppleFormModal(
+      title: l.safeSearch,
+      icon: CupertinoIcons.search,
+      dialog: widget.dialog,
+      maxWidth: 420,
+      trailing: IconButton(
+        onPressed: _finished ? null : _cancel,
+        tooltip: l.close,
+        icon: Icon(CupertinoIcons.xmark, size: 20, color: p.label2),
+      ),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.search_rounded,
-            size: 24,
-            color: Theme.of(context).listTileTheme.iconColor
-          ),
-          const SizedBox(height: 16),
-          Text(
-            AppLocalizations.of(context)!.safeSearch,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AppleListSection(
+                    margin: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                    children: [
+                      AppleSwitchListTile(
+                        title: l.enable,
+                        subtitle: l.safeSearchHelper,
+                        value: _draft.enabled,
+                        onChanged: _finished
+                            ? null
+                            : (value) => _set((s) => s.enabled = value),
+                      ),
+                    ],
+                  ),
+                  AppleGroupHeader(
+                    title: l.safeSearchSettings,
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 9),
+                  ),
+                  AppleListSection(
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    children: [
+                      engine("Bing", _draft.bing, (v) => _set((s) => s.bing = v)),
+                      engine(
+                        "DuckDuckGo",
+                        _draft.duckduckgo,
+                        (v) => _set((s) => s.duckduckgo = v),
+                      ),
+                      engine("Ecosia", _draft.ecosia, (v) => _set((s) => s.ecosia = v)),
+                      engine("Google", _draft.google, (v) => _set((s) => s.google = v)),
+                      engine(
+                        "Pixabay",
+                        _draft.pixabay,
+                        (v) => _set((s) => s.pixabay = v),
+                      ),
+                      engine("Yandex", _draft.yandex, (v) => _set((s) => s.yandex = v)),
+                      engine(
+                        "YouTube",
+                        _draft.youtube,
+                        (v) => _set((s) => s.youtube = v),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          )
+          ),
+          AppleFormFooter(
+            confirmLabel: l.confirm,
+            confirmEnabled: !_finished,
+            cancelEnabled: !_finished,
+            onConfirm: _confirm,
+            onCancel: _cancel,
+          ),
         ],
       ),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: 400
-        ),
-        child: Wrap(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Material(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(28),
-                child: InkWell(
-                  onTap: widget.disabled == true
-                    ? null
-                    : () => setState(() => generalEnabled = !generalEnabled),
-                  borderRadius: BorderRadius.circular(28),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 5
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          AppLocalizations.of(context)!.enable,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: widget.disabled == true
-                              ? Colors.grey
-                              : Theme.of(context).colorScheme.onSurface
-                          ),
-                        ),
-                        Switch(
-                          value: generalEnabled, 
-                          onChanged: widget.disabled == true
-                            ? null
-                            : (value) => setState(() => generalEnabled = value),
-                        )
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 4, width: double.maxFinite),
-            CustomCheckboxListTile(
-              value: bingEnabled, 
-              onChanged: (value) => setState(() => bingEnabled = value), 
-              title: "Bing",
-              disabled: widget.disabled || !generalEnabled,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 36,
-                vertical: 4
-              ),
-            ),
-            CustomCheckboxListTile(
-              value: duckduckgoEnabled, 
-              onChanged: (value) => setState(() => duckduckgoEnabled = value), 
-              title: "DuckDuckGo",
-              disabled: widget.disabled || !generalEnabled,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 36,
-                vertical: 4
-              ),
-            ),
-            CustomCheckboxListTile(
-              value: ecosiaEnabled, 
-              onChanged: (value) => setState(() => ecosiaEnabled = value), 
-              title: "Ecosia",
-              disabled: widget.disabled || !generalEnabled,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 36,
-                vertical: 4
-              ),
-            ),
-            CustomCheckboxListTile(
-              value: googleEnabled, 
-              onChanged: (value) => setState(() => googleEnabled = value), 
-              title: "Google",
-              disabled: widget.disabled || !generalEnabled,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 36,
-                vertical: 4
-              ),
-            ),
-            CustomCheckboxListTile(
-              value: pixabayEnabled, 
-              onChanged: (value) => setState(() => pixabayEnabled = value), 
-              title: "Pixabay",
-              disabled: widget.disabled || !generalEnabled,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 36,
-                vertical: 4
-              ),
-            ),
-            CustomCheckboxListTile(
-              value: yandexEnabled, 
-              onChanged: (value) => setState(() => yandexEnabled = value), 
-              title: "Yandex",
-              disabled: widget.disabled || !generalEnabled,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 36,
-                vertical: 4
-              ),
-            ),
-            CustomCheckboxListTile(
-              value: youtubeEnabled, 
-              onChanged: (value) => setState(() => youtubeEnabled = value), 
-              title: "YouTube",
-              disabled: widget.disabled || !generalEnabled,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 36,
-                vertical: 4
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context), 
-          child: Text(AppLocalizations.of(context)!.cancel)
-        ),
-        TextButton(
-          onPressed: widget.disabled == false ? () {
-            widget.onConfirm(
-              SafeSearch(
-                enabled: generalEnabled, 
-                bing: bingEnabled, 
-                duckduckgo: duckduckgoEnabled, 
-                ecosia: ecosiaEnabled,
-                google: googleEnabled, 
-                pixabay: pixabayEnabled, 
-                yandex: yandexEnabled, 
-                youtube: youtubeEnabled
-              )
-            );
-            Navigator.pop(context);
-          } : null, 
-          child: Text(AppLocalizations.of(context)!.confirm)
-        ),
-      ],
     );
   }
 }

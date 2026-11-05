@@ -70,7 +70,6 @@ class OfflineLogs extends LogsProvider {
   Future<bool> fetchLogs({
     int? inOffset,
     bool? loadingMore,
-    String? responseStatus,
     String? searchText,
   }) async {
     await _settled();

@@ -1,13 +1,14 @@
-import 'dart:io';
-
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
+
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
-
-
 import 'package:adguard_home_manager/screens/clients/client/blocking_schedule.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+/// Editor for one "pause service blocking" window: a timezone, the weekdays it
+/// repeats on and the hours it covers.
 class BlockingScheduleModal extends StatefulWidget {
   final EditBlockingSchedule? schedule;
   final void Function(EditBlockingSchedule) onConfirm;
@@ -23,33 +24,40 @@ class BlockingScheduleModal extends StatefulWidget {
 }
 
 class _BlockingScheduleModalState extends State<BlockingScheduleModal> {
-  final _weekdaysScrollController = ScrollController();
-
   String? _timezone;
   List<String> _weekdays = [];
   TimeOfDay? _from;
   TimeOfDay? _to;
+  bool _finished = false;
 
-  bool _compareTimes(TimeOfDay startTime, TimeOfDay endTime) {
-    bool result = false;
-    int startTimeInt = (startTime.hour * 60 + startTime.minute) * 60;
-    int endTimeInt = (endTime.hour * 60 + endTime.minute) * 60;
+  @override
+  void initState() {
+    super.initState();
+    tz.initializeTimeZones();
 
-    if (endTimeInt > startTimeInt) {
-      result = true;
-    } else {
-      result = false;
+    final schedule = widget.schedule;
+    if (schedule != null) {
+      _timezone = schedule.timezone;
+      // A copy: the schedule the caller handed over describes the saved window,
+      // and ticking another day must not rewrite it until "confirm".
+      _weekdays = List.of(schedule.weekday);
+      _from = _intToTimeOfDay(schedule.start);
+      _to = _intToTimeOfDay(schedule.end);
     }
-    return result;
   }
 
-  bool _validate() {
-    return _timezone != null &&
+  bool _compareTimes(TimeOfDay startTime, TimeOfDay endTime) {
+    final startTimeInt = (startTime.hour * 60 + startTime.minute) * 60;
+    final endTimeInt = (endTime.hour * 60 + endTime.minute) * 60;
+    return endTimeInt > startTimeInt;
+  }
+
+  bool get _valid =>
+      _timezone != null &&
       _weekdays.isNotEmpty &&
       _from != null &&
       _to != null &&
       _compareTimes(_from!, _to!);
-  }
 
   int _timeOfDayToInt(TimeOfDay timeOfDay) {
     return Duration(
@@ -66,261 +74,294 @@ class _BlockingScheduleModalState extends State<BlockingScheduleModal> {
     return TimeOfDay(hour: duration.inHours, minute: minutes);
   }
 
-  @override
-  void initState() {
-    tz.initializeTimeZones();
-    if (widget.schedule != null) {
-      _timezone = widget.schedule!.timezone;
-      _weekdays = widget.schedule!.weekday;
-      _from = _intToTimeOfDay(widget.schedule!.start);
-      _to = _intToTimeOfDay(widget.schedule!.end);
-    }
+  void _toggleWeekday(String day) {
+    if (_finished) return;
+    setState(() {
+      if (_weekdays.contains(day)) {
+        _weekdays = _weekdays.where((e) => e != day).toList();
+      } else {
+        _weekdays.add(day);
+      }
+    });
+  }
 
-    super.initState();
+  void _cancel() {
+    if (_finished) return;
+    _finished = true;
+    Navigator.pop(context);
+  }
+
+  void _confirm() {
+    if (_finished || !_valid) return;
+    _finished = true;
+    widget.onConfirm(
+      EditBlockingSchedule(
+        timezone: _timezone!,
+        weekday: List.of(_weekdays),
+        start: _timeOfDayToInt(_from!),
+        end: _timeOfDayToInt(_to!)
+      )
+    );
+    Navigator.pop(context);
+  }
+
+  Future<void> _pickTime({required bool start}) async {
+    final l = AppLocalizations.of(context)!;
+    // A window that ends at midnight would never validate, so an unset end
+    // opens on the last minute of the day.
+    final fallback = start
+        ? const TimeOfDay(hour: 0, minute: 0)
+        : const TimeOfDay(hour: 23, minute: 59);
+    final picked = await showAppleTimeSheet(
+      context,
+      title: start ? l.selectStartTime : l.selectEndTime,
+      initial: (start ? _from : _to) ?? fallback,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      if (start) {
+        _from = picked;
+      } else {
+        _to = picked;
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    void onSelectWeekday(bool newStatus, String day) {
-      if (newStatus == true && !_weekdays.contains(day)) {
-        setState(() => _weekdays.add(day));
-      }
-      else if (newStatus == false) {
-        setState(() => _weekdays = _weekdays.where((e) => e != day).toList());
-      }
-    }
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
-    void onConfirm() {
-      widget.onConfirm(
-        EditBlockingSchedule(
-          timezone: _timezone!, 
-          weekday: _weekdays, 
-          start: _timeOfDayToInt(_from!), 
-          end: _timeOfDayToInt(_to!)
-        )
-      );
-      Navigator.pop(context);
-    }
+    // Insertion ordered, so the chips always read Monday to Sunday.
+    final weekdays = <String, String>{
+      "mon": l.monday,
+      "tue": l.tuesday,
+      "wed": l.wednesday,
+      "thu": l.thursday,
+      "fri": l.friday,
+      "sat": l.saturday,
+      "sun": l.sunday,
+    };
 
-    final valid = _validate();
-    final validTimes = _from != null && _to != null 
-      ? _compareTimes(_from!, _to!) 
+    final validTimes = _from != null && _to != null
+      ? _compareTimes(_from!, _to!)
       : null;
 
-    return Dialog(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+    // AdGuard Home stores whatever zone the server was set to, and a name this
+    // database does not carry ("UTC" against "Etc/UTC") would leave the field
+    // with no matching item, which the dropdown refuses to build.
+    final zones = tz.timeZoneDatabase.locations.keys.toList();
+    if (_timezone != null && !zones.contains(_timezone)) {
+      zones.insert(0, _timezone!);
+    }
+
+    return AppleFormModal(
+      title: widget.schedule != null ? l.editSchedule : l.newSchedule,
+      icon: CupertinoIcons.clock,
+      // Reached from a `showDialog`, on every width.
+      dialog: true,
+      maxWidth: 460,
+      trailing: IconButton(
+        onPressed: _finished ? null : _cancel,
+        tooltip: l.close,
+        icon: Icon(CupertinoIcons.xmark, size: 20, color: p.label2),
+      ),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                    child: DropdownButtonFormField<String>(
+                      items: zones
+                          .map((item) => DropdownMenuItem(
+                                value: item,
+                                child: Text(item, overflow: TextOverflow.ellipsis),
+                              ))
+                          .toList(),
+                      initialValue: _timezone,
+                      isExpanded: true,
+                      style: AppleInput.style(context),
+                      onChanged: _finished
+                          ? null
+                          : (value) => setState(() => _timezone = value),
+                      borderRadius: const BorderRadius.all(Radius.circular(14)),
+                      decoration: AppleInput.decoration(
+                        context,
+                        label: l.timezone,
+                        icon: CupertinoIcons.globe,
+                      ),
+                    ),
+                  ),
+                  AppleGroupHeader(
+                    title: l.pauseServiceBlocking,
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 9),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final day in weekdays.entries)
+                          AppleToggleChip(
+                            label: day.value,
+                            selected: _weekdays.contains(day.key),
+                            onTap: () => _toggleWeekday(day.key),
+                          ),
+                      ],
+                    ),
+                  ),
+                  AppleGroupHeader(
+                    title: l.timeRange,
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 9),
+                  ),
+                  AppleListSection(
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                     children: [
-                      Icon(
-                        Icons.schedule_rounded,
-                        size: 24,
-                        color: Theme.of(context).listTileTheme.iconColor
+                      AppleListTile(
+                        title: l.from,
+                        value: _formatTime(_from),
+                        onTap: _finished ? null : () => _pickTime(start: true),
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        widget.schedule != null
-                          ? AppLocalizations.of(context)!.editSchedule
-                          : AppLocalizations.of(context)!.newSchedule,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 24,
-                        ),
+                      AppleListTile(
+                        title: l.to,
+                        value: _formatTime(_to),
+                        onTap: _finished ? null : () => _pickTime(start: false),
                       ),
-                      const SizedBox(height: 30),
-                      LayoutBuilder(
-                        builder: (context, constraints) => DropdownButtonFormField(
-                          items: tz.timeZoneDatabase.locations.keys.map((item) => DropdownMenuItem(
-                            value: item,
-                            child: SizedBox(
-                              width: constraints.maxWidth-48,
-                              child: Text(
-                                item,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          )).toList(),
-                          initialValue: _timezone,
-                          onChanged: (v) => setState(() => _timezone = v),
-                          decoration: InputDecoration(
-                            border: const OutlineInputBorder(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(10)
-                              )
-                            ),
-                            label: Text(AppLocalizations.of(context)!.timezone)
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        height: Platform.isMacOS || Platform.isLinux || Platform.isWindows ? 66 : 50,
-                        child: Scrollbar(
-                          controller: _weekdaysScrollController,
-                          thumbVisibility: Platform.isMacOS || Platform.isLinux || Platform.isWindows,
-                          interactive: Platform.isMacOS || Platform.isLinux || Platform.isWindows,
-                          thickness: Platform.isMacOS || Platform.isLinux || Platform.isWindows ? 8 : 0,
-                          child: Padding(
-                            padding: EdgeInsets.only(
-                              bottom: Platform.isMacOS || Platform.isLinux || Platform.isWindows ? 16 : 0
-                            ),
-                            child: ListView(
-                              controller: _weekdaysScrollController,
-                              scrollDirection: Axis.horizontal,
-                              children: [
-                                FilterChip(
-                                  label: Text(AppLocalizations.of(context)!.monday), 
-                                  selected: _weekdays.contains("mon"),
-                                  onSelected: (value) => onSelectWeekday(value, "mon")
-                                ),
-                                const SizedBox(width: 8),
-                                FilterChip(
-                                  label: Text(AppLocalizations.of(context)!.tuesday), 
-                                  selected: _weekdays.contains("tue"),
-                                  onSelected: (value) => onSelectWeekday(value, "tue")
-                                ),
-                                const SizedBox(width: 8),
-                                FilterChip(
-                                  label: Text(AppLocalizations.of(context)!.wednesday), 
-                                  selected: _weekdays.contains("wed"),
-                                  onSelected: (value) => onSelectWeekday(value, "wed")
-                                ),
-                                const SizedBox(width: 8),
-                                FilterChip(
-                                  label: Text(AppLocalizations.of(context)!.thursday), 
-                                  selected: _weekdays.contains("thu"),
-                                  onSelected: (value) => onSelectWeekday(value, "thu")
-                                ),
-                                const SizedBox(width: 8),
-                                FilterChip(
-                                  label: Text(AppLocalizations.of(context)!.friday), 
-                                  selected: _weekdays.contains("fri"),
-                                  onSelected: (value) => onSelectWeekday(value, "fri")
-                                ),
-                                const SizedBox(width: 8),
-                                FilterChip(
-                                  label: Text(AppLocalizations.of(context)!.saturday), 
-                                  selected: _weekdays.contains("sat"),
-                                  onSelected: (value) => onSelectWeekday(value, "sat")
-                                ),
-                                const SizedBox(width: 8),
-                                FilterChip(
-                                  label: Text(AppLocalizations.of(context)!.sunday), 
-                                  selected: _weekdays.contains("sun"),
-                                  onSelected: (value) => onSelectWeekday(value, "sun")
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    ],
+                  ),
+                  if (validTimes == false)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                      child: Row(
                         children: [
-                          ElevatedButton(
-                            onPressed: () async {
-                              final selected = await showTimePicker(
-                                context: context, 
-                                initialTime: _from ?? const TimeOfDay(hour: 0, minute: 0),
-                                helpText: AppLocalizations.of(context)!.selectStartTime,
-                                confirmText: AppLocalizations.of(context)!.confirm,
-                              );
-                              setState(() => _from = selected); 
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Column(
-                                children: [
-                                  Text(AppLocalizations.of(context)!.from),
-                                  const SizedBox(height: 2),
-                                  Text(_from != null ? "${_from!.hour.toString().padLeft(2, '0')}:${_from!.minute.toString().padLeft(2, '0')}" : "--:--")
-                                ],
-                              ),
-                            )
+                          Icon(
+                            CupertinoIcons.exclamationmark_circle_fill,
+                            size: 15,
+                            color: p.red,
                           ),
-                          ElevatedButton(
-                            onPressed: () async {
-                              final selected = await showTimePicker(
-                                context: context, 
-                                initialTime: _to ?? const TimeOfDay(hour: 23, minute: 59),
-                                helpText: AppLocalizations.of(context)!.selectEndTime,
-                                confirmText: AppLocalizations.of(context)!.confirm
-                              ); 
-                              setState(() => _to = selected); 
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Column(
-                                children: [
-                                  Text(AppLocalizations.of(context)!.to),
-                                  const SizedBox(height: 2),
-                                  Text(_to != null ? "${_to!.hour.toString().padLeft(2, '0')}:${_to!.minute.toString().padLeft(2, '0')}" : "--:--")
-                                ],
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              l.startTimeBeforeEndTime,
+                              style: TextStyle(
+                                fontSize: 13,
+                                height: 1.3,
+                                color: p.red,
                               ),
-                            )
+                            ),
                           ),
                         ],
                       ),
-                      if (validTimes == false) Padding(
-                        padding: const EdgeInsets.only(top: 16),
-                        child: Card(
-                          color: const Color.fromARGB(255, 255, 182, 175),
-                          elevation: 0,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.error_rounded,
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Text(
-                                    AppLocalizations.of(context)!.startTimeBeforeEndTime,
-                                    style: TextStyle(
-                                      color: Theme.of(context).colorScheme.onSurface
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      )
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context), 
-                    child: Text(AppLocalizations.of(context)!.close)
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: valid ? () => onConfirm() : null, 
-                    child: Text(AppLocalizations.of(context)!.confirm)
-                  ),
+                    ),
                 ],
-              )
-            ],
+              ),
+            ),
           ),
-        ),
+          AppleFormFooter(
+            confirmLabel: l.confirm,
+            cancelLabel: l.close,
+            confirmEnabled: _valid && !_finished,
+            cancelEnabled: !_finished,
+            onConfirm: _confirm,
+            onCancel: _cancel,
+          ),
+        ],
       ),
     );
   }
+}
+
+String _formatTime(TimeOfDay? time) {
+  if (time == null) return "--:--";
+  return "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
+}
+
+/// iOS wheel for a time of day, in a sheet of its own so the schedule form keeps
+/// its rows. Returns null when dismissed without confirming.
+Future<TimeOfDay?> showAppleTimeSheet(
+  BuildContext context, {
+  required String title,
+  required TimeOfDay initial,
+}) {
+  var draft = initial;
+
+  return showModalBottomSheet<TimeOfDay>(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    barrierColor: const Color(0x66000000),
+    builder: (sheetContext) {
+      final l = AppLocalizations.of(sheetContext)!;
+      final p = ApplePalette.of(sheetContext);
+
+      return SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: ColoredBox(
+              color: p.chromeSolid,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: p.label,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(sheetContext),
+                          tooltip: l.close,
+                          icon: Icon(
+                            CupertinoIcons.xmark,
+                            size: 20,
+                            color: p.label2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    height: 216,
+                    child: CupertinoDatePicker(
+                      mode: CupertinoDatePickerMode.time,
+                      use24hFormat: true,
+                      initialDateTime:
+                          DateTime(2000, 1, 1, initial.hour, initial.minute),
+                      onDateTimeChanged: (value) =>
+                          draft = TimeOfDay(hour: value.hour, minute: value.minute),
+                    ),
+                  ),
+                  AppleFormFooter(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+                    confirmLabel: l.confirm,
+                    cancelLabel: l.cancel,
+                    onCancel: () => Navigator.pop(sheetContext),
+                    onConfirm: () => Navigator.pop(sheetContext, draft),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
 }

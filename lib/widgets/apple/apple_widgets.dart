@@ -1254,6 +1254,95 @@ class ApplePill extends StatelessWidget {
   }
 }
 
+/// One label/value line of a detail card: a fixed label column and a value
+/// that wraps anywhere, the way the design layer reads a record with `dl`.
+class AppleDetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  /// Values that are addresses, timings or types read in the monospaced face.
+  final bool mono;
+
+  const AppleDetailRow({
+    super.key,
+    required this.label,
+    required this.value,
+    this.mono = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 96,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: p.label2,
+                height: 1.4,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontFamily: mono ? 'monospace' : null,
+                fontSize: mono ? 13 : 15,
+                color: p.label,
+                height: 1.4,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The grey card a sheet reads a record from: hairlines between the rows and
+/// none under the last one.
+class AppleDetailCard extends StatelessWidget {
+  final List<Widget> rows;
+
+  /// The grouped colour a sheet reads it on; a card drawn straight on that
+  /// background takes the surface colour instead.
+  final Color? color;
+
+  const AppleDetailCard({super.key, required this.rows, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color ?? p.window,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i != 0) AppleSeparator(indent: 0),
+            rows[i],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 /// A query log entry: the status pill, the domain and the time on the first
 /// line, the details as dot separated runs underneath.
 class AppleLogRow extends StatelessWidget {

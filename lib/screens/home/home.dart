@@ -26,6 +26,7 @@ import 'package:adguard_home_manager/functions/format_time.dart';
 import 'package:adguard_home_manager/functions/number_format.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/functions/update_blocking.dart';
+import 'package:adguard_home_manager/models/applied_filters.dart';
 import 'package:adguard_home_manager/models/dns_statistics.dart';
 import 'package:adguard_home_manager/models/filtering_status.dart';
 import 'package:adguard_home_manager/models/server_status.dart';
@@ -133,11 +134,13 @@ class _HomeState extends State<Home> {
     );
   }
 
-  void _openLogs(String value) {
+  /// Jumps to the query log with [statuses] already applied; an empty list is
+  /// the unfiltered log.
+  void _openLogs(List<LogStatus> statuses) {
     final logsProvider = Provider.of<LogsProvider>(context, listen: false);
     final appConfigProvider = Provider.of<AppConfigProvider>(context, listen: false);
 
-    logsProvider.setSelectedResultStatus(value: value, refetch: true);
+    logsProvider.setSelectedStatuses(statuses);
     logsProvider.filterLogs();
     appConfigProvider.setSelectedScreen(2);
   }
@@ -386,7 +389,7 @@ class _HomeState extends State<Home> {
               devices: clientsProvider.clients?.autoClients.length ?? 0,
               onToggleProtection: _toggleProtection,
               onManage: _openProtectionSheet,
-              onOpenLogs: () => _openLogs('all'),
+              onOpenLogs: () => _openLogs(const []),
             ),
           ),
 
@@ -394,8 +397,8 @@ class _HomeState extends State<Home> {
             child: _StatGrid(
               stats: stats,
               filtering: statusProvider.serverStatus!.filteringStatus,
-              onOpenLogs: () => _openLogs('all'),
-              onOpenBlockedLogs: () => _openLogs('blocked'),
+              onOpenLogs: () => _openLogs(const []),
+              onOpenBlockedLogs: () => _openLogs(const [LogStatus.blocked]),
             ),
           ),
 

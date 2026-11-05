@@ -38,6 +38,11 @@ Server serverFixture() => Server(
 /// When the installed certificate stops being served.
 DateTime notAfterFixture() => DateTime.utc(2026, 3, 9, 6, 0);
 
+/// The fingerprint of the certificate the fixture serves, as the forked server
+/// reports it: plain hex, no separators.
+const fingerprintFixture =
+    'b12e4c9a1177ef7f3d5a8c024e6b9d13f7a25c48e0d1b6934a7c2e5f8019d3c6';
+
 /// What `/tls/status` answers for a box serving DoT and DoH from files.
 EncryptionData encryptionFixture({
   bool enabled = true,
@@ -50,6 +55,7 @@ EncryptionData encryptionFixture({
   bool validChain = true,
   String subject = 'CN=dns.example.com',
   String issuer = "CN=Yeti, O=Yggdrasil LLC",
+  String? fingerprintSha256 = fingerprintFixture,
   List<String> dnsNames = const ['dns.example.com', 'www.example.com'],
   bool validKey = true,
   String keyType = 'EC private key',
@@ -72,6 +78,7 @@ EncryptionData encryptionFixture({
       validChain: validChain,
       subject: subject,
       issuer: issuer,
+      fingerprintSha256: fingerprintSha256,
       notAfter: notAfterFixture(),
       dnsNames: dnsNames,
       validKey: validKey,
@@ -95,10 +102,12 @@ EncryptionValidation validationFixture({
   bool validKey = true,
   bool validPair = true,
   String? warningValidation,
+  String? fingerprintSha256 = fingerprintFixture,
 }) =>
     EncryptionValidation(
       subject: 'CN=dns.example.com',
       issuer: "CN=Yeti, O=Yggdrasil LLC",
+      fingerprintSha256: fingerprintSha256,
       keyType: 'EC private key',
       notAfter: notAfterFixture(),
       dnsNames: const ['dns.example.com', 'www.example.com'],

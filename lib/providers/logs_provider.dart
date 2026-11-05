@@ -18,9 +18,13 @@ class LogsProvider with ChangeNotifier {
   List<AutoClient>? _clients;
 
   DateTime? _logsOlderThan;
-  String _selectedResultStatus = 'all';
   String? _searchText;
+
+  // The filter sheet edits these; only [filterLogs] promotes them to
+  // [_appliedFilters], so closing the sheet without applying changes nothing.
+  List<LogStatus> _selectedStatuses = [];
   List<String> _selectedClients = [];
+  LogTimeRange _timeRange = LogTimeRange.twentyFourHours;
 
   int _logsQuantity = 100;
   int _offset = 0;
@@ -28,9 +32,10 @@ class LogsProvider with ChangeNotifier {
   bool _isLoadingMore = false;
 
   AppliedFiters _appliedFilters = AppliedFiters(
-    selectedResultStatus: 'all', 
+    statuses: [],
     searchText: null,
-    clients: []
+    clients: [],
+    timeRange: LogTimeRange.twentyFourHours,
   );
 
   LoadStatus get loadStatus {
@@ -49,8 +54,8 @@ class LogsProvider with ChangeNotifier {
     return _logsOlderThan;
   }
 
-  String get selectedResultStatus {
-    return _selectedResultStatus;
+  List<LogStatus> get selectedStatuses {
+    return _selectedStatuses;
   }
 
   String? get searchText {
@@ -67,6 +72,10 @@ class LogsProvider with ChangeNotifier {
 
   List<String> get selectedClients {
     return _selectedClients;
+  }
+
+  LogTimeRange get timeRange {
+    return _timeRange;
   }
 
   AppliedFiters get appliedFilters {
@@ -97,11 +106,20 @@ class LogsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Drops every filter but the search, which has a field of its own under the
+  /// title.
   void resetFilters() {
     _logsOlderThan = null;
     _offset = 0;
-    _selectedResultStatus = 'all';
-    _searchText = null;
+    _selectedStatuses = [];
+    _selectedClients = [];
+    _timeRange = LogTimeRange.twentyFourHours;
+    _appliedFilters = AppliedFiters(
+      statuses: [],
+      searchText: _searchText,
+      clients: [],
+      timeRange: LogTimeRange.twentyFourHours,
+    );
     notifyListeners();
   }
 
@@ -114,29 +132,32 @@ class LogsProvider with ChangeNotifier {
     _offset = value;
   }
 
-  void setSelectedResultStatus({
-    required String value,
-    bool? refetch
-  }) {
-    _selectedResultStatus = value;
-    notifyListeners();
-    if (refetch = true) {
-      filterLogs();
-    }
-  }
-
   void setSearchText(String? value) {
     _searchText = value;
     notifyListeners();
   }
 
+  void setSelectedStatuses(List<LogStatus> statuses) {
+    _selectedStatuses = List.of(statuses);
+    notifyListeners();
+  }
+
   void setSelectedClients(List<String>? clients) {
-    _selectedClients = clients ?? [];
+    _selectedClients = List.of(clients ?? []);
+    notifyListeners();
+  }
+
+  void setTimeRange(LogTimeRange value) {
+    _timeRange = value;
     notifyListeners();
   }
 
   void setAppliedFilters(AppliedFiters value) {
     _appliedFilters = value;
+    _selectedStatuses = List.of(value.statuses);
+    _searchText = value.searchText;
+    _selectedClients = List.of(value.clients);
+    _timeRange = value.timeRange;
     notifyListeners();
   }
 
@@ -147,24 +168,24 @@ class LogsProvider with ChangeNotifier {
   Future<bool> fetchLogs({
     int? inOffset,
     bool? loadingMore,
-    String? responseStatus,
     String? searchText,
   }) async {
     int offst = inOffset ?? offset;
-
-    String resStatus = responseStatus ?? _selectedResultStatus;
 
     if (loadingMore != null && loadingMore == true) {
       _isLoadingMore = true;
       notifyListeners();
     }
 
+    final applied = _appliedFilters;
     final result = await _serversProvider!.apiClient2!.getLogs(
       count: logsQuantity, 
       offset: offst,
       olderThan: logsOlderThan,
-      responseStatus: resStatus,
-      search: _searchText
+      since: applied.since(DateTime.now()),
+      reasons: applied.reasons,
+      clients: applied.clients,
+      search: searchText ?? _searchText
     );
 
     if (loadingMore != null && loadingMore == true) {
@@ -173,26 +194,22 @@ class LogsProvider with ChangeNotifier {
     }
 
     if (result.successful == true) {
-      _offset = inOffset != null ? inOffset+logsQuantity : offset+logsQuantity;
-      if (loadingMore != null && loadingMore == true && logsData != null) {
-        LogsData newLogsData = result.content;
-        newLogsData.data = [...logsData!.data, ...(result.content as LogsData).data];
-        if (appliedFilters.clients.isNotEmpty) {
-          newLogsData.data = newLogsData.data.where(
-            (item) => appliedFilters.clients.contains(item.client)
-          ).toList();
-        }
-        _logsData = newLogsData;
-      }
-      else {
-        LogsData newLogsData = result.content;
-        if (appliedFilters.clients.isNotEmpty) {
-          newLogsData.data = newLogsData.data.where(
-            (item) => appliedFilters.clients.contains(item.client)
-          ).toList();
-        }
-        _logsData = newLogsData;
-      }
+      final incoming = result.content as LogsData;
+      _offset = offst + incoming.data.length;
+      // Servers that predate the `client` parameter ignore it, so the rows are
+      // narrowed here as well; on a server that honours it this changes
+      // nothing.  The selection may hold an address or a device name.
+      final matching = incoming.data.where((item) =>
+        applied.clients.isEmpty ||
+        applied.clients.contains(item.client) ||
+        applied.clients.contains(item.clientInfo?.name));
+      _logsData = LogsData(
+        data: [
+          if (loadingMore == true && logsData != null) ...logsData!.data,
+          ...matching,
+        ],
+        oldest: incoming.oldest,
+      );
       _loadStatus = LoadStatus.loaded;
       notifyListeners();
       return true;
@@ -206,68 +223,47 @@ class LogsProvider with ChangeNotifier {
 
   Future<bool> requestResetFilters() async {
     _loadStatus = LoadStatus.loading;
-    notifyListeners();
-
     resetFilters();
-
-    final result = await _serversProvider!.apiClient2!.getLogs(
-      count: logsQuantity
-    );
-
-    _appliedFilters = AppliedFiters(
-      selectedResultStatus: 'all', 
-      searchText: null,
-      clients: []
-    );
-
-    if (result.successful == true) {
-      _logsData = result.content as LogsData;
-      _loadStatus = LoadStatus.loaded;
-      notifyListeners();
-      return true;
-    }
-    else {
-      _loadStatus = LoadStatus.error;
-      notifyListeners();
-      return false;
-    }
+    return fetchLogs(inOffset: 0);
   }
 
   Future<bool> filterLogs() async {
     _loadStatus = LoadStatus.loading;
-    notifyListeners();
-
-    setOffset(0);
-
-    final result = await _serversProvider!.apiClient2!.getLogs(
-      count: logsQuantity,
-      olderThan: logsOlderThan,
-      responseStatus: selectedResultStatus,
-      search: searchText,
-    );
-
     _appliedFilters = AppliedFiters(
-      selectedResultStatus: selectedResultStatus,
+      statuses: selectedStatuses,
       searchText: searchText,
-      clients: selectedClients
+      clients: selectedClients,
+      timeRange: timeRange,
     );
+    notifyListeners();
+    return fetchLogs(inOffset: 0);
+  }
 
-    if (result.successful == true) {
-      LogsData newLogsData = result.content as LogsData;
-      if (appliedFilters.clients.isNotEmpty) {
-        newLogsData.data = newLogsData.data.where(
-          (item) => appliedFilters.clients.contains(item.client)
-        ).toList();
-      }
-      _logsData = newLogsData;
-      _loadStatus = LoadStatus.loaded;
-      notifyListeners();
-      return true;
-    }
-    else {
-      _loadStatus = LoadStatus.error;
-      notifyListeners();
-      return false;
-    }
+  /// Drops one applied status and searches again, for the chip under the title.
+  Future<bool> removeAppliedStatus(LogStatus status) {
+    _appliedFilters = AppliedFiters(
+      statuses: appliedFilters.statuses.where((s) => s != status).toList(),
+      searchText: appliedFilters.searchText,
+      clients: appliedFilters.clients,
+      timeRange: appliedFilters.timeRange,
+    );
+    _selectedStatuses = List.of(_appliedFilters.statuses);
+    _loadStatus = LoadStatus.loading;
+    notifyListeners();
+    return fetchLogs(inOffset: 0);
+  }
+
+  /// Drops the applied clients and searches again.
+  Future<bool> removeAppliedClients() {
+    _appliedFilters = AppliedFiters(
+      statuses: appliedFilters.statuses,
+      searchText: appliedFilters.searchText,
+      clients: [],
+      timeRange: appliedFilters.timeRange,
+    );
+    _selectedClients = [];
+    _loadStatus = LoadStatus.loading;
+    notifyListeners();
+    return fetchLogs(inOffset: 0);
   }
 }

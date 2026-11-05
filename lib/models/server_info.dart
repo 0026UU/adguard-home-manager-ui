@@ -26,6 +26,13 @@ class ServerInfoData {
   final String version;
   final String language;
 
+  /// The platform the server process runs on, and the moment it started. A
+  /// stock AdGuard Home answers neither, so both stay null and the page leaves
+  /// their rows out.
+  final String? arch;
+  final String? goos;
+  final DateTime? startTime;
+
   ServerInfoData({
     required this.dnsAddresses,
     required this.dnsPort,
@@ -35,6 +42,9 @@ class ServerInfoData {
     required this.running,
     required this.version,
     required this.language,
+    this.arch,
+    this.goos,
+    this.startTime,
   });
 
 
@@ -47,6 +57,13 @@ class ServerInfoData {
     running: json["running"],
     version: json["version"],
     language: json["language"],
+    arch: json["arch"],
+    goos: json["goos"],
+    // The server reports its start as Unix milliseconds, and not as a whole
+    // number of them.
+    startTime: json["start_time"] is num
+      ? DateTime.fromMillisecondsSinceEpoch((json["start_time"] as num).round())
+      : null,
   );
 
   Map<String, dynamic> toJson() => {
@@ -58,5 +75,8 @@ class ServerInfoData {
     "running": running,
     "version": version,
     "language": language,
+    "arch": arch,
+    "goos": goos,
+    "start_time": startTime?.millisecondsSinceEpoch,
   };
 }

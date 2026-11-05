@@ -62,7 +62,6 @@ class _LogsState extends State<Logs> {
                     child: _selectedLog != null
                       ? LogDetailsScreen(
                           log: _selectedLog!,
-                          dialog: false,
                           twoColumns: true,
                         )
                       : const SizedBox()

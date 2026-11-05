@@ -1,11 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:adguard_home_manager/functions/base64.dart';
 import 'package:adguard_home_manager/functions/format_time.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/screens/settings/encryption/custom_text_field.dart';
+import 'package:adguard_home_manager/screens/settings/encryption/encryption.dart';
 import 'package:adguard_home_manager/screens/settings/encryption/master_switch.dart';
 import 'package:adguard_home_manager/screens/settings/encryption/reset_settings_modal.dart';
 import 'package:adguard_home_manager/screens/settings/encryption/status.dart';
@@ -122,6 +124,8 @@ void main() {
     expect(find.text(l.certificates), findsOneWidget);
     expect(value(l.subject), 'CN=dns.example.com');
     expect(value(l.issuer), 'CN=Yeti, O=Yggdrasil LLC');
+    // The design layer draws the hash shortened and copies it whole.
+    expect(value(l.sha256Fingerprint), 'B1:2E:…:C6');
     expect(
       value(l.expirationDate),
       convertTimestampLocalTimezone(notAfterFixture(), 'yyyy-MM-dd'),
@@ -148,6 +152,42 @@ void main() {
     // Nothing invented: no row holds a placeholder.
     expect(find.text('—'), findsNothing);
     expect(find.text('SHA-256'), findsNothing);
+  });
+
+  testWidgets('a server that reports no fingerprint leaves the row out', (tester) async {
+    await pumpEncryption(
+      tester,
+      data: encryptionFixture(fingerprintSha256: null),
+      validation: validationFixture(fingerprintSha256: null),
+    );
+
+    expect(find.widgetWithText(AppleListTile, l.sha256Fingerprint), findsNothing);
+    // The rows around it still repeat what the server did answer.
+    expect(find.widgetWithText(AppleListTile, l.subject), findsOneWidget);
+    expect(find.widgetWithText(AppleListTile, l.issuer), findsOneWidget);
+  });
+
+  testWidgets('the fingerprint row copies the whole value', (tester) async {
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') copied = call.arguments['text'];
+        return null;
+      },
+    );
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, null));
+
+    await pumpEncryption(tester);
+
+    await tester.tap(find.widgetWithText(AppleListTile, l.sha256Fingerprint));
+    await tester.pumpAndSettle();
+
+    // The row shows the short form and copies the one a machine compares.
+    expect(copied, formatFingerprint(fingerprintFixture));
+    expect(find.text(l.copiedClipboard), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
   });
 
   testWidgets('a protocol switch moves only its own port', (tester) async {

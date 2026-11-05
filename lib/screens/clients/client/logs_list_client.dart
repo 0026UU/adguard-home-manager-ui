@@ -55,8 +55,6 @@ class _LogsListClientState extends State<LogsListClient> {
   Future fetchLogs({
     int? inOffset,
     bool? loadingMore,
-    String? responseStatus,
-    String? searchText,
   }) async {
     final serversProvider = Provider.of<ServersProvider>(context, listen: false);
     
@@ -124,7 +122,6 @@ class _LogsListClientState extends State<LogsListClient> {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
 
     if (widget.ip != previousIp) {
       setState(() => loadStatus = 0);
@@ -232,29 +229,7 @@ class _LogsListClientState extends State<LogsListClient> {
                           index: index,
                           length: logsData!.data.length,
                           useAlwaysNormalTile: true,
-                          onLogTap: (log) => {
-                            if (width > 700) {
-                              showDialog(
-                                context: context, 
-                                builder: (context) => LogDetailsScreen(
-                                  log: log, 
-                                  dialog: true,
-                                  twoColumns: widget.splitView,
-                                )
-                              )
-                            }
-                            else {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => LogDetailsScreen(
-                                    log: log, 
-                                    dialog: false,
-                                    twoColumns: widget.splitView,
-                                  )
-                                )
-                              )
-                            }
-                          },
+                          onLogTap: (log) => showLogDetails(context, log: log),
                           twoColumns: widget.splitView,
                         );
                       }

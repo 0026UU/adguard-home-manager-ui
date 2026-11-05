@@ -1,152 +1,17 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:provider/provider.dart';
-import 'package:provider/single_child_widget.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:adguard_home_manager/config/apple_theme.dart';
-import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
-import 'package:adguard_home_manager/models/clients.dart';
-import 'package:adguard_home_manager/providers/clients_provider.dart';
-import 'package:adguard_home_manager/providers/logs_provider.dart';
-import 'package:adguard_home_manager/providers/status_provider.dart';
+import 'package:adguard_home_manager/models/applied_filters.dart';
 import 'package:adguard_home_manager/screens/logs/filters/added_client_id_selection_modal.dart';
 import 'package:adguard_home_manager/screens/logs/filters/clients_modal.dart';
-import 'package:adguard_home_manager/screens/logs/filters/filter_status_modal.dart';
+import 'package:adguard_home_manager/screens/logs/filters/logs_filters_modal.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/widgets/custom_checkbox_list_tile.dart';
 import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
-import 'package:adguard_home_manager/widgets/custom_radio.dart';
 
-AutoClient _auto(int index) => AutoClient(
-      whoisInfo: WhoisInfo(country: 'IT', orgname: 'Example'),
-      name: index.isEven ? 'device-$index' : null,
-      source: 'rdns',
-      ip: '192.168.1.$index',
-    );
-
-Client _added(int index) => Client(
-      name: 'client-$index',
-      blockedServices: const [],
-      ids: ['10.0.0.$index', 'aa:bb:cc:dd:ee:ff'],
-      tags: const [],
-      upstreams: const [],
-      filteringEnabled: true,
-      parentalEnabled: false,
-      safebrowsingEnabled: true,
-      useGlobalBlockedServices: true,
-      useGlobalSettings: true,
-      safeSearch: null,
-      ignoreQuerylog: null,
-      ignoreStatistics: null,
-      upstreamsCacheEnabled: null,
-      upstreamsCacheSize: null,
-      blockedServicesSchedule: null,
-    );
-
-Clients _clientsData() => Clients(
-      clients: [_added(0)],
-      autoClients: [_auto(1), _auto(2)],
-      supportedTags: const [],
-    );
-
-/// Choosing a log filter always refetches the logs, which needs a live server.
-/// Only the widget wiring is under test here, so the network call is dropped.
-class _OfflineLogs extends LogsProvider {
-  @override
-  Future<bool> filterLogs() async => true;
-}
-
-/// The providers the log filters hand to these sheets. `serverStatus` stays
-/// empty on purpose: the sheets read it through a `try/catch` and fall back to
-/// the raw identifiers.
-class _Harness {
-  final LogsProvider logs = _OfflineLogs();
-  final ClientsProvider clients = ClientsProvider();
-  final StatusProvider status = StatusProvider();
-
-  _Harness();
-
-  _Harness.withClients() {
-    clients.setClientsLoadStatus(LoadStatus.loaded, false);
-    clients.setClientsData(_clientsData(), false);
-  }
-
-  List<SingleChildWidget> get providers => [
-        ChangeNotifierProvider.value(value: logs),
-        ChangeNotifierProvider.value(value: clients),
-        ChangeNotifierProvider.value(value: status),
-      ];
-}
-
-late BuildContext _hostContext;
-
-/// Presents [modal] the way `logs_filters_modal.dart` does: a card on wide
-/// layouts, a full-height sheet on phones.
-Future<void> _show(
-  WidgetTester tester,
-  _Harness harness,
-  Size surface,
-  Widget modal,
-) async {
-  SharedPreferences.setMockInitialValues({});
-
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
-
-  await tester.pumpWidget(
-    MultiProvider(
-      providers: harness.providers,
-      child: MaterialApp(
-        theme: appleLightTheme(),
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-          AppLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Builder(
-          builder: (ctx) {
-            _hostContext = ctx;
-            return const SizedBox.shrink();
-          },
-        ),
-      ),
-    ),
-  );
-  await tester.pumpAndSettle();
-
-  if (surface.width > 600) {
-    showDialog(context: _hostContext, builder: (_) => modal);
-  } else {
-    showModalBottomSheet(
-      context: _hostContext,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => modal,
-    );
-  }
-  await tester.pumpAndSettle();
-}
-
-/// The radios of the status picker, in the order the sheet lists them.
-List<AnimatedContainer> _statusDots(WidgetTester tester) => tester
-    .widgetList<AnimatedContainer>(find.descendant(
-      of: find.byType(CustomRadio),
-      matching: find.byType(AnimatedContainer),
-    ))
-    .toList();
-
-/// A drawn radio dot is 12 logical pixels wide; an empty one is 0.
-bool _isFilled(AnimatedContainer dot) => dot.constraints!.maxWidth == 12;
-
-const int _allRow = 0;
-const int _blockedRow = 4;
+import 'logs_sheets_harness.dart';
 
 void main() {
   late AppLocalizations l;
@@ -155,61 +20,157 @@ void main() {
     l = await AppLocalizations.delegate.load(const Locale('en'));
   });
 
-  testWidgets('the response status picker is one radio per status',
-      (tester) async {
-    final harness = _Harness();
+  testWidgets('the filter sheet only applies on apply', (tester) async {
+    final harness = SheetsHarness.withClients();
 
-    await _show(
+    await pumpSheet(
       tester,
       harness,
       const Size(900, 900),
-      FilterStatusModal(dialog: true),
+      const LogsFiltersModal(dialog: true),
     );
 
     expect(find.byType(AppleFormModal), findsOneWidget);
-    expect(find.text(l.responseStatus), findsOneWidget);
-    expect(find.byType(AppleListTile), findsNWidgets(8));
-    expect(find.byType(CustomRadio), findsNWidgets(8));
-    expect(_statusDots(tester).where(_isFilled), hasLength(1));
+    expect(find.text(l.filterLogs), findsOneWidget);
+    expect(find.text(l.status), findsOneWidget);
+    expect(find.text(l.clients), findsOneWidget);
+    expect(find.text(l.timeRange), findsOneWidget);
 
-    await tester.tap(find.text(l.blocked));
+    // One chip per quick status, in prototype order.
+    expect(find.byType(AppleToggleChip), findsNWidgets(3));
+    expect(find.text(l.queryBlocked), findsOneWidget);
+    expect(find.text(l.queryAllowed), findsOneWidget);
+    expect(find.text(l.queryUpstream), findsOneWidget);
+
+    // Both known devices, and the window the provider starts with.
+    expect(find.byType(AppleSwitchListTile), findsNWidgets(2));
+    expect(find.text('device-2'), findsOneWidget);
+    expect(
+      tester.widget<AppleSegmented>(find.byType(AppleSegmented)).selectedIndex,
+      LogTimeRange.twentyFourHours.index,
+    );
+
+    await tester.tap(find.text(l.queryBlocked));
+    await tester.tap(find.text('device-2'));
+    await tester.tap(find.text(l.lastSevenDays));
     await tester.pumpAndSettle();
 
-    expect(harness.logs.selectedResultStatus, 'blocked');
-    final dots = _statusDots(tester);
-    expect(dots.where(_isFilled), hasLength(1));
-    expect(_isFilled(dots[_blockedRow]), isTrue);
-    expect(_isFilled(dots[_allRow]), isFalse);
+    // Nothing reached the applied filters yet: the sheet edits a draft.
+    expect(harness.logs.appliedFilters.statuses, isEmpty);
+    expect(harness.logs.appliedFilters.clients, isEmpty);
+    expect(
+      harness.logs.appliedFilters.timeRange,
+      LogTimeRange.twentyFourHours,
+    );
 
-    await tester.tap(find.text(l.close));
+    await tester.tap(find.text(l.apply));
     await tester.pumpAndSettle();
 
-    expect(find.byType(FilterStatusModal), findsNothing);
+    expect(find.byType(LogsFiltersModal), findsNothing);
+
+    final applied = harness.logs.appliedFilters;
+    expect(applied.statuses, [LogStatus.blocked]);
+    expect(applied.clients, ['192.168.1.2']);
+    expect(applied.timeRange, LogTimeRange.sevenDays);
+    expect(applied.reasons, ['FilteredBlackList', 'FilteredBlockedService']);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the same picker drops the close button as a sheet',
+  testWidgets('the close button leaves the running search alone',
       (tester) async {
-    final harness = _Harness();
+    final harness = SheetsHarness.withClients();
+    harness.logs.setAppliedFilters(AppliedFiters(
+      statuses: const [LogStatus.allowed],
+      searchText: null,
+      clients: const [],
+      timeRange: LogTimeRange.oneHour,
+    ));
 
-    await _show(
+    await pumpSheet(
       tester,
       harness,
       const Size(420, 800),
-      FilterStatusModal(dialog: false),
+      const LogsFiltersModal(dialog: false),
     );
 
-    expect(find.byType(AppleListTile), findsNWidgets(8));
-    expect(find.text(l.blockedSafeSearchRow), findsOneWidget);
-    expect(find.text(l.close), findsNothing);
+    await tester.tap(find.text(l.queryBlocked));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(CupertinoIcons.xmark));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LogsFiltersModal), findsNothing);
+    expect(harness.logs.appliedFilters.statuses, [LogStatus.allowed]);
+    expect(harness.logs.appliedFilters.timeRange, LogTimeRange.oneHour);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('reset clears the filters but keeps the search', (tester) async {
+    final harness = SheetsHarness.withClients();
+    harness.logs.setSearchText('example.com');
+    harness.logs.setAppliedFilters(AppliedFiters(
+      statuses: const [LogStatus.blocked, LogStatus.allowed],
+      searchText: 'example.com',
+      clients: const ['192.168.1.2'],
+      timeRange: LogTimeRange.sevenDays,
+    ));
+
+    await pumpSheet(
+      tester,
+      harness,
+      const Size(420, 800),
+      const LogsFiltersModal(dialog: false),
+    );
+
+    // The draft mirrors what the search was actually run with.
+    expect(
+      tester.widget<AppleSegmented>(find.byType(AppleSegmented)).selectedIndex,
+      LogTimeRange.sevenDays.index,
+    );
+    expect(
+      tester.widget<CupertinoSwitch>(find.byType(CupertinoSwitch).at(1)).value,
+      isTrue,
+    );
+
+    await tester.tap(find.text(l.resetFilters));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LogsFiltersModal), findsNothing);
+
+    final applied = harness.logs.appliedFilters;
+    expect(applied.statuses, isEmpty);
+    expect(applied.clients, isEmpty);
+    expect(applied.timeRange, LogTimeRange.twentyFourHours);
+    expect(applied.searchText, 'example.com');
+    expect(harness.logs.selectedStatuses, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('devices past the inline limit open the full picker',
+      (tester) async {
+    final harness = SheetsHarness.withManyClients();
+
+    await pumpSheet(
+      tester,
+      harness,
+      const Size(900, 900),
+      const LogsFiltersModal(dialog: true),
+    );
+
+    expect(find.byType(AppleSwitchListTile), findsNWidgets(5));
+    expect(find.text(l.allClients), findsOneWidget);
+    expect(
+      tester.widget<AppleListTile>(find.byType(AppleListTile)).value,
+      '2',
+    );
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('the clients sheet ticks active clients into the log filter',
       (tester) async {
-    final harness = _Harness.withClients();
+    final harness = SheetsHarness.withClients();
 
-    await _show(
+    await pumpSheet(
       tester,
       harness,
       const Size(900, 900),
@@ -242,9 +203,9 @@ void main() {
   });
 
   testWidgets('added clients go through the identifier picker', (tester) async {
-    final harness = _Harness.withClients();
+    final harness = SheetsHarness.withClients();
 
-    await _show(
+    await pumpSheet(
       tester,
       harness,
       const Size(420, 800),

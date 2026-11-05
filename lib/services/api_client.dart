@@ -254,11 +254,28 @@ class ApiClientV2 {
     int? count, 
     int? offset,
     DateTime? olderThan,
-    String? responseStatus,
+    DateTime? since,
+    List<String>? reasons,
+    List<String>? clients,
     String? search
   }) async {
+    // Repeated parameters are ORed by the server, so a list value becomes
+    // several query parameters with the same name.
+    final queryParameters = <String, dynamic>{
+      if (count != null) 'limit': count.toString(),
+      if (offset != null) 'offset': offset.toString(),
+      if (olderThan != null) 'older_than': olderThan.toUtc().toIso8601String(),
+      if (since != null) 'since': since.toUtc().toIso8601String(),
+      if (reasons != null && reasons.isNotEmpty) 'reason': reasons,
+      if (clients != null && clients.isNotEmpty) 'client': clients,
+      if (search != null) 'search': search,
+    };
+    final uri = Uri(
+      path: '/querylog',
+      queryParameters: queryParameters.isEmpty ? null : queryParameters,
+    );
     final result = await HttpRequestClient.get(
-      urlPath: '/querylog?${count != null ? 'limit=$count' : ''}${offset != null ? '&offset=$offset' : ''}${olderThan != null ? '&older_than=${olderThan.toIso8601String()}' : ''}${responseStatus != null ? '&response_status=$responseStatus' : ''}${search != null ? '&search=$search' : ''}', 
+      urlPath: uri.toString(),
       server: server
     );
     if (result.successful == true) {

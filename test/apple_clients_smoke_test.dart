@@ -51,6 +51,7 @@ Client _added(int index, {List<String>? ids}) => Client(
   ids: ids ?? ['10.0.0.$index', 'aa:bb:cc:dd:ee:ff'],
   tags: const [],
   upstreams: const [],
+  rules: const [],
   filteringEnabled: true,
   parentalEnabled: false,
   safebrowsingEnabled: true,

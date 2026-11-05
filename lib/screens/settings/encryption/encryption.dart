@@ -364,6 +364,10 @@ class _EncryptionSettingsState extends State<EncryptionSettings> {
       fetched?.dnsNames ??
       const <String>[];
     final keyType = validation?.keyType ?? fetched?.keyType;
+    final fingerprint = formatFingerprint(
+      (typedCertificate ? validation?.fingerprintSha256 : null) ??
+        fetched?.fingerprintSha256,
+    );
 
     Widget check(bool selected) => selected
       ? Icon(CupertinoIcons.checkmark, color: p.tint)
@@ -529,6 +533,16 @@ class _EncryptionSettingsState extends State<EncryptionSettings> {
                     showChevron: false,
                     onTap: () => copyToClipboard(
                       value: issuer,
+                      successMessage: l.copiedClipboard,
+                    ),
+                  ),
+                if (fingerprint != null)
+                  AppleListTile(
+                    title: l.sha256Fingerprint,
+                    value: shortenFingerprint(fingerprint),
+                    showChevron: false,
+                    onTap: () => copyToClipboard(
+                      value: fingerprint,
                       successMessage: l.copiedClipboard,
                     ),
                   ),
@@ -818,3 +832,24 @@ class _EncryptionSettingsState extends State<EncryptionSettings> {
     );
   }
 }
+
+/// The fingerprint the server reports as plain hex, in the colon-separated
+/// uppercase form a certificate is read by. Null when the server sent none,
+/// which a stock AdGuard Home always does.
+String? formatFingerprint(String? hex) {
+  if (hex == null || hex.isEmpty) return null;
+
+  final pairs = <String>[];
+  for (var i = 0; i + 2 <= hex.length; i += 2) {
+    pairs.add(hex.substring(i, i + 2).toUpperCase());
+  }
+  return pairs.join(':');
+}
+
+/// The fingerprint shortened the way the design layer draws it: the first two
+/// pairs and the last one, since the middle of a hash carries nothing a person
+/// compares by eye. The row copies the whole value.
+String shortenFingerprint(String formatted) =>
+    formatted.length <= 8
+      ? formatted
+      : '${formatted.substring(0, 5)}:…:${formatted.substring(formatted.length - 2)}';

@@ -221,15 +221,7 @@ class _LogsListWidgetState extends State<LogsListWidget> {
       isLogSelected: widget.selectedLog != null && widget.selectedLog == log,
       onLogTap: (value) {
         if (!widget.twoColumns) {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => LogDetailsScreen(
-                log: value,
-                dialog: false,
-                twoColumns: widget.twoColumns,
-              )
-            )
-          );
+          showLogDetails(context, log: value);
         }
         widget.onLogSelected(value);
       },
