@@ -239,7 +239,7 @@ class _AddServerModalState extends State<AddServerModal> {
       );
       serversProvider.setApiClient2(apiClient2);
       statusProvider.setServerStatusLoad(LoadStatus.loaded);
-      if (status.serverVersion.contains('a') || status.serverVersion.contains('b')) {
+      if (serverVersionNeedsWarning(status.serverVersion)) {
         Navigator.pop(context);
         widget.onUnsupportedVersion(status.serverVersion);
       }
@@ -335,8 +335,8 @@ class _AddServerModalState extends State<AddServerModal> {
 
       // If everything is successful
       if (
-        version.successful == true && 
-        (version.content.contains('a') || version.content.contains('b'))  // alpha or beta
+        version.successful == true &&
+        serverVersionNeedsWarning((version.content ?? "") as String)
       ) {
         Navigator.pop(context);
         widget.onUnsupportedVersion(version.content);
