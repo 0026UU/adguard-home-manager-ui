@@ -90,8 +90,15 @@ void main() {
     expect(find.text(l.hereWillAppearRealtimeLogs), findsOneWidget);
     expect(find.text(l.trackingQueries), findsOneWidget);
     expect(find.text(l.queryLog), findsNothing);
-    // The navigation bar keeps only the filters; a reload is a pull down.
-    expect(find.byIcon(CupertinoIcons.arrow_clockwise), findsNothing);
+    // The navigation bar keeps the filters and a button that reads the stream
+    // again where it stands.
+    expect(find.byIcon(CupertinoIcons.arrow_clockwise), findsOneWidget);
+
+    final liveReads = live.onceReads;
+    await tester.tap(find.byIcon(CupertinoIcons.arrow_clockwise));
+    await tester.pumpAndSettle();
+
+    expect(live.onceReads, liveReads + 1);
 
     final before = logs.fetches;
     await tester.tap(find.text(l.historyLogs));
@@ -100,7 +107,13 @@ void main() {
     expect(live.watching, isFalse);
     expect(logs.fetches, before);
     expect(find.byType(LogTile), findsNWidgets(3));
-    expect(find.byIcon(CupertinoIcons.arrow_clockwise), findsNothing);
+
+    // On the stored log the same button goes back to the server for the rows.
+    expect(find.byIcon(CupertinoIcons.arrow_clockwise), findsOneWidget);
+    await tester.tap(find.byIcon(CupertinoIcons.arrow_clockwise));
+    await tester.pumpAndSettle();
+
+    expect(logs.fetches, before + 1);
   });
 
   testWidgets('the live stream keeps its own rows and its own filter', (tester) async {

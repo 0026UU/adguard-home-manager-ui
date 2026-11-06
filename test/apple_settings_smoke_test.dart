@@ -53,7 +53,9 @@ void main() {
   });
 
   testWidgets('settings groups its rows into inset sections', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(420, 900));
+    // Tall enough that every group is laid out and on the page at once: the
+    // list disposes what a short screen pushes past its cache.
+    await tester.binding.setSurfaceSize(const Size(420, 1300));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await _pump(tester, const Settings());
@@ -73,6 +75,7 @@ void main() {
     expect(find.text(l.queryLogSettings), findsOneWidget);
     expect(find.text(l.autoRefreshLiveLogs), findsOneWidget);
     expect(find.text(l.statusColorUseThemeColor), findsOneWidget);
+    expect(find.text(l.hideServerAddress), findsOneWidget);
     expect(find.text(l.openSourceLicenses), findsOneWidget);
     expect(find.text(l.diagnosticsLog), findsOneWidget);
     expect(find.text(l.customization), findsNothing);
@@ -80,7 +83,7 @@ void main() {
     expect(find.text(l.advancedSettings), findsNothing);
     // App settings and about rows carry the tinted glyphs; the appearance
     // rows do not.
-    expect(find.byType(AppleIconBadge), findsNWidgets(7));
+    expect(find.byType(AppleIconBadge), findsNWidgets(8));
     // The page signs itself with the app and the version it runs; the note
     // sits under the last group, out of the phone's first screen.
     expect(
@@ -276,7 +279,8 @@ void main() {
     expect(control.onChanged, isNull);
 
     expect(find.text(l.dhcpSettings), findsNothing);
-    expect(find.byType(CupertinoSwitch), findsNWidgets(3));
+    // The three that were here plus the one that hides the address.
+    expect(find.byType(CupertinoSwitch), findsNWidgets(4));
     // There is nothing to read again until a server is connected.
     expect(find.byIcon(CupertinoIcons.arrow_clockwise), findsNothing);
     expect(tester.takeException(), isNull);

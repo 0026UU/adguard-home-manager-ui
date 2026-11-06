@@ -25,11 +25,16 @@ class LogsListAppBar extends StatelessWidget {
   /// one, the stored query log gets the accent.
   final Color? subtitleDot;
 
+  /// Asks the server for the rows again; this page brings its own scroll view,
+  /// so the bar's refresh button cannot be added by [AppleScreen].
+  final Future<void> Function()? onRefresh;
+
   const LogsListAppBar({
     super.key,
     required this.innerBoxIsScrolled,
     this.subtitle,
     this.subtitleDot,
+    this.onRefresh,
   });
 
   @override
@@ -89,6 +94,7 @@ class LogsListAppBar extends StatelessWidget {
         bottomHeight: hasFilters ? 46 : 0,
       ),
       actions: [
+        if (onRefresh != null) AppleRefreshAction(onRefresh: onRefresh!),
         if (logsProvider.loadStatus == LoadStatus.loaded) IconButton(
           onPressed: openFilersModal,
           icon: const Icon(CupertinoIcons.slider_horizontal_3),

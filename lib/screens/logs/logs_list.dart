@@ -63,6 +63,18 @@ class _LogsListWidgetState extends State<LogsListWidget> {
     return _view == 1;
   }
 
+  /// Asks the server for what this half of the page shows, which is what the
+  /// bar button and the pull gesture both mean to do.
+  Future<void> refreshLogs() async {
+    if (_live) {
+      await _liveLogsProvider.fetchOnce();
+      return;
+    }
+
+    await Provider.of<LogsProvider>(context, listen: false)
+        .fetchLogs(inOffset: 0);
+  }
+
   Future<void> fetchRetention() async {
     final serversProvider = Provider.of<ServersProvider>(context, listen: false);
 
@@ -352,13 +364,7 @@ class _LogsListWidgetState extends State<LogsListWidget> {
         !Provider.of<AppConfigProvider>(context, listen: false)
             .autoRefreshLiveLogs) {
       scroll = RefreshIndicator(
-        onRefresh: () async {
-          if (_live) {
-            await _liveLogsProvider.fetchOnce();
-          } else {
-            await logsProvider.fetchLogs(inOffset: 0);
-          }
-        },
+        onRefresh: refreshLogs,
         displacement: 110,
         child: NotificationListener(
           onNotification: scrollListener,
@@ -379,6 +385,7 @@ class _LogsListWidgetState extends State<LogsListWidget> {
                 innerBoxIsScrolled: innerBoxIsScrolled, 
                 subtitle: _live ? localizations.trackingQueries : retention,
                 subtitleDot: _live ? palette.green : palette.tint,
+                onRefresh: refreshLogs,
               )
             )
           ],

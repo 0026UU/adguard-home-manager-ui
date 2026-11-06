@@ -401,7 +401,7 @@ class AppConfigProvider with ChangeNotifier {
   }
 
   Future<bool> setDoNotRememberVersion(String value) async {
-    final updated = await sharedPreferencesInstance.setString('hideServerAddress', value);
+    final updated = await sharedPreferencesInstance.setString('doNotRememberVersion', value);
     return updated;
   }
   

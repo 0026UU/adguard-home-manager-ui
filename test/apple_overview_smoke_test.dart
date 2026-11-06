@@ -51,7 +51,6 @@ void main() {
 
       // Nothing the design layer does not draw may stay on the page.
       expect(find.byType(PopupMenuButton), findsNothing);
-      expect(find.byIcon(CupertinoIcons.arrow_clockwise), findsNothing);
       expect(find.text(l.statistics), findsNothing);
       expect(find.byType(ServerStatusWidget), findsNothing);
       expect(find.byType(AppleTrendChart), findsOneWidget);

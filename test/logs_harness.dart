@@ -104,6 +104,15 @@ class ScriptedLive extends LiveLogsProvider {
   final List<Log> _rows = [];
   bool watching = false;
 
+  /// How many times the page asked for the queries up to now, which is what
+  /// the pull and the bar button both mean to do.
+  int onceReads = 0;
+
+  @override
+  Future<void> fetchOnce() async {
+    onceReads++;
+  }
+
   @override
   List<Log> get logs => _rows;
 

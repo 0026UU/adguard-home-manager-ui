@@ -531,6 +531,14 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
         value: appConfigProvider.useThemeColorForStatus == true,
         onChanged: (value) => appConfigProvider.setUseThemeColorForStatus(value),
       ),
+      AppleSwitchListTile(
+        icon: CupertinoIcons.eye_slash,
+        iconColor: palette.gray,
+        title: l.hideServerAddress,
+        subtitle: l.hideServerAddressDescription,
+        value: appConfigProvider.hideServerAddress,
+        onChanged: (value) => appConfigProvider.setHideServerAddress(value),
+      ),
     ];
 
     final serverRows = <Widget>[

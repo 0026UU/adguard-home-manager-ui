@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'package:adguard_home_manager/config/apple_colors.dart';
+import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 /// Convenience accessor for the Apple palette.
 ///
@@ -160,6 +161,10 @@ class AppleScreen extends StatelessWidget {
   /// Colour of the status dot drawn in front of [subtitle].
   final Color? subtitleDot;
 
+  /// Puts the same call [onRefresh] makes on the bar as a button. Only worth
+  /// turning off for a screen that already shows its own refresh control.
+  final bool showRefreshAction;
+
   const AppleScreen({
     super.key,
     required this.title,
@@ -167,6 +172,7 @@ class AppleScreen extends StatelessWidget {
     this.actions = const [],
     this.searchbar,
     this.onRefresh,
+    this.showRefreshAction = true,
     this.floatingActionButton,
     this.bottomSpacer = 24,
     this.header,
@@ -181,13 +187,17 @@ class AppleScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = ApplePalette.of(context);
 
+    final barActions = onRefresh != null && showRefreshAction
+      ? <Widget>[AppleRefreshAction(onRefresh: onRefresh!), ...actions]
+      : actions;
+
     final appbar = SliverAppBar.large(
       title: Text(title),
       titleSpacing: 20,
       centerTitle: true,
       leading: leading,
       automaticallyImplyLeading: false,
-      actions: actions,
+      actions: barActions,
       bottom: header == null ? null : AppleHeaderBar(child: header!),
       pinned: true,
       scrolledUnderElevation: 0,
@@ -236,6 +246,57 @@ class AppleScreen extends StatelessWidget {
           SliverToBoxAdapter(child: SizedBox(height: bottomSpacer)),
         ],
       ),
+    );
+  }
+}
+
+/// The bar button that asks the server again.
+///
+/// Pull-to-refresh is the design layer's usual answer, but nothing about a
+/// list says it can be pulled, and a screen that only ever shows what it
+/// fetched on arrival needs a way to ask that does not depend on knowing the
+/// gesture. This runs the very callback the gesture runs, and holds the button
+/// down while that call is in flight so a second tap cannot stack a request.
+class AppleRefreshAction extends StatefulWidget {
+  final Future<void> Function() onRefresh;
+  final String? tooltip;
+
+  const AppleRefreshAction({
+    super.key,
+    required this.onRefresh,
+    this.tooltip,
+  });
+
+  @override
+  State<AppleRefreshAction> createState() => _AppleRefreshActionState();
+}
+
+class _AppleRefreshActionState extends State<AppleRefreshAction> {
+  bool _running = false;
+
+  Future<void> _run() async {
+    if (_running) return;
+
+    setState(() => _running = true);
+    try {
+      await widget.onRefresh();
+    } finally {
+      if (mounted) setState(() => _running = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: _running ? null : _run,
+      tooltip: widget.tooltip ?? AppLocalizations.of(context)?.refresh,
+      icon: _running
+        ? const SizedBox(
+            width: 17,
+            height: 17,
+            child: CupertinoActivityIndicator(radius: 8),
+          )
+        : const Icon(CupertinoIcons.arrow_clockwise),
     );
   }
 }
