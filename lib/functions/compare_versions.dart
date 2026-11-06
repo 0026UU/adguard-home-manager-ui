@@ -2,155 +2,109 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'package:adguard_home_manager/models/github_release.dart';
 
-bool compareVersions({
-  required String currentVersion, 
-  required String newVersion
-}) {
-  if (currentVersion == "") return false;
-  try {
-    if (currentVersion.contains('a')) {   // alpha
-      return true;
-    }
-    else if (currentVersion.contains('b')) {    // beta
-      final current = currentVersion.replaceAll('v', '');
-      final newV = currentVersion.replaceAll('v', '');
+/// The version AdGuard Home reports: `v<major>.<minor>.<patch>`, optionally
+/// followed by a pre-release such as `-b.33` and by build metadata such as
+/// `+99f79fc`.
+class AghVersion {
+  final int major;
+  final int minor;
+  final int patch;
 
-      final currentSplit = current.split('-')[0].split('.').map((e) => int.parse(e)).toList();
-      final newSplit = newV.split('-')[0].split('.').map((e) => int.parse(e)).toList();
+  /// The pre-release channel, `a` or `b`, and null on a plain release.
+  final String? channel;
 
-      final currentBeta = int.parse(current.split('-')[1].replaceAll('b.', ''));
-      final newBeta = int.parse(newV.split('-')[1].replaceAll('b.', ''));
-      
-      if (newSplit[0] > currentSplit[0]) {
-        return true;
-      }
-      else if (newSplit[1] > currentSplit[1]) {
-        return true;
-      }
-      else if (newSplit[2] > currentSplit[2]) {
-        return true;
-      }
-      else if (newBeta > currentBeta) {
-        return true;
-      }
-      else {
-        return false;
-      }
-    }
-    else {    // stable
-      final current = currentVersion.replaceAll('v', '');
-      final newV = newVersion.replaceAll('v', '');
-      
-      final currentSplit = current.split('.').map((e) => int.parse(e)).toList();
-      final newSplit = newV.split('.').map((e) => int.parse(e)).toList();
+  /// The number of the pre-release, 0 on a plain release.
+  final int build;
 
-      if (newSplit[0] > currentSplit[0]) {
-        return true;
-      }
-      else if (newSplit[1] > currentSplit[1]) {
-        return true;
-      }
-      else if (newSplit[2] > currentSplit[2]) {
-        return true;
-      }   
-      else {
-        return false;
-      }
-    }
-  } catch (e) {
-    Sentry.captureException(e);
-    Sentry.captureMessage("compareVersions error", params: [
-      {
-        "fn": "compareVersions",
-        "currentVersion": currentVersion,
-        "newVersion": newVersion,
-      }.toString()
-    ]);
-    return false;
+  const AghVersion({
+    required this.major,
+    required this.minor,
+    required this.patch,
+    this.channel,
+    this.build = 0,
+  });
+
+  static final RegExp _pattern = RegExp(
+    r'^v?(\d+)\.(\d+)\.(\d+)(?:-([ab])\.(\d+))?(?:\+[0-9A-Za-z][0-9A-Za-z.]*)?$',
+  );
+
+  /// Returns null when the text is not a version AdGuard Home could report.
+  /// The build metadata plays no part in the ordering, but it is part of the
+  /// text a server built from source answers with, so it is accepted here.
+  static AghVersion? tryParse(String text) {
+    final match = _pattern.firstMatch(text.trim());
+    if (match == null) return null;
+
+    return AghVersion(
+      major: int.parse(match.group(1)!),
+      minor: int.parse(match.group(2)!),
+      patch: int.parse(match.group(3)!),
+      channel: match.group(4),
+      build: match.group(5) == null ? 0 : int.parse(match.group(5)!),
+    );
+  }
+
+  bool get isPreRelease => channel != null;
+
+  /// Negative when this version comes before [other].  A release outranks any
+  /// pre-release of its own number, `b` outranks `a`, a higher build outranks
+  /// a lower one.
+  int compareTo(AghVersion other) {
+    if (major != other.major) return major - other.major;
+    if (minor != other.minor) return minor - other.minor;
+    if (patch != other.patch) return patch - other.patch;
+
+    if (channel == null && other.channel == null) return 0;
+    if (channel == null) return 1;
+    if (other.channel == null) return -1;
+    if (channel != other.channel) return channel!.compareTo(other.channel!);
+
+    return build - other.build;
   }
 }
 
+/// Whether the server answering [currentVersion] is new enough to be managed.
+///
+/// A pre-release server is held to [referenceVersionBeta] and a release server
+/// to [referenceVersion], because the two lines move apart.  False means either
+/// that the server is behind or that its version could not be read at all.
 bool serverVersionIsAhead({
-  required String currentVersion, 
-  required String referenceVersion, 
-  String? referenceVersionBeta
+  required String currentVersion,
+  required String referenceVersion,
+  String? referenceVersionBeta,
 }) {
-  if (currentVersion == "") return false;
-  try {
-    final current = currentVersion.replaceAll('v', '');
-    final reference = referenceVersion.replaceAll('v', '');
-    final referenceBeta = referenceVersionBeta?.replaceAll('v', '');
-
-    if (currentVersion.contains('a')) {   // alpha
-      return true;
-    }
-    else if (current.contains('b')) {   // beta
-      if (referenceBeta != null) {
-        final currentSplit = current.split('-')[0].split('.').map((e) => int.parse(e)).toList();
-        final newSplit = referenceBeta.split('-')[0].split('.').map((e) => int.parse(e)).toList();
-
-        final currentBeta = int.parse(current.split('-')[1].replaceAll('b.', ''));
-        final newBeta = int.parse(referenceBeta.split('-')[1].replaceAll('b.', ''));
-        
-        if (newSplit[0] == currentSplit[0] && newSplit[1] == currentSplit[1] && newSplit[2] == currentSplit[2] && newBeta == currentBeta) {
-          return true;
-        }
-        else if (newSplit[0] < currentSplit[0]) {
-          return true;
-        }
-        else if (newSplit[1] < currentSplit[1]) {
-          return true;
-        }
-        else if (newSplit[2] < currentSplit[2]) {
-          return true;
-        }
-        else if (newBeta < currentBeta) {
-          return true;
-        }
-        else {
-          return false;
-        }
-      }
-      else {
-        return false;
-      }
-    }
-    else {    // stable
-      final currentSplit = current.split('.').map((e) => int.parse(e)).toList();
-      final newSplit = reference.split('.').map((e) => int.parse(e)).toList();
-
-      if (newSplit[0] == currentSplit[0] && newSplit[1] == currentSplit[1] && newSplit[2] == currentSplit[2]) {
-        return true;
-      }
-      else if (newSplit[0] < currentSplit[0]) {
-        return true;
-      }
-      else if (newSplit[1] < currentSplit[1]) {
-        return true;
-      }
-      else if (newSplit[2] < currentSplit[2]) {
-        return true;
-      }   
-      else {
-        return false;
-      }
-    }
-  } catch (e) {
-    Sentry.captureException(e);
-    Sentry.captureMessage("serverVersionIsAhead error", params: [
+  final current = AghVersion.tryParse(currentVersion);
+  if (current == null) {
+    Sentry.captureMessage("Unreadable server version", params: [
       {
         "fn": "serverVersionIsAhead",
         "currentVersion": currentVersion,
-        "referenceVersion": referenceVersion,
-        "referenceVersionBeta": referenceVersionBeta ?? ""
       }.toString()
     ]);
+
     return false;
   }
+
+  final reference = AghVersion.tryParse(
+    current.isPreRelease ? (referenceVersionBeta ?? "") : referenceVersion,
+  );
+  if (reference == null) return false;
+
+  return current.compareTo(reference) >= 0;
 }
 
+/// Whether the server answering [version] deserves a warning although it
+/// clears the gate.
+///
+/// Alphas move the API under the app with nothing released to test against.
+/// The beta line is different: [MinimumServerVersion.beta] is the floor the app
+/// is built and checked against, so a beta at or above it is the setup this app
+/// is meant to drive and stays quiet.
+bool serverVersionNeedsWarning(String version) =>
+    AghVersion.tryParse(version)?.channel == 'a';
+
 bool gitHubUpdateExists({
-  required String currentBuildNumber, 
+  required String currentBuildNumber,
   required GitHubRelease gitHubRelease,
   required bool isBeta
 }) {
