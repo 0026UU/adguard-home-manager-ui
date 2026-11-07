@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
-
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/models/filtering.dart';
 
 enum SelectionResultMode { delete, enableDisable }
@@ -20,84 +20,76 @@ class SelectionResultModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
     final failedItems = results.where((r) => r.successful == false).toList();
 
-    return AlertDialog(
-      title: Column(
+    return AppleFormModal(
+      title: mode == SelectionResultMode.delete
+        ? l.deletionResult
+        : l.enableDisableResult,
+      dialog: true,
+      maxWidth: 500,
+      icon: mode == SelectionResultMode.delete
+        ? CupertinoIcons.trash
+        : CupertinoIcons.shield_slash,
+      iconColor: mode == SelectionResultMode.delete ? p.red : p.tint,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            mode == SelectionResultMode.delete
-              ? Icons.delete_rounded
-              : Icons.remove_moderator_rounded,
-            size: 24,
-            color: Theme.of(context).listTileTheme.iconColor
-          ),
-          const SizedBox(height: 16),
-          Text(
-            mode == SelectionResultMode.delete
-              ? AppLocalizations.of(context)!.deletionResult
-              : AppLocalizations.of(context)!.enableDisableResult,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface
-            ),
-          )
-        ],
-      ),
-      content: failedItems.isEmpty
-        ? Text(
-            mode == SelectionResultMode.delete
-              ? AppLocalizations.of(context)!.allSelectedListsDeletedSuccessfully
-              : AppLocalizations.of(context)!.selectedListsEnabledDisabledSuccessfully,
-          )
-        : SizedBox(
-            width: double.maxFinite,
+          Flexible(
             child: SingleChildScrollView(
-              child: Wrap(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: failedItems.isEmpty
+                ? Text(
+                    mode == SelectionResultMode.delete
+                      ? l.allSelectedListsDeletedSuccessfully
+                      : l.selectedListsEnabledDisabledSuccessfully,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 15, color: p.label2),
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 16, top: 8),
-                        child: Text(
-                          AppLocalizations.of(context)!.failedElements,
-                          textAlign: TextAlign.center,
-                          style: const  TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500
+                        padding: const EdgeInsets.only(bottom: 12, top: 4),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: Text(
+                            l.failedElements,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: p.label,
+                            ),
                           ),
                         ),
                       ),
+                      for (final item in failedItems)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text(
+                            "• ${item.list.name}",
+                            style: TextStyle(fontSize: 14, color: p.label),
+                          ),
+                        ),
                     ],
                   ),
-                  ListView.builder(
-                    primary: false,
-                    shrinkWrap: true,
-                    itemCount: failedItems.length,
-                    itemBuilder: (context, index) => Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Text("• ${failedItems[index].list.name}"),
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
-      actions: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            child: AppleButton(
+              label: l.close,
               onPressed: () {
                 Navigator.pop(context);
                 onClose();
-              }, 
-              child: Text(AppLocalizations.of(context)!.close)
+              },
             ),
-          ],
-        )
-      ],
+          ),
+        ],
+      ),
     );
   }
 }

@@ -13,10 +13,25 @@ import 'package:adguard_home_manager/models/filtering_status.dart';
 import 'package:adguard_home_manager/models/dns_statistics.dart';
 import 'package:adguard_home_manager/models/statistics_config.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
+import 'package:adguard_home_manager/providers/error_reason.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/functions/time_server_disabled.dart';
 
-class StatusProvider with ChangeNotifier {
+class StatusProvider with ChangeNotifier, ErrorReason {
+  /// How long the background reconnect poll waits between attempts once the
+  /// connection was declared dropped. Injectable for tests; the UI never
+  /// drives this — recovery has to work without the user touching anything.
+  StatusProvider({
+    Duration autoReconnectInterval = const Duration(seconds: 5),
+  }) : _autoReconnectInterval = autoReconnectInterval;
+
+  /// How many consecutive failed status polls are absorbed before the
+  /// connection is declared dropped. One blip — even one that exhausted the
+  /// HTTP-level retry budget — must not disconnect a working session.
+  static const int maxConsecutivePollFailures = 3;
+
+  final Duration _autoReconnectInterval;
+
   ServersProvider? _serversProvider;
 
   void update(ServersProvider? provider) {
@@ -27,6 +42,15 @@ class StatusProvider with ChangeNotifier {
   ServerStatus? _serverStatus; // serverStatus != null means server is connected
   List<String> _protectionsManagementProcess = []; // protections that are currenty being enabled or disabled
   FilteringStatus? _filteringStatus;
+
+  // Connection stability: the poll counter, the degraded flag the UI can
+  // ignore, and the background timer that brings a dropped connection back.
+  int _consecutivePollFailures = 0;
+  bool _reconnecting = false;
+  bool _needsCredentials = false;
+  bool _statusPollInFlight = false;
+  Timer? _autoReconnect;
+  bool _disposed = false;
 
   // Statistics of one lookback window, asked for by the overview trend chart.
   DnsStatistics? _trend;
@@ -42,6 +66,26 @@ class StatusProvider with ChangeNotifier {
 
   LoadStatus get loadStatus {
     return _loadStatus;
+  }
+
+  /// True while the last status poll failed but the connection is being kept
+  /// (or is being brought back in the background). Lightweight on purpose:
+  /// the UI can ignore it and keep showing the last good answer.
+  bool get reconnecting {
+    return _reconnecting;
+  }
+
+  /// True when the server refused the session and the one silent re-login
+  /// with the stored credentials did not fix it. Only then is the user asked
+  /// for credentials again.
+  bool get needsCredentials {
+    return _needsCredentials;
+  }
+
+  /// How many status polls in a row have failed; [loadStatus] only flips to
+  /// error once this reaches [maxConsecutivePollFailures].
+  int get consecutivePollFailures {
+    return _consecutivePollFailures;
   }
 
   ServerStatus? get serverStatus {
@@ -129,6 +173,7 @@ class StatusProvider with ChangeNotifier {
         'ignored': current.ignored ?? <String>[],
       },
     );
+    captureErrorReason(result);
     if (result.successful != true) return false;
 
     _statisticsConfig = StatisticsConfig(
@@ -233,6 +278,10 @@ class StatusProvider with ChangeNotifier {
     required bool newStatus,
     int? time
   }) async {
+    // A new attempt starts clean: the reason of a refusal that has since been
+    // followed by an accepted switch must not be blamed for the next one.
+    setErrorMessage(null);
+
     switch (block) {
       case 'general':
         _protectionsManagementProcess.add('general');
@@ -262,6 +311,7 @@ class StatusProvider with ChangeNotifier {
           return true;
         }
         else {
+          captureErrorReason(result);
           return false;
         }
 
@@ -281,6 +331,7 @@ class StatusProvider with ChangeNotifier {
           return true;
         }
         else {
+          captureErrorReason(result);
           return false;
         }
 
@@ -298,6 +349,7 @@ class StatusProvider with ChangeNotifier {
           return true;
         }
         else {
+          captureErrorReason(result);
           return false;
         }
 
@@ -315,6 +367,7 @@ class StatusProvider with ChangeNotifier {
           return true;
         }
         else {
+          captureErrorReason(result);
           return false;
         }
 
@@ -332,6 +385,7 @@ class StatusProvider with ChangeNotifier {
           return true;
         }
         else {
+          captureErrorReason(result);
           return false;
         }
 
@@ -346,6 +400,7 @@ class StatusProvider with ChangeNotifier {
 
   Future<bool> getFilteringRules() async {
     final result = await _serversProvider!.apiClient2!.getFilteringRules();
+    captureErrorReason(result);
     if (result.successful == true) {
       _filteringStatus = result.content as FilteringStatus;
       notifyListeners();
@@ -360,12 +415,38 @@ class StatusProvider with ChangeNotifier {
     bool? withLoadingIndicator = true,
     bool? overrideCheckServerVersion
   }) async {
+    // The flag only gates the background timer: a poll the user triggered is
+    // always run, but the reconnect timer must not stack polls on top of each
+    // other and inflate the consecutive-failure count.
+    _statusPollInFlight = true;
+    try {
+      return await _fetchServerStatus(
+        withLoadingIndicator: withLoadingIndicator,
+        overrideCheckServerVersion: overrideCheckServerVersion,
+      );
+    } finally {
+      _statusPollInFlight = false;
+    }
+  }
+
+  Future<bool> _fetchServerStatus({
+    bool? withLoadingIndicator = true,
+    bool? overrideCheckServerVersion
+  }) async {
     if (withLoadingIndicator == true) {
       _loadStatus = LoadStatus.loading;
     }
 
     final result = await _serversProvider!.apiClient2!.getServerStatus();
+    captureErrorReason(result);
     if (result.successful == true) {
+      // The server answers again: whatever degraded state the polls before
+      // this one left behind is over, without the user having done anything.
+      _consecutivePollFailures = 0;
+      _reconnecting = false;
+      _needsCredentials = false;
+      _stopAutoReconnect();
+
       final status = result.content as ServerStatus;
       setServerStatusData(
         data: status
@@ -374,12 +455,12 @@ class StatusProvider with ChangeNotifier {
       notifyListeners();
 
       // Check server version and launch modal if not valid
-      final validVersion = serverVersionIsAhead(
+      final tooOld = serverVersionIsTooOld(
         currentVersion: status.serverVersion, 
         referenceVersion: MinimumServerVersion.stable,
         referenceVersionBeta: MinimumServerVersion.beta
       );
-      if (validVersion == false && overrideCheckServerVersion != true) {
+      if (tooOld && overrideCheckServerVersion != true) {
         showDialog(
           context: globalNavigatorKey.currentContext!, 
           builder: (ctx) => UnsupportedVersionModal(
@@ -393,10 +474,73 @@ class StatusProvider with ChangeNotifier {
       return true;
     }
     else {
-      if (withLoadingIndicator == true) _loadStatus = LoadStatus.error; 
+      _consecutivePollFailures += 1;
+      _needsCredentials = result.needsCredentials == true;
+
+      if (_needsCredentials || _serverStatus == null) {
+        // A session the silent re-login could not save is no blip — only the
+        // user can fix it — and a poll that never had an answer to keep has
+        // nothing to stay connected on top of.
+        _reconnecting = false;
+        _stopAutoReconnect();
+        _loadStatus = LoadStatus.error;
+        notifyListeners();
+        return false;
+      }
+
+      if (_consecutivePollFailures >= maxConsecutivePollFailures) {
+        // The budget across consecutive polls is exhausted: only now does the
+        // connection count as dropped, and the background timer takes over so
+        // a server that comes back is found without user action.
+        _reconnecting = true;
+        _loadStatus = LoadStatus.error;
+        notifyListeners();
+        _startAutoReconnect();
+        return false;
+      }
+
+      // A failed poll inside the budget: the connection is kept, the last
+      // good answer stays on screen, and the next poll decides. Marking the
+      // error here — as this provider used to — is what dropped the user back
+      // to the disconnected state over a single blip.
+      _reconnecting = true;
+      _loadStatus = LoadStatus.loaded;
       notifyListeners();
       return false;
     }
+  }
+
+  void _startAutoReconnect() {
+    if (_autoReconnect?.isActive == true) return;
+    _autoReconnect = Timer.periodic(_autoReconnectInterval, (timer) async {
+      if (_disposed || _statusPollInFlight) return;
+      if (_serversProvider?.apiClient2 == null) {
+        // The connection was removed while the timer ran: nothing to recover.
+        timer.cancel();
+        return;
+      }
+      try {
+        // The success path of the poll cancels this timer and clears the
+        // degraded state; a failure just counts towards the next attempt.
+        await getServerStatus(withLoadingIndicator: false);
+      } catch (_) {
+        // The provider can be disposed while the poll is in flight; the
+        // timer has nothing left to recover and must not keep firing.
+        timer.cancel();
+      }
+    });
+  }
+
+  void _stopAutoReconnect() {
+    _autoReconnect?.cancel();
+    _autoReconnect = null;
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _stopAutoReconnect();
+    super.dispose();
   }
 
   Future<bool> blockUnblockDomain({
@@ -405,9 +549,16 @@ class StatusProvider with ChangeNotifier {
   }) async {
     final api = _serversProvider?.apiClient2;
     final current = _serverStatus;
-    if (api == null || current == null) return false;
-    if (newStatus != 'block' && newStatus != 'unblock') return false;
-    if (RegExp(r'[^A-Za-z0-9_.-]').hasMatch(domain)) return false;
+    setErrorMessage(null);
+    if (api == null || current == null) {
+      return setFailureReason('no server is connected to write the rule to');
+    }
+    if (newStatus != 'block' && newStatus != 'unblock') {
+      return setFailureReason('the app asked to neither block nor unblock it');
+    }
+    if (RegExp(r'[^A-Za-z0-9_.-]').hasMatch(domain)) {
+      return setFailureReason('"$domain" is not a domain name the server accepts');
+    }
 
     final normalizedDomain = (domain.endsWith('.')
       ? domain.substring(0, domain.length - 1)
@@ -415,12 +566,18 @@ class StatusProvider with ChangeNotifier {
     final label = RegExp(r'^[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?$');
     if (normalizedDomain.isEmpty || normalizedDomain.length > 253 ||
         normalizedDomain.split('.').any((part) => !label.hasMatch(part))) {
-      return false;
+      return setFailureReason('"$domain" is not a domain name the server accepts');
     }
 
     try {
       final rules = await api.getFilteringRules();
-      if (!rules.successful || rules.content is! FilteringStatus) return false;
+      if (!rules.successful || rules.content is! FilteringStatus) {
+        captureErrorReason(
+          rules,
+          fallback: 'the server did not hand back the rules to change',
+        );
+        return false;
+      }
       final latest = rules.content as FilteringStatus;
       final simpleRule = RegExp(
         r'^(?:@@)?\|\|' + RegExp.escape(normalizedDomain) + r'\.?\^$',
@@ -435,6 +592,10 @@ class StatusProvider with ChangeNotifier {
         : '@@||$normalizedDomain^');
 
       final result = await api.postFilteringRules(data: {'rules': newRules});
+      captureErrorReason(
+        result,
+        fallback: 'the server refused the rewritten rule list',
+      );
       if (!result.successful) return false;
 
       final updated = FilteringStatus(
@@ -469,8 +630,14 @@ class StatusProvider with ChangeNotifier {
       notifyListeners();
       return true;
     }
-    catch (_) {
-      return false;
+    // The rewrite is a read-then-write, and either half can answer with
+    // something that is not what this method expects. Swallowing that into a
+    // bare `false` left the page saying only "could not be updated" over a
+    // server that had in fact replied.
+    catch (e) {
+      return setFailureReason(
+        'the rule list this app was given could not be rewritten ($e)',
+      );
     }
   }
 
@@ -478,6 +645,7 @@ class StatusProvider with ChangeNotifier {
     final result = await _serversProvider!.apiClient2!.updateSafeSearchSettings(
       body: status
     );
+    captureErrorReason(result);
 
     if (result.successful == true) {
       ServerStatus data = serverStatus!;

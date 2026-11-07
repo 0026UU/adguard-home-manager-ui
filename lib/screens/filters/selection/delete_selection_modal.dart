@@ -1,7 +1,8 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
-
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/models/filtering.dart';
 
 class DeleteSelectionModal extends StatefulWidget {
@@ -26,126 +27,102 @@ class _DeleteSelectionModalState extends State<DeleteSelectionModal> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Column(
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
+
+    // One group per kind of list: the header toggles the names underneath,
+    // as the expansion panels did.
+    Widget group({
+      required String title,
+      required List<Filter> lists,
+      required bool expanded,
+      required VoidCallback onToggle,
+    }) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.shield_rounded,
-            size: 24,
-            color: Theme.of(context).listTileTheme.iconColor
-          ),
-          const SizedBox(height: 16),
-          Text(
-            AppLocalizations.of(context)!.deleteSelectedLists,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface
+          InkWell(
+            onTap: onToggle,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: p.label,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    expanded
+                      ? CupertinoIcons.chevron_up
+                      : CupertinoIcons.chevron_down,
+                    size: 16,
+                    color: p.label3,
+                  ),
+                ],
+              ),
             ),
-          )
+          ),
+          if (expanded)
+            for (final list in lists)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  "• ${list.name}",
+                  style: TextStyle(fontSize: 14, color: p.label),
+                ),
+              ),
+        ],
+      );
+    }
+
+    return AppleFormModal(
+      title: l.deleteSelectedLists,
+      dialog: true,
+      maxWidth: 500,
+      icon: CupertinoIcons.trash,
+      iconColor: p.red,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (widget.selectedWhitelists.isNotEmpty)
+                    group(
+                      title: l.whitelists,
+                      lists: widget.selectedWhitelists,
+                      expanded: _whitelistExpanded,
+                      onToggle: () => setState(() => _whitelistExpanded = !_whitelistExpanded),
+                    ),
+                  if (widget.selectedWhitelists.isNotEmpty && widget.selectedBlacklists.isNotEmpty)
+                    const SizedBox(height: 8),
+                  if (widget.selectedBlacklists.isNotEmpty)
+                    group(
+                      title: l.blacklists,
+                      lists: widget.selectedBlacklists,
+                      expanded: _blacklistExpanded,
+                      onToggle: () => setState(() => _blacklistExpanded = !_blacklistExpanded),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          AppleFormFooter(
+            confirmLabel: l.confirm,
+            onConfirm: widget.onDelete,
+            destructive: true,
+          ),
         ],
       ),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: 500
-        ),
-        child: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Wrap(
-              children: [
-                if (widget.selectedWhitelists.isNotEmpty) ExpansionPanelList(
-                  expandedHeaderPadding: const EdgeInsets.all(0),
-                  elevation: 0,
-                  expansionCallback: (_, isExpanded) => setState(() => _whitelistExpanded = isExpanded),
-                  animationDuration: const Duration(milliseconds: 250),
-                  children: [
-                    ExpansionPanel(
-                      backgroundColor: Colors.transparent,
-                      headerBuilder: (context, isExpanded) => Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AppLocalizations.of(context)!.whitelists,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Theme.of(context).colorScheme.onSurface
-                            ),
-                          ),
-                        ],
-                      ),
-                      body: ListView.builder(
-                        primary: false,
-                        shrinkWrap: true,
-                        itemCount: widget.selectedWhitelists.length,
-                        itemBuilder: (context, index) => Padding(
-                          padding: const EdgeInsets.all(4),
-                          child: Text("• ${widget.selectedWhitelists[index].name}"),
-                        ),
-                      ),
-                      isExpanded: _whitelistExpanded
-                    ),
-                  ],
-                ),
-                if (widget.selectedWhitelists.isNotEmpty && widget.selectedBlacklists.isNotEmpty) const Padding(padding: EdgeInsets.all(8)),
-                if (widget.selectedBlacklists.isNotEmpty) ExpansionPanelList(
-                  expandedHeaderPadding: const EdgeInsets.all(0),
-                  elevation: 0,
-                  expansionCallback: (_, isExpanded) => setState(() => _blacklistExpanded = isExpanded),
-                  animationDuration: const Duration(milliseconds: 250),
-                  children: [
-                    ExpansionPanel(
-                      backgroundColor: Colors.transparent,
-                      headerBuilder: (context, isExpanded) => Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AppLocalizations.of(context)!.blacklists,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Theme.of(context).colorScheme.onSurface
-                            ),
-                          ),
-                        ],
-                      ),
-                      body: ListView.builder(
-                        primary: false,
-                        shrinkWrap: true,
-                        itemCount: widget.selectedBlacklists.length,
-                        itemBuilder: (context, index) => Padding(
-                          padding: const EdgeInsets.all(4),
-                          child: Text("• ${widget.selectedBlacklists[index].name}"),
-                        ),
-                      ),
-                      isExpanded: _blacklistExpanded
-                    ),
-                  ],
-                )
-              ],
-            ),
-          ),
-        ),
-      ),
-      actions: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextButton(
-              onPressed: () => Navigator.pop(context), 
-              child: Text(AppLocalizations.of(context)!.cancel)
-            ),
-            const SizedBox(width: 8),
-            TextButton(
-              onPressed: widget.onDelete, 
-              child: Text(AppLocalizations.of(context)!.confirm)
-            ),
-          ],
-        )
-      ],
     );
   }
 }

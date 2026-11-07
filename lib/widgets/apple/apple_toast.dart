@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'package:adguard_home_manager/config/globals.dart';
@@ -190,18 +191,20 @@ class _AppleToastViewState extends State<_AppleToastView>
   /// Callers describe a result with a colour rather than an icon, so the glyph
   /// follows the hue: green confirms, red and amber warn, anything else informs.
   static IconData _iconFor(Color? color) {
-    if (color == null) return Icons.check_circle_outline;
+    if (color == null) return CupertinoIcons.checkmark_circle;
 
     final HSVColor hsv = HSVColor.fromColor(color);
     final double hue = hsv.hue;
     final bool vivid = hsv.saturation > 0.4 && hsv.value > 0.4;
 
-    if (!vivid) return Icons.info_outline;
+    if (!vivid) return CupertinoIcons.info_circle;
     if (hue >= 340 || hue < 70) {
-      return hue < 45 ? Icons.error_outline : Icons.warning_amber_rounded;
+      return hue < 45
+          ? CupertinoIcons.xmark_circle
+          : CupertinoIcons.exclamationmark_triangle;
     }
-    if (hue < 200) return Icons.check_circle_outline;
+    if (hue < 200) return CupertinoIcons.checkmark_circle;
 
-    return Icons.info_outline;
+    return CupertinoIcons.info_circle;
   }
 }

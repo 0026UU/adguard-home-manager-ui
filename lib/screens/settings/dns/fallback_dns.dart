@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:adguard_home_manager/constants/regexps.dart';
 import 'package:adguard_home_manager/screens/settings/dns/comment_modal.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/functions/desktop_mode.dart';
 import 'package:adguard_home_manager/classes/process_modal.dart';
@@ -74,10 +76,12 @@ class _FallbackDnsScreenState extends State<FallbackDnsScreen> {
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
 
     final width = MediaQuery.of(context).size.width;
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
     void saveData() async {
       ProcessModal processModal = ProcessModal();
-      processModal.open(AppLocalizations.of(context)!.savingConfig);
+      processModal.open(l.savingConfig);
 
       final result = await dnsProvider.saveFallbackDnsConfig({
         "fallback_dns": fallbackControllers.map(
@@ -93,22 +97,22 @@ class _FallbackDnsScreenState extends State<FallbackDnsScreen> {
       if (result.successful == true) {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsConfigSaved, 
-          color: Colors.green
+          label: l.dnsConfigSaved, 
+          color: p.green
         );
       }
       else if (result.successful == false && result.statusCode == 400) {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.someValueNotValid, 
-          color: Colors.red
+          label: l.someValueNotValid, 
+          color: p.red
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsConfigNotSaved, 
-          color: Colors.red
+          label: l.dnsConfigNotSaved, 
+          color: p.red
         );
       } 
     }
@@ -182,154 +186,118 @@ class _FallbackDnsScreenState extends State<FallbackDnsScreen> {
       }
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.fallbackDnsServers),
-        surfaceTintColor: isDesktop(width) ? Colors.transparent : null,
-        actions: [
-          IconButton(
-            onPressed: validValues == true
-              ? () => saveData()
-              : null, 
-            icon: const Icon(Icons.save_rounded),
-            tooltip: AppLocalizations.of(context)!.save,
+    return AppleScreen(
+      title: l.fallbackDnsServers,
+      subtitle: l.fallbackDnsServersDescription,
+      leading: isDesktop(width)
+        ? null
+        : AppleBackButton(
+            label: l.back,
+            onPressed: () => Navigator.pop(context),
           ),
-          const SizedBox(width: 10)
-        ],
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.only(top: 10),
-          children: [
-            Card(
-              margin: const EdgeInsets.only(
-                left: 16, right: 16, bottom: 20
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_rounded,
-                      color: Theme.of(context).listTileTheme.iconColor,
-                    ),
-                    const SizedBox(width: 20),
-                    Flexible(
-                      child: Text(
-                        AppLocalizations.of(context)!.fallbackDnsServersInfo,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface
-                        ),
-                      )
-                    )
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            if (fallbackControllers.isEmpty) Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Center(
-                    child: Text(
-                      AppLocalizations.of(context)!.noFallbackDnsAdded,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 16
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
-            ),
-            ...fallbackControllers.map((c) => Padding(
-              padding: const EdgeInsets.only(
-                left: 16, right: 6, bottom: 20
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  if (c['controller'] != null) Expanded(
-                    child: TextFormField(
-                      controller: c['controller'],
-                      onChanged: (value) => validateIp(c, value),
-                      decoration: InputDecoration(
-                        prefixIcon: Icon(
-                          c['isComment'] == true 
-                            ? Icons.comment_rounded 
-                            : Icons.dns_rounded
-                        ),
-                        border: const OutlineInputBorder(
-                          borderRadius: BorderRadius.all(
-                            Radius.circular(10)
-                          )
-                        ),
-                        errorText: c['error'],
-                        labelText: c['isComment'] == true 
-                          ? AppLocalizations.of(context)!.comment
-                          : AppLocalizations.of(context)!.dnsServer,
-                      )
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (c['comment'] != null) Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          c['comment'],
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Theme.of(context).listTileTheme.iconColor
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => openEditCommentModal(c, fallbackControllers.indexOf(c)), 
-                          icon: const Icon(Icons.edit),
-                          tooltip:  AppLocalizations.of(context)!.edit,
-                        )
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      setState(() => fallbackControllers = fallbackControllers.where((con) => con != c).toList());
-                      checkValidValues();
-                    }, 
-                    icon: const Icon(Icons.remove_circle_outline),
-                    tooltip:  AppLocalizations.of(context)!.remove,
-                  )
-                ],
-              ),
-            )),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      actions: [
+        IconButton(
+          onPressed: validValues == true
+            ? () => saveData()
+            : null, 
+          icon: const Icon(CupertinoIcons.checkmark),
+          tooltip: l.save,
+        ),
+      ],
+      slivers: [
+        SliverToBoxAdapter(
+          child: AppleListSection(
+            // The two things a fallback line can be are the two actions the
+            // header offers; the words the buttons used to carry are the same
+            // words, moved onto the caption line of the group.
+            headerTrailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ElevatedButton.icon(
-                  onPressed: openAddCommentModal, 
-                  icon: const Icon(Icons.add), 
-                  label: Text(AppLocalizations.of(context)!.comment)
-                ),
-                ElevatedButton.icon(
+                AppleHeaderAction(label: l.comment, onPressed: openAddCommentModal),
+                const SizedBox(width: 14),
+                AppleHeaderAction(
+                  label: l.address,
                   onPressed: () {
                     setState(() => fallbackControllers.add({
                       'controller': TextEditingController(),
                       'error': null
                     }));
                     checkValidValues();
-                  }, 
-                  icon: const Icon(Icons.add), 
-                  label: Text(AppLocalizations.of(context)!.address)
+                  },
                 ),
               ],
             ),
-            const SizedBox(height: 20)
-          ],
+            footer: l.fallbackDnsServersInfo,
+            margin: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+            children: [
+              if (fallbackControllers.isEmpty)
+                AppleEmptyState(
+                  icon: CupertinoIcons.arrow_swap,
+                  title: l.noFallbackDnsAdded,
+                  color: p.label3,
+                ),
+              for (final c in fallbackControllers)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+                  child: Row(
+                    children: [
+                      if (c['controller'] != null) Expanded(
+                        child: AppleTextField(
+                          label: c['isComment'] == true 
+                            ? l.comment
+                            : l.dnsServer,
+                          icon: c['isComment'] == true
+                            ? CupertinoIcons.chat_bubble
+                            : CupertinoIcons.arrow_swap,
+                          controller: c['controller'],
+                          error: c['error'],
+                          onChanged: (value) => validateIp(c, value),
+                          padding: EdgeInsets.zero,
+                        ),
+                      ),
+                      if (c['comment'] != null) Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                c['comment'],
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 16, color: p.label2),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => openEditCommentModal(c, fallbackControllers.indexOf(c)), 
+                              icon: Icon(
+                                CupertinoIcons.pencil,
+                                size: 19,
+                                color: p.tint,
+                              ),
+                              tooltip: l.edit,
+                            )
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          setState(() => fallbackControllers = fallbackControllers.where((con) => con != c).toList());
+                          checkValidValues();
+                        }, 
+                        icon: Icon(
+                          CupertinoIcons.minus_circle,
+                          size: 19,
+                          color: p.red,
+                        ),
+                        tooltip: l.remove,
+                      )
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

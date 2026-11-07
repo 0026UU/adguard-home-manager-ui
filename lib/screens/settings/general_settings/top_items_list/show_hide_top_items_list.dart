@@ -1,10 +1,39 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
-import 'package:adguard_home_manager/widgets/custom_switch_list_tile.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
 
+/// The name the dashboard gives one of the rankings its card can show.
+String topItemTitle(AppLocalizations l, HomeTopItems item) {
+  switch (item) {
+    case HomeTopItems.queriedDomains:
+      return l.topQueriedDomains;
+    case HomeTopItems.blockedDomains:
+      return l.topBlockedDomains;
+    case HomeTopItems.recurrentClients:
+      return l.topClients;
+  }
+}
+
+/// The badge the design layer puts in front of one of those rankings.
+IconData topItemIcon(HomeTopItems item) {
+  switch (item) {
+    case HomeTopItems.queriedDomains:
+      return CupertinoIcons.square_split_2x1_fill;
+    case HomeTopItems.blockedDomains:
+      return CupertinoIcons.slash_circle_fill;
+    case HomeTopItems.recurrentClients:
+      return CupertinoIcons.person_2_fill;
+  }
+}
+
+/// Which of the dashboard's top lists the user wants to see.
+///
+/// Turning one off takes it out of the order rather than leaving a hole in it,
+/// which is what the server's own setting is: one list of the items to show,
+/// in the sequence to show them in.
 class ShowHideTopItemsList extends StatelessWidget {
   final List<HomeTopItems> enabledHomeTopItems;
   final void Function(List<HomeTopItems>) setEnabledHomeTopItems;
@@ -17,72 +46,31 @@ class ShowHideTopItemsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const padding = EdgeInsets.symmetric(horizontal: 16, vertical: 8);
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
     void updateValue(HomeTopItems value, bool newStatus) {
-      if (newStatus == true) {
-        setEnabledHomeTopItems([
-          ...enabledHomeTopItems,
-          value
-        ]);
-      }
-      else {
-        setEnabledHomeTopItems(enabledHomeTopItems.where((e) => e != value).toList());
+      if (newStatus) {
+        setEnabledHomeTopItems([...enabledHomeTopItems, value]);
+      } else {
+        setEnabledHomeTopItems(
+          enabledHomeTopItems.where((e) => e != value).toList(),
+        );
       }
     }
 
-    return SafeArea(
-      top: false,
-      bottom: true,
-      child: Builder(
-        builder: (context) => CustomScrollView(
-          slivers: [
-            SliverOverlapInjector(
-              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-            ), 
-            SliverList.list(
-              children: [
-                const SizedBox(height: 8),
-                CustomSwitchListTile(
-                  value: enabledHomeTopItems.contains(HomeTopItems.queriedDomains), 
-                  onChanged: (v) => updateValue(HomeTopItems.queriedDomains, v),
-                  title: AppLocalizations.of(context)!.topQueriedDomains,
-                  leadingIcon: Icons.install_desktop_outlined,
-                  padding: padding,
-                ),
-                CustomSwitchListTile(
-                  value: enabledHomeTopItems.contains(HomeTopItems.blockedDomains), 
-                  onChanged: (v) => updateValue(HomeTopItems.blockedDomains, v),
-                  title: AppLocalizations.of(context)!.topBlockedDomains,
-                  leadingIcon: Icons.block_rounded,
-                  padding: padding,
-                ),
-                CustomSwitchListTile(
-                  value: enabledHomeTopItems.contains(HomeTopItems.recurrentClients), 
-                  onChanged: (v) => updateValue(HomeTopItems.recurrentClients, v),
-                  title: AppLocalizations.of(context)!.topClients,
-                  leadingIcon: Icons.smartphone_rounded,
-                  padding: padding,
-                ),
-                CustomSwitchListTile(
-                  value: enabledHomeTopItems.contains(HomeTopItems.topUpstreams), 
-                  onChanged: (v) => updateValue(HomeTopItems.topUpstreams, v),
-                  title: AppLocalizations.of(context)!.topUpstreams,
-                  leadingIcon: Icons.upload_file_rounded,
-                  padding: padding,
-                ),
-                CustomSwitchListTile(
-                  value: enabledHomeTopItems.contains(HomeTopItems.avgUpstreamResponseTime), 
-                  onChanged: (v) => updateValue(HomeTopItems.avgUpstreamResponseTime, v),
-                  title: AppLocalizations.of(context)!.averageUpstreamResponseTime,
-                  leadingIcon: Icons.timer_rounded,
-                  padding: padding,
-                ),
-              ]
-            )
-          ],
-        ),
-      )
+    return AppleListSection(
+      title: l.showHide,
+      children: [
+        for (final item in HomeTopItems.values)
+          AppleSwitchListTile(
+            icon: topItemIcon(item),
+            iconColor: enabledHomeTopItems.contains(item) ? p.tint : p.gray,
+            title: topItemTitle(l, item),
+            value: enabledHomeTopItems.contains(item),
+            onChanged: (value) => updateValue(item, value),
+          ),
+      ],
     );
   }
 }

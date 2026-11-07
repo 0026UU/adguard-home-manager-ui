@@ -178,4 +178,181 @@ void main() {
     expect(find.byType(AppleFilterChip), findsOneWidget);
     expect(find.text(l.onlyStatus(l.queryBlocked)), findsOneWidget);
   });
+
+  testWidgets('the chips over the live rows narrow the rows themselves',
+      (tester) async {
+    await pumpLogsPage(tester, logs: logs, live: live);
+
+    await tester.tap(find.text(l.liveLogs));
+    await tester.pumpAndSettle();
+
+    live.emit([
+      logFixture('old.example.org', time: DateTime.utc(2024, 5, 1, 11)),
+      logFixture('news.example.org', reason: 'NotFilteredNotFound'),
+      logFixture('other.example.org', client: '192.0.2.9'),
+      logFixture('ads.example.org'),
+    ]);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LogTile), findsNWidgets(4));
+
+    logs.setAppliedFilters(AppliedFiters(
+      statuses: const [LogStatus.blocked],
+      searchText: null,
+      clients: const [],
+      timeRange: LogTimeRange.twentyFourHours,
+    ));
+    await tester.pumpAndSettle();
+
+    // The blocked chip stands for the filter reasons the server names, so the
+    // upstream answer is no longer on screen.
+    expect(find.byType(AppleFilterChip), findsOneWidget);
+    expect(find.byType(LogTile), findsNWidgets(3));
+    expect(find.text('news.example.org'), findsNothing);
+
+    logs.setAppliedFilters(AppliedFiters(
+      statuses: const [LogStatus.blocked],
+      searchText: null,
+      clients: const ['192.168.1.20'],
+      timeRange: LogTimeRange.twentyFourHours,
+    ));
+    await tester.pumpAndSettle();
+
+    // The device chip matches the address the query came from, not the name
+    // the row shows.
+    expect(find.byType(AppleFilterChip), findsNWidgets(2));
+    expect(find.byType(LogTile), findsNWidgets(2));
+    expect(find.text('other.example.org'), findsNothing);
+
+    logs.setAppliedFilters(AppliedFiters(
+      statuses: const [],
+      searchText: null,
+      clients: const ['192.168.1.20'],
+      timeRange: LogTimeRange.oneHour,
+    ));
+    await tester.pumpAndSettle();
+
+    // The window counts from the newest query the stream read, so the row an
+    // hour behind it falls out of the last hour while its newer neighbours
+    // stay, whatever reason they carry.
+    expect(find.byType(LogTile), findsNWidgets(2));
+    expect(find.text('old.example.org'), findsNothing);
+    expect(find.text('ads.example.org'), findsOneWidget);
+    expect(find.text('news.example.org'), findsOneWidget);
+  });
+
+  testWidgets('the live empty state says what it is waiting for',
+      (tester) async {
+    await pumpLogsPage(tester, logs: logs, live: live);
+
+    await tester.tap(find.text(l.liveLogs));
+    await tester.pumpAndSettle();
+
+    // Nothing has asked the server since the view opened, and the copy says
+    // the server is up and will answer.
+    expect(find.byIcon(CupertinoIcons.bolt), findsOneWidget);
+    expect(find.text(l.hereWillAppearRealtimeLogs), findsOneWidget);
+    expect(find.text(l.protectionRunning), findsOneWidget);
+
+    logs.setAppliedFilters(AppliedFiters(
+      statuses: const [LogStatus.blocked],
+      searchText: null,
+      clients: const ['192.0.2.9'],
+      timeRange: LogTimeRange.twentyFourHours,
+    ));
+    live.emit([logFixture('ads.example.org')]);
+    await tester.pumpAndSettle();
+
+    // The row arrived and the chip threw it away, which the page has to say
+    // instead of showing a bare label.
+    expect(find.text(l.noLogsDisplay), findsOneWidget);
+    // The copy blames the filters, not the clock: live rows are by definition
+    // recent, so "no logs that old" would send the user to the wrong control.
+    expect(find.text(l.noLiveLogsMatchingFilters), findsOneWidget);
+    expect(find.text(l.resetFilters), findsOneWidget);
+
+    await tester.tap(find.text(l.resetFilters));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LogTile), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a load that failed keeps the filters within reach',
+      (tester) async {
+    final unreachable = OfflineLogs(failing: true);
+
+    await pumpLogsPage(tester, logs: unreachable, live: live);
+
+    expect(find.text(l.logsNotLoaded), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.slider_horizontal_3), findsOneWidget);
+    // A failed load is the only thing on the page, so the pull gesture that
+    // would retry it is invisible; the page has to offer the retry by name.
+    expect(find.widgetWithText(AppleFormButton, l.refresh), findsOneWidget);
+
+    await tester.tap(find.byIcon(CupertinoIcons.slider_horizontal_3));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LogsFiltersModal), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('an empty stored log says whether filters are the reason',
+      (tester) async {
+    final quiet = OfflineLogs(empty: true);
+
+    await pumpLogsPage(tester, logs: quiet, live: live);
+
+    expect(find.byType(LogTile), findsNothing);
+    expect(find.text(l.noLogsDisplay), findsOneWidget);
+    // With nothing on screen throwing rows away, the page says no more than
+    // that the window is empty.
+    expect(find.text(l.noLogsMatchingFilters), findsNothing);
+
+    quiet.setAppliedFilters(AppliedFiters(
+      statuses: const [LogStatus.blocked],
+      searchText: null,
+      clients: const [],
+      timeRange: LogTimeRange.twentyFourHours,
+    ));
+    await tester.pumpAndSettle();
+
+    // The same rule the stream follows: something on screen is narrowing the
+    // rows, so the copy names that instead of leaving a bare label.
+    expect(find.text(l.noLogsMatchingFilters), findsOneWidget);
+    expect(find.text(l.noLogsThatOld), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a row names its reason on the one line the pill has',
+      (tester) async {
+    await pumpLogsPage(tester, logs: logs, live: live);
+
+    await tester.tap(find.text(l.liveLogs));
+    await tester.pumpAndSettle();
+
+    live.emit([
+      logFixture('a.example.org', reason: 'FilteredBlackList'),
+      logFixture('b.example.org', reason: 'FilteredParental'),
+      logFixture('c.example.org', reason: 'NotFilteredNotFound'),
+    ]);
+    await tester.pumpAndSettle();
+
+    // The pill is a single line. The labels the old filter screen drew over
+    // two lines carried a newline, so every blocked row read "Blocked…" and
+    // hid which rule had stopped the query.
+    expect(find.text(l.blockedBlacklistRow), findsOneWidget);
+    expect(find.text(l.blockedParentalRow), findsOneWidget);
+    expect(find.text(l.processedRow), findsOneWidget);
+
+    for (final twoLine in [
+      l.blockedBlacklist,
+      l.blockedParental,
+      l.processed,
+    ]) {
+      expect(twoLine, contains('\n'));
+      expect(find.text(twoLine), findsNothing);
+    }
+    expect(tester.takeException(), isNull);
+  });
 }

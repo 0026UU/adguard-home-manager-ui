@@ -58,6 +58,10 @@ class ClientScreen extends StatefulWidget {
 class _ClientScreenState extends State<ClientScreen> {
   final _scrollController = ScrollController();
 
+  /// The form's own half of the nested scroll view, picked up when the body is
+  /// built so a refused save can bring the reasons card back into view.
+  ScrollController? _innerScrollController;
+
   final Uuid uuid = const Uuid();
 
   TextEditingController nameController = TextEditingController();
@@ -175,6 +179,23 @@ class _ClientScreenState extends State<ClientScreen> {
   }
 
   @override
+  void dispose() {
+    // The identifier and upstream rows are made and thrown away as the user
+    // types, so whatever is still in the lists when the page goes is what has
+    // to be released; each one owns an edit box the framework cannot free.
+    for (final item in identifiersControllers) {
+      item.controller.dispose();
+    }
+    for (final item in upstreamServers) {
+      item.controller.dispose();
+    }
+    nameController.dispose();
+    _dnsCacheField.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final p = ApplePalette.of(context);
@@ -193,9 +214,13 @@ class _ClientScreenState extends State<ClientScreen> {
         safeSearch: safeSearch,
         useGlobalBlockedServices: useGlobalSettingsServices,
         blockedServices: blockedServices,
-        upstreams: List<String>.from(
-          upstreamServers.map((e) => e.controller.text),
-        ),
+        // An empty row left in the list is not an upstream the server can
+        // take, so the rows nobody filled in are dropped rather than sent as
+        // "" and rejected with a failure that names nothing.
+        upstreams: upstreamServers
+            .map((e) => e.controller.text.trim())
+            .where((e) => e.isNotEmpty)
+            .toList(),
         // The form draws no field for the rules of the device, so the ones it
         // carries are written back as they are.
         rules: widget.client?.rules ?? const [],
@@ -213,19 +238,25 @@ class _ClientScreenState extends State<ClientScreen> {
     void validateValues() {
       _nameValid = nameController.text != '';
       _identifiersValid = identifiersControllers.isNotEmpty &&
-          identifiersControllers[0].controller.text != '';
+          identifiersControllers.every(
+            (e) => e.controller.text.trim().isNotEmpty,
+          );
       _dnsCacheValid = validateNumber(_dnsCacheField.text);
       if (_nameValid && _identifiersValid && _dnsCacheValid) {
         createClient();
         Navigator.pop(context);
       } else {
-        // The reasons sit at the top of the form, so bring them into view.
-        if (_scrollController.hasClients) {
-          _scrollController.animateTo(
-            0,
-            curve: Curves.easeOut,
-            duration: const Duration(milliseconds: 400),
-          );
+        // Both halves of the nested scroll view go back to the top: growing the
+        // bar alone leaves the reasons card off screen, and animating the inner
+        // half of a [NestedScrollView] leaves a driven activity behind that
+        // outlives the page. Jumping is instant anyway, which is what a refused
+        // save should feel like.
+        final inner = _innerScrollController;
+        for (final controller in [
+          if (_scrollController.hasClients) _scrollController,
+          if (inner != null && inner.hasClients) inner,
+        ]) {
+          controller.jumpTo(0);
         }
         setState(() => {});
       }
@@ -233,7 +264,23 @@ class _ClientScreenState extends State<ClientScreen> {
 
     void remove() => openDeleteClientScreen(
           context: context,
-          onDelete: () => clientsProvider.deleteClient(widget.client!),
+          onDelete: () async {
+            final result =
+                await clientsProvider.deleteClient(widget.client!);
+
+            if (!context.mounted) return;
+
+            AppleToast.show(
+              context,
+              message: result
+                  ? l.clientDeletedSuccessfully
+                  : l.clientNotDeleted,
+              accent: result ? p.green : p.red,
+            );
+
+            // The entry is gone, so this form has nothing left to edit.
+            if (result == true) Navigator.pop(context);
+          },
         );
 
     Widget form() => ClientForm(
@@ -309,9 +356,23 @@ class _ClientScreenState extends State<ClientScreen> {
               onPressed: remove,
             ),
         ],
-        body: ListView(
-          padding: EdgeInsets.zero,
-          children: [if (errors != null) errors, form()],
+        // The form scrolls inside the nested body of [AppleScreen], which
+        // parks it under the pinned title bar unless it gives that overlap
+        // back first: without the injector the name field was hidden.
+        body: Builder(
+          builder: (context) {
+            _innerScrollController = PrimaryScrollController.maybeOf(context);
+            return CustomScrollView(
+              slivers: [
+                SliverOverlapInjector(
+                  handle:
+                      NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+                ),
+                if (errors != null) SliverToBoxAdapter(child: errors),
+                SliverToBoxAdapter(child: form()),
+              ],
+            );
+          },
         ),
       );
     }

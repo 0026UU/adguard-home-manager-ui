@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -20,16 +21,35 @@ import 'package:adguard_home_manager/models/server.dart';
 import 'package:adguard_home_manager/models/server_status.dart';
 import 'package:adguard_home_manager/models/dns_statistics.dart';
 import 'package:adguard_home_manager/classes/http_client.dart';
+import 'package:adguard_home_manager/services/auth.dart';
 
 class ApiResponse {
   final bool successful;
   final dynamic content;
   final int? statusCode;
 
+  /// True when the server refused the session and the one silent re-login
+  /// with the stored credentials did not fix it: the connection now needs the
+  /// user to supply credentials again. This is the only thing a 401 is allowed
+  /// to change for a caller — no screen branches on raw status codes.
+  final bool needsCredentials;
+
+  /// The server's own one-line reason for a refused write, e.g. `adding
+  /// client: another client "x" uses the same MAC "y"`.
+  ///
+  /// AdGuard Home puts the reason for a 4xx in the response body, and the
+  /// write wrappers used to drop it, so the page could only ever say "Client
+  /// could not be updated" while the server had explained exactly what was
+  /// wrong. It is null for a successful call and for a body that carried
+  /// nothing readable; a caller that only reads [successful] is unaffected.
+  final String? message;
+
   const ApiResponse({
     required this.successful,
     this.content,
     this.statusCode,
+    this.message,
+    this.needsCredentials = false,
   });
 }
 
@@ -38,7 +58,155 @@ class ApiClientV2 {
 
   ApiClientV2({
     required this.server
-  });
+  }) {
+    // Wire the 401 hook once for the process: every client shares the same
+    // static transport, and the recovery itself is per-server (it logs in
+    // with the credentials stored on the row that just answered 401).
+    HttpRequestClient.recoverSession ??= ServerAuth.reloginSilently;
+  }
+
+  /// The most the UI is asked to show for one refused write.
+  static const int _maxMessageLength = 240;
+
+  /// The response a write wrapper hands back.
+  ///
+  /// [content] keeps whatever the wrapper had already returned, so a caller
+  /// reading it (the filter-list page reads the raw body of `add_url`) is
+  /// untouched; [message] carries the server's reason, which used to be thrown
+  /// away. The status code is only passed on by the wrappers that already
+  /// passed it, because several screens branch on it and must not start
+  /// branching where they did not before.
+  ApiResponse _writeResult(
+    HttpResponse result, {
+    Object? content,
+    int? statusCode,
+  }) =>
+      ApiResponse(
+        successful: result.successful,
+        content: content,
+        statusCode: statusCode,
+        message: _failureMessage(result),
+        needsCredentials: result.statusCode == 401,
+      );
+
+  /// The reason the server gave for a non-2xx answer, or null when it gave
+  /// none.
+  ///
+  /// `aghhttp.Error` writes a single plain-text line and `jsonDecode` of that
+  /// throws, so the body is read as text first and only picked apart as JSON
+  /// when it looks like JSON. An HTML error page — the answer of a proxy in
+  /// front of the server — carries nothing a user can act on, so the page
+  /// itself is dropped, but the status code is kept: it is the one thing that
+  /// page says, and it separates a proxy that is down from a server that
+  /// refused the credentials.
+  static String? _failureMessage(HttpResponse result) {
+    if (result.successful) return null;
+
+    final fromBody = result.body == null ? null : _messageFromBody(result.body!);
+    if (fromBody != null) return fromBody;
+
+    // No readable body: first why the request never got an answer at all, then
+    // what the answer said.
+    return _transportMessage(result.exception) ?? _statusMessage(result.statusCode);
+  }
+
+  /// The least that can be said when the server answered a status code with
+  /// nothing readable in the body — the 502 page of a reverse proxy in front
+  /// of AdGuard Home, or a bare 401.
+  static String? _statusMessage(int? statusCode) {
+    if (statusCode == null) return null;
+
+    if (statusCode == 401 || statusCode == 403) {
+      return 'the server refused the credentials of this connection (HTTP $statusCode)';
+    }
+    if (statusCode == 404) {
+      return 'this server has no such endpoint (HTTP 404)';
+    }
+    if (statusCode == 405) {
+      return 'this server does not allow that method (HTTP 405)';
+    }
+    if (statusCode >= 500) {
+      return 'the server answered HTTP $statusCode; a proxy in front of it may '
+          'be answering instead';
+    }
+    return 'the server answered HTTP $statusCode';
+  }
+
+  /// The answer of a read that failed.
+  ///
+  /// The read wrappers used to answer every failure with a bare
+  /// `ApiResponse(successful: false)`, so a screen could only ever say
+  /// "could not be loaded" whether the server was down, refused the login, or
+  /// handed back the HTML page of the proxy sitting in front of it. The status
+  /// code is deliberately not passed on here: no screen branched on it for a
+  /// read, and starting to would change behaviour this fix does not intend.
+  ApiResponse _readFailure(HttpResponse result, String endpoint) => ApiResponse(
+    successful: false,
+    message: _failureMessage(result) ?? _unreadableMessage(endpoint),
+    // The status code itself stays dropped for reads, but a 401 that survived
+    // the silent re-login is the one thing the provider must act on.
+    needsCredentials: result.statusCode == 401,
+  );
+
+  /// The body arrived and the server accepted it, but the model could not read
+  /// it. This is what a reverse proxy in front of AdGuard Home looks like from
+  /// here: a 200 with an HTML login page in it.
+  ///
+  /// A `FormatException` from `jsonDecode` and a `TypeError` from a model that
+  /// insists on a field the server no longer sends both land here, and both
+  /// used to be reported as a server that had not answered.
+  static String _unreadableMessage(String endpoint) =>
+      'the server answered $endpoint with something this app cannot read';
+
+  static String? _messageFromBody(String body) {
+    final trimmed = body.trim();
+    if (trimmed.isEmpty) return null;
+
+    if (trimmed.startsWith('{')) {
+      try {
+        final decoded = jsonDecode(trimmed);
+        if (decoded is Map) {
+          for (final key in const ['message', 'error']) {
+            final value = decoded[key];
+            if (value is String && value.trim().isNotEmpty) {
+              return _oneLine(value);
+            }
+          }
+        }
+      } on FormatException {
+        // Not JSON after all: the raw text below is the reason.
+      }
+    }
+
+    if (trimmed.startsWith('<')) return null;
+    return _oneLine(trimmed);
+  }
+
+  static String _oneLine(String text) {
+    final line = text.split('\n').first.trim();
+    return line.length <= _maxMessageLength
+        ? line
+        : '${line.substring(0, _maxMessageLength)}...';
+  }
+
+  /// Why the request never reached the server, said in a way the user can act
+  /// on. A body — and therefore a real reason — is absent in all of these.
+  static String? _transportMessage(ExceptionType? exception) {
+    switch (exception) {
+      case ExceptionType.timeout:
+        return 'the server did not answer in time';
+      case ExceptionType.socket:
+        return 'the server could not be reached';
+      case ExceptionType.handshake:
+        return 'the TLS handshake with the server failed';
+      case ExceptionType.http:
+        return 'the server sent a response that could not be read';
+      case ExceptionType.unknown:
+        return 'the request did not complete';
+      case null:
+        return null;
+    }
+  }
 
   Future<ApiResponse> getServerVersion() async {
     final result = await HttpRequestClient.get(urlPath: '/status', server: server);
@@ -49,44 +217,66 @@ class ApiClientV2 {
           content: jsonDecode(result.body!)['version']
         );
       } on FormatException {
-        return const ApiResponse(successful: false);
+        return _readFailure(result, '/status');
       } catch (e, stackTrace) {
         Sentry.captureException(e, stackTrace: stackTrace);
-        return const ApiResponse(successful: false);
+        return _readFailure(result, '/status');
       }
     }
     else {
-      return const ApiResponse(successful: false);
+      return _readFailure(result, '/status');
     }
   }
 
   Future<ApiResponse> getServerStatus() async {
-    final results1 = await Future.wait([
-      HttpRequestClient.get(urlPath: "/stats", server: server),
-      HttpRequestClient.get(urlPath: "/status", server: server),
-    ]);
-    final results2 = await Future.wait([
-      HttpRequestClient.get(urlPath: "/filtering/status", server: server),
-      HttpRequestClient.get(urlPath: "/safesearch/status", server: server),
-    ]);
-    final results3 = await Future.wait([
-      HttpRequestClient.get(urlPath: "/safebrowsing/status", server: server),
-      HttpRequestClient.get(urlPath: "/parental/status", server: server),
-    ]);
-    final results4 = await Future.wait([
-      HttpRequestClient.get(urlPath: "/clients", server: server),
-    ]);
-    // AdGuard Home limits the amount of concurrent connections
-    final results = [
-      ...results1,
-      ...results2,
-      ...results3,
-      ...results4
+    // AdGuard Home limits the amount of concurrent connections, so the seven
+    // calls go out in batches. Each batch used to carry its own 10s deadline,
+    // which let the Overview spin for four times that against a host that
+    // answers nothing; one deadline now covers the whole exchange.
+    Future<List<HttpResponse>> batch(List<String> paths) => Future.wait(
+      paths.map((p) => HttpRequestClient.get(urlPath: p, server: server))
+    );
+
+    // The order is the order the batches below answer in, and
+    // [exchangeFailure] needs it to name the endpoint that broke.
+    const paths = [
+      '/stats', '/status',
+      '/filtering/status', '/safesearch/status',
+      '/safebrowsing/status', '/parental/status',
+      '/clients',
     ];
-    if (
-      results.map((e) => e.successful).every((e) => e == true) &&
-      results.map((e) => e.body).every((e) => e != null)
-    ) {
+
+    Future<List<HttpResponse>> exchange() async => [
+      ...await batch(['/stats', '/status']),
+      ...await batch(['/filtering/status', '/safesearch/status']),
+      ...await batch(['/safebrowsing/status', '/parental/status']),
+      ...await batch(['/clients']),
+    ];
+
+    final List<HttpResponse> results;
+    try {
+      results = await exchange().timeout(const Duration(seconds: 15));
+    } on TimeoutException {
+      // The whole exchange ran out of the one deadline it is now given. The
+      // individual responses never got to say anything, so this is the only
+      // thing there is to say, and it is a great deal more than the bare
+      // failure the Overview used to turn into "could not be loaded".
+      return const ApiResponse(
+        successful: false,
+        message: 'the server did not answer the overview requests in time',
+      );
+    }
+
+    final index = results.indexWhere((e) => !e.successful);
+    if (index != -1) {
+      return ApiResponse(
+        successful: false,
+        message: _failureMessage(results[index]) ?? _unreadableMessage(paths[index]),
+        needsCredentials: results[index].statusCode == 401,
+      );
+    }
+
+    if (results.map((e) => e.body).every((e) => e != null)) {
       try {
         final Map<String, dynamic> mappedData = {
           'stats': jsonDecode(results[0].body!),
@@ -102,14 +292,23 @@ class ApiClientV2 {
           content: ServerStatus.fromJson(mappedData)
         );
       } on FormatException {
-        return const ApiResponse(successful: false);
+        return ApiResponse(
+          successful: false,
+          message: _unreadableMessage('the overview requests'),
+        );
       } catch (e, stackTrace) {
         Sentry.captureException(e, stackTrace: stackTrace);
-        return const ApiResponse(successful: false);
+        return ApiResponse(
+          successful: false,
+          message: _unreadableMessage('the overview requests'),
+        );
       }
     }
     else {
-      return const ApiResponse(successful: false);
+      return ApiResponse(
+        successful: false,
+        message: _unreadableMessage('the overview requests'),
+      );
     }
   }
 
@@ -135,11 +334,15 @@ class ApiClientV2 {
         );
       } catch (e, stackTrace) {
         Sentry.captureException(e, stackTrace: stackTrace);
-        return const ApiResponse(successful: false);
+        return _readFailure(result, '/stats');
       }
     }
     else {
-      return const ApiResponse(successful: false);
+      // `recent` is the one query the server checks before it answers, and it
+      // says so in the body: "recent: out of range: must be no greater than
+      // 86400000". Losing that sentence is what made the Overview trend card
+      // look broken rather than clamped.
+      return _readFailure(result, '/stats');
     }
   }
 
@@ -153,9 +356,7 @@ class ApiClientV2 {
         'enabled': enable
       }
     );
-    return ApiResponse(
-      successful: result.successful,
-    );
+    return _writeResult(result);
   }
 
   Future<ApiResponse> updateSafeBrowsing({
@@ -167,9 +368,7 @@ class ApiClientV2 {
         : "/safebrowsing/disable", 
       server: server,
     );
-    return ApiResponse(
-      successful: result.successful,
-    );
+    return _writeResult(result);
   }
 
   Future<ApiResponse> updateParentalControl({
@@ -181,9 +380,7 @@ class ApiClientV2 {
         : "/parental/disable", 
       server: server,
     );
-    return ApiResponse(
-      successful: result.successful,
-    );
+    return _writeResult(result);
   }
 
   Future<ApiResponse> updateGeneralProtection({
@@ -198,20 +395,27 @@ class ApiClientV2 {
         'duration': time
       }
     );
-    return ApiResponse(
-      successful: result.successful,
-    );
+    return _writeResult(result);
   }
 
   Future<ApiResponse> getClients() async {
-    final results = await Future.wait([
-      HttpRequestClient.get(urlPath: "/clients", server: server),
-      HttpRequestClient.get(urlPath: "/access/list", server: server),
-    ]);
-    if (
-      results.map((e) => e.successful).every((e) => e == true) &&
-      results.map((e) => e.body).every((e) => e != null)
-    ) {
+    const paths = ['/clients', '/access/list'];
+    final results = await Future.wait(
+      paths.map((p) => HttpRequestClient.get(urlPath: p, server: server))
+    );
+    final index = results.indexWhere((e) => !e.successful);
+    if (index != -1) {
+      // Which of the two broke is what makes the sentence useful: the devices
+      // page and the access page read different endpoints, and a proxy that
+      // answers 502 for one of them is a different failure from a server that
+      // refuses the credentials for both.
+      return ApiResponse(
+        successful: false,
+        message: _failureMessage(results[index]) ?? _unreadableMessage(paths[index]),
+        needsCredentials: results[index].statusCode == 401,
+      );
+    }
+    if (results.map((e) => e.body).every((e) => e != null)) {
       try {
         final clients = Clients.fromJson(jsonDecode(results[0].body!));
         clients.clientsAllowedBlocked = ClientsAllowedBlocked.fromJson(jsonDecode(results[1].body!));
@@ -225,11 +429,17 @@ class ApiClientV2 {
           stackTrace: stackTrace, 
           hint: Hint.withMap({ "statusCode": results.map((e) => e.statusCode.toString()) })
         );
-        return const ApiResponse(successful: false);
+        return ApiResponse(
+          successful: false,
+          message: _unreadableMessage('/clients'),
+        );
       }
     }
     else {
-      return const ApiResponse(successful: false);
+      return ApiResponse(
+        successful: false,
+        message: _unreadableMessage('/clients'),
+      );
     }
   }
 
@@ -242,12 +452,13 @@ class ApiClientV2 {
       body: body
     );
     if (result.statusCode == 400) {
-      return const ApiResponse(
+      return ApiResponse(
         successful: false,
-        content: "client_another_list"
+        content: "client_another_list",
+        message: _failureMessage(result),
       );
     }
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> getLogs({
@@ -290,11 +501,18 @@ class ApiClientV2 {
           stackTrace: stackTrace, 
           hint: Hint.withMap({ "statusCode": result.statusCode.toString() })
         );
-        return const ApiResponse(successful: false);
+        return ApiResponse(
+          successful: false,
+          message: _unreadableMessage('/querylog'),
+        );
       }
     }
     else {
-      return const ApiResponse(successful: false);
+      // v1.0.0-b.2 checks the `reason` values it is given against its own enum
+      // and answers 400 with the offending one — `parsing params: reason: bad
+      // enum value: "Filtered"` — which is the whole diagnosis of a filter
+      // sheet that has outgrown the server. It used to be thrown away.
+      return _readFailure(result, '/querylog');
     }
   }
 
@@ -312,11 +530,11 @@ class ApiClientV2 {
           stackTrace: stackTrace, 
           hint: Hint.withMap({ "statusCode": result.statusCode.toString() })
         );
-        return const ApiResponse(successful: false);
+        return _readFailure(result, '/filtering/status');
       }
     }
     else {
-      return const ApiResponse(successful: false);
+      return _readFailure(result, '/filtering/status');
     }
   }
 
@@ -328,7 +546,7 @@ class ApiClientV2 {
       server: server,
       body: data
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> postAddClient({
@@ -339,7 +557,7 @@ class ApiClientV2 {
       server: server,
       body: data
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> postUpdateClient({
@@ -350,7 +568,7 @@ class ApiClientV2 {
       server: server,
       body: data
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> postDeleteClient({
@@ -361,7 +579,7 @@ class ApiClientV2 {
       server: server,
       body: {'name': name},
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> getFiltering() async {
@@ -384,11 +602,16 @@ class ApiClientV2 {
           stackTrace: stackTrace, 
           hint: Hint.withMap({ "statusCode": [results1.statusCode, results2.statusCode].map((e) => e.toString()) })
         );
-        return const ApiResponse(successful: false);
+        return ApiResponse(
+          successful: false,
+          message: _unreadableMessage('/filtering/status'),
+        );
       }
     }
     else {
-      return const ApiResponse(successful: false);
+      // `blocked_services/list` is allowed to fail here — the page still draws
+      // the lists — so the reason can only ever come from the status call.
+      return _readFailure(results1, '/filtering/status');
     }
   }
 
@@ -400,7 +623,7 @@ class ApiClientV2 {
       server: server,
       body: {'rules': rules},
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> addFilteringList({
@@ -411,10 +634,10 @@ class ApiClientV2 {
       server: server,
       body: data,
     );
-    return ApiResponse(
-      successful: result.successful,
+    return _writeResult(
+      result,
       content: result.body,
-      statusCode: result.statusCode
+      statusCode: result.statusCode,
     );
   }
 
@@ -426,7 +649,7 @@ class ApiClientV2 {
       server: server,
       body: data,
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> deleteFilterList({
@@ -437,7 +660,7 @@ class ApiClientV2 {
       server: server,
       body: data,
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> getServerInfo() async {
@@ -454,50 +677,151 @@ class ApiClientV2 {
           stackTrace: stackTrace, 
           hint: Hint.withMap({ "statusCode": result.statusCode.toString() })
         );
-        return const ApiResponse(successful: false);
+        return _readFailure(result, '/status');
       }
     }
     else {
-      return const ApiResponse(successful: false);
+      return _readFailure(result, '/status');
     }
   }
 
+  /// Re-downloads every enabled filter list.
+  ///
+  /// `POST /control/filtering/refresh` on v1.0.0-b.x answers the openapi
+  /// `FilterRefreshResponse`, one integer — `{"updated": 123}` — and the two
+  /// slices it used to answer with (`updated` and `failed`, by name) never
+  /// existed, so the outcome of a single list is not something the endpoint
+  /// says. The server also stamps `last_updated` on a list whose download
+  /// failed, so that cannot be the signal either. What survives is the rules
+  /// count: a list that was asked to update and still has none produced
+  /// nothing, so it failed, and that is what [ApiResponse.content] reports
+  /// under `failed`.
+  ///
+  /// The refresh runs for minutes on a real server (measured at 92-126 seconds
+  /// for a single 190k-rule list), so it asks for the long deadline; the two
+  /// snapshots around it are ordinary GETs.
   Future<ApiResponse> updateLists() async {
-    final results = await Future.wait([
-      HttpRequestClient.post(
-        urlPath: '/filtering/refresh', 
+    final before = await _readEnabledLists();
+    if (before == null) {
+      return const ApiResponse(successful: false, message: 'the server did not report the filter lists');
+    }
+
+    // One refresh per list kind that has enabled entries, blacklist first. The
+    // handler takes a non-blocking lock and answers 500 "filters update
+    // procedure is already running" when two refreshes overlap, so the pair is
+    // issued in sequence rather than at once.
+    final Map<String, dynamic> outcomes = {};
+    for (final entry in const [
+      ['blacklist', false],
+      ['whitelist', true],
+    ]) {
+      final String kind = entry[0] as String;
+      final bool whitelist = entry[1] as bool;
+      if (!before.any((list) => list['whitelist'] == whitelist)) continue;
+
+      final result = await HttpRequestClient.post(
+        urlPath: '/filtering/refresh',
         server: server,
-        body: {'whitelist': true},
-      ),
-      HttpRequestClient.post(
-        urlPath: '/filtering/refresh', 
-        server: server,
-        body: {'whitelist': false},
-      ),
-    ]);
-    if (
-      results.map((e) => e.successful).every((e) => e == true) &&
-      results.map((e) => e.body).every((e) => e != null)
-    ) {
-      try {
-        final clients = Clients.fromJson(jsonDecode(results[0].body!));
-        clients.clientsAllowedBlocked = ClientsAllowedBlocked.fromJson(jsonDecode(results[1].body!));
-        return ApiResponse(
-          successful: true,
-          content: {'updated': jsonDecode(results[0].body!)['updated']+jsonDecode(results[1].body!)['updated']} 
-        );
-      } catch (e, stackTrace) {
-        Sentry.captureException(
-          e, 
-          stackTrace: stackTrace, 
-          hint: Hint.withMap({ "statusCode": results.map((e) => e.statusCode.toString()) })
-        );
-        return const ApiResponse(successful: false);
+        body: {'whitelist': whitelist},
+        timeout: longRunningRequestTimeoutSeconds,
+      );
+      if (!result.successful) {
+        return _writeResult(result);
+      }
+      outcomes[kind] = _updatedCountOf(result.body);
+    }
+
+    final after = await _readEnabledLists();
+    if (after == null) {
+      return const ApiResponse(successful: false, message: 'the server did not report the filter lists');
+    }
+
+    final List<String> failed = [];
+    final List<String> updatedLists = [];
+    for (final entry in after) {
+      final String name = entry['name'] as String;
+      final int rules = entry['rulesCount'] as int;
+      final int previous = (before
+              .firstWhere(
+                (other) => other['id'] == entry['id'] && other['whitelist'] == entry['whitelist'],
+                orElse: () => const {'rulesCount': -1},
+              )['rulesCount'] as int);
+      if (rules == 0) {
+        failed.add(name);
+      } else if (previous != rules) {
+        updatedLists.add(name);
       }
     }
-    else {
-      return const ApiResponse(successful: false);
+
+    final int reported = outcomes.values
+        .whereType<int>()
+        .fold(0, (total, value) => total + value);
+
+    return ApiResponse(
+      successful: true,
+      content: {
+        // The key and its type are what they always were, so a caller that
+        // only read the count keeps working.
+        'updated': reported,
+        'updated_lists': updatedLists,
+        'failed': failed,
+        'total': after.length,
+      },
+    );
+  }
+
+  /// The enabled filter lists, one map per list, or null when the server did
+  /// not answer `GET /control/filtering/status`.
+  Future<List<Map<String, dynamic>>?> _readEnabledLists() async {
+    final result = await HttpRequestClient.get(
+      urlPath: '/filtering/status',
+      server: server,
+    );
+    if (!result.successful || result.body == null) return null;
+
+    try {
+      final decoded = jsonDecode(result.body!);
+      if (decoded is! Map) return null;
+
+      final lists = <Map<String, dynamic>>[];
+      for (final entry in const [
+        ['filters', false],
+        ['whitelist_filters', true],
+      ]) {
+        final raw = decoded[entry[0] as String];
+        if (raw is! List) continue;
+        for (final filter in raw.whereType<Map>()) {
+          if (filter['enabled'] != true) continue;
+          lists.add({
+            'id': filter['id'],
+            'name': filter['name'] ?? '',
+            'rulesCount': (filter['rules_count'] as num?)?.toInt() ?? 0,
+            'whitelist': entry[1] as bool,
+          });
+        }
+      }
+      return lists;
+    } on FormatException {
+      return null;
+    } on TypeError {
+      return null;
     }
+  }
+
+  /// The `{"updated": N}` of the refresh response; anything that is not a
+  /// number is reported as zero rather than as a crash.
+  static int _updatedCountOf(String? body) {
+    if (body == null) return 0;
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map) {
+        final value = decoded['updated'];
+        if (value is num) return value.toInt();
+      }
+    } on FormatException {
+      return 0;
+    }
+    return 0;
   }
 
   Future<ApiResponse> checkHostFiltered({
@@ -505,13 +829,23 @@ class ApiClientV2 {
   }) async {
     final result = await HttpRequestClient.get(urlPath: '/filtering/check_host?name=$host', server: server);
     if (result.successful) {
-      return ApiResponse(
-        successful: true,
-        content: jsonDecode(result.body!)
-      );
+      try {
+        return ApiResponse(
+          successful: true,
+          content: jsonDecode(result.body!)
+        );
+      } on FormatException {
+        // A proxy that answers the page with its own HTML does it with a 200,
+        // and this call used to have no guard at all: the decode threw out of
+        // the wrapper and the modal that opened it never got an answer.
+        return ApiResponse(
+          successful: false,
+          message: _unreadableMessage('/filtering/check_host'),
+        );
+      }
     }
     else {
-      return const ApiResponse(successful: false);
+      return _readFailure(result, '/filtering/check_host');
     }
   }
 
@@ -523,7 +857,7 @@ class ApiClientV2 {
       server: server,
       body: data,
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> setBlockedServices({
@@ -534,18 +868,35 @@ class ApiClientV2 {
       server: server,
       body: data,
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
+  /// The DHCP state, or the reason the server says it has none.
+  ///
+  /// AdGuard Home answers both DHCP reads with **501** and a one-line reason
+  /// whenever the platform cannot serve DHCP — `{"message":"dhcp: not
+  /// supported on windows: unsupported operation"}` on the v1.0.0-b.2 fixture,
+  /// and the same shape for a server installed as a service on a host with no
+  /// usable interface. The wrapper used to fold that into a bare failure, so
+  /// the page could only say "could not be loaded" while the server had
+  /// already explained the whole thing. `GET /control/status` says the same in
+  /// `dhcp_available`, and the DHCP screen uses that to show its
+  /// not-available card; the reason here is what the screen has when the
+  /// status was read but DHCP still refused, or the server never answered.
   Future<ApiResponse> getDhcpData() async {
-    final results = await Future.wait([
-      HttpRequestClient.get(urlPath: '/dhcp/interfaces', server: server),
-      HttpRequestClient.get(urlPath: '/dhcp/status', server: server),
-    ]);
-    if (
-      results.map((e) => e.successful).every((e) => e == true) &&
-      results.map((e) => e.body).every((e) => e != null)
-    ) {
+    const paths = ['/dhcp/interfaces', '/dhcp/status'];
+    final results = await Future.wait(
+      paths.map((p) => HttpRequestClient.get(urlPath: p, server: server))
+    );
+    final index = results.indexWhere((e) => !e.successful);
+    if (index != -1) {
+      return ApiResponse(
+        successful: false,
+        message: _failureMessage(results[index]) ?? _unreadableMessage(paths[index]),
+        needsCredentials: results[index].statusCode == 401,
+      );
+    }
+    if (results.map((e) => e.body).every((e) => e != null)) {
       try {
         List<NetworkInterface> interfaces = List<NetworkInterface>.from(jsonDecode(results[0].body!).entries.map((entry) => NetworkInterface.fromJson(entry.value)));
         return ApiResponse(
@@ -563,11 +914,17 @@ class ApiClientV2 {
           stackTrace: stackTrace, 
           hint: Hint.withMap({ "statusCode": results.map((e) => e.statusCode.toString()) })
         );
-        return const ApiResponse(successful: false);
+        return ApiResponse(
+          successful: false,
+          message: _unreadableMessage('/dhcp/interfaces'),
+        );
       }
     }
     else {
-      return const ApiResponse(successful: false);
+      return ApiResponse(
+        successful: false,
+        message: _unreadableMessage('/dhcp/interfaces'),
+      );
     }
   }
 
@@ -579,7 +936,7 @@ class ApiClientV2 {
       server: server,
       body: data,
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> resetDhcpConfig() async {
@@ -588,7 +945,7 @@ class ApiClientV2 {
       server: server,
       body: {},
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> deleteStaticLease({
@@ -599,7 +956,7 @@ class ApiClientV2 {
       server: server,
       body: data,
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> createStaticLease({
@@ -611,20 +968,22 @@ class ApiClientV2 {
       body: data,
     );
     if (result.statusCode == 400 && result.body != null && result.body!.contains('static lease already exists')) {
-      return const ApiResponse(
+      return ApiResponse(
         successful: false,
         content: "already_exists",
-        statusCode: 400
+        statusCode: 400,
+        message: _failureMessage(result),
       );
     }
     if (result.statusCode == 400 && result.body != null && result.body!.contains('server is unconfigured')) {
-      return const ApiResponse(
+      return ApiResponse(
         successful: false,
         content: "server_not_configured",
-        statusCode: 400
+        statusCode: 400,
+        message: _failureMessage(result),
       );
     }
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> restoreAllLeases() async {
@@ -633,7 +992,7 @@ class ApiClientV2 {
       server: server,
       body: {},
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> getDnsRewriteSettings() async {
@@ -651,7 +1010,7 @@ class ApiClientV2 {
           stackTrace: stackTrace, 
           hint: Hint.withMap({ "statusCode": result.statusCode.toString() })
         );
-        return const ApiResponse(successful: false);
+        return _readFailure(result, '/rewrite/settings');
       }
     }
     else {
@@ -667,7 +1026,7 @@ class ApiClientV2 {
       server: server,
       body: data,
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> getDnsRewriteRules() async {
@@ -687,7 +1046,7 @@ class ApiClientV2 {
           stackTrace: stackTrace, 
           hint: Hint.withMap({ "statusCode": result.statusCode.toString() })
         );
-        return const ApiResponse(successful: false);
+        return _readFailure(result, '/rewrite/list');
       }
     }
     else {
@@ -703,7 +1062,7 @@ class ApiClientV2 {
       server: server,
       body: data,
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> addDnsRewriteRule({
@@ -714,7 +1073,7 @@ class ApiClientV2 {
       server: server,
       body: data,
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> getQueryLogInfo() async {
@@ -731,7 +1090,7 @@ class ApiClientV2 {
           stackTrace: stackTrace, 
           hint: Hint.withMap({ "statusCode": result.statusCode.toString() })
         );
-        return const ApiResponse(successful: false);
+        return _readFailure(result, '/querylog/config');
       }
     }
     else {
@@ -747,7 +1106,7 @@ class ApiClientV2 {
       server: server,
       body: data,
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> clearLogs() async {
@@ -756,7 +1115,7 @@ class ApiClientV2 {
       server: server,
       body: {},
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> getDnsInfo() async {
@@ -773,7 +1132,7 @@ class ApiClientV2 {
           stackTrace: stackTrace, 
           hint: Hint.withMap({ "statusCode": result.statusCode.toString() })
         );
-        return const ApiResponse(successful: false);
+        return _readFailure(result, '/dns_info');
       }
     }
     else {
@@ -793,10 +1152,11 @@ class ApiClientV2 {
       return ApiResponse(
         successful: result.successful,
         content: "data_not_valid",
-        statusCode: result.statusCode
+        statusCode: result.statusCode,
+        message: _failureMessage(result),
       );
     }
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> getEncryptionSettings() async {
@@ -813,7 +1173,7 @@ class ApiClientV2 {
           stackTrace: stackTrace, 
           hint: Hint.withMap({ "statusCode": result.statusCode.toString() })
         );
-        return const ApiResponse(successful: false);
+        return _readFailure(result, '/tls/status');
       }
     }
     else {
@@ -837,7 +1197,7 @@ class ApiClientV2 {
           stackTrace: stackTrace, 
           hint: Hint.withMap({ "statusCode": result.statusCode.toString() })
         );
-        return const ApiResponse(successful: false);
+        return _readFailure(result, '/blocked_services/all');
       }
     }
     else {
@@ -887,10 +1247,7 @@ class ApiClientV2 {
       server: server,
       body: data,
     );
-    return ApiResponse(
-      successful: result.successful,
-      content: result.body
-    );
+    return _writeResult(result, content: result.body);
   }
 
   Future<ApiResponse> resetDnsCache() async {
@@ -898,12 +1255,19 @@ class ApiClientV2 {
       urlPath: '/cache_clear', 
       server: server,
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> checkServerUpdates() async {
     final results = await Future.wait([
-      HttpRequestClient.post(urlPath: '/version.json', server: server, body: { "recheck_now": true }),
+      // recheck_now makes the server ask GitHub before it answers, so this is
+      // one of the calls that is given the long deadline.
+      HttpRequestClient.post(
+        urlPath: '/version.json',
+        server: server,
+        body: { "recheck_now": true },
+        timeout: longRunningRequestTimeoutSeconds,
+      ),
       HttpRequestClient.get(urlPath: '/status', server: server),
     ]);
     if (
@@ -925,11 +1289,21 @@ class ApiClientV2 {
           stackTrace: stackTrace, 
           hint: Hint.withMap({ "statusCode": results.map((e) => e.statusCode.toString()) })
         );
-        return const ApiResponse(successful: false);
+        return ApiResponse(
+          successful: false,
+          message: _unreadableMessage('/version.json'),
+        );
       }
     }
     else {
-      return const ApiResponse(successful: false);
+      String? reason;
+      for (final response in results) {
+        reason ??= _failureMessage(response);
+      }
+      return ApiResponse(
+        successful: false,
+        message: reason ?? _unreadableMessage('/version.json'),
+      );
     }
   }
 
@@ -937,19 +1311,41 @@ class ApiClientV2 {
     final result = await HttpRequestClient.post(
       urlPath: '/update', 
       server: server,
+      timeout: longRunningRequestTimeoutSeconds,
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
+  /// PUT /safesearch/settings replaces the whole object, so a body that only
+  /// carries "enabled" would silently switch every engine off. Merge with what
+  /// the server currently reports before sending.
   Future<ApiResponse> updateSafeSearchSettings({
     required Map<String, bool> body
   }) async {
+    final current = await HttpRequestClient.get(
+      urlPath: '/safesearch/status',
+      server: server,
+    );
+
+    final Map<String, bool> merged = {};
+    if (current.body != null) {
+      try {
+        (jsonDecode(current.body!) as Map<String, dynamic>)
+          .forEach((key, value) { if (value is bool) merged[key] = value; });
+      } on FormatException {
+        merged.clear();
+      } on TypeError {
+        merged.clear();
+      }
+    }
+    merged.addAll(body);
+
     final result = await HttpRequestClient.put(
       urlPath: '/safesearch/settings', 
       server: server,
-      body: body
+      body: merged
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
   Future<ApiResponse> updateRewriteRule({
@@ -960,9 +1356,21 @@ class ApiClientV2 {
       server: server,
       body: body
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 
+  /// Which upstreams the server can actually reach.
+  ///
+  /// v1.0.0-b.2 takes the four lists here — `upstream_dns`, `bootstrap_dns`,
+  /// `fallback_dns`, `private_upstream` — and answers a map of the address it
+  /// tried to the string `OK` or to the failure it got, which is what the
+  /// dialog lists. Sending its `server`/`protocols` shape instead answers `{}`
+  /// for every entry, so the picker would have shown an empty result over a
+  /// server that had tested nothing.
+  ///
+  /// A body the client cannot decode is a failure with a reason, not an
+  /// exception: this wrapper had no guard at all, and the modal that opens it
+  /// would have died on the HTML page of a proxy answering 200.
   Future<ApiResponse> testUpstreamDns({
     required Map<String, dynamic> body
   }) async {
@@ -971,10 +1379,20 @@ class ApiClientV2 {
       server: server,
       body: body
     );
-    return ApiResponse(
-      successful: result.successful,
-      content: result.body != null ? jsonDecode(result.body!) : null
-    );
+    if (!result.successful) {
+      return _writeResult(result);
+    }
+    try {
+      return ApiResponse(
+        successful: true,
+        content: result.body != null ? jsonDecode(result.body!) : null,
+      );
+    } on FormatException {
+      return ApiResponse(
+        successful: false,
+        message: _unreadableMessage('/test_upstream_dns'),
+      );
+    }
   }
 
   Future<ApiResponse> getStatisticsConfig() async {
@@ -991,7 +1409,7 @@ class ApiClientV2 {
           stackTrace: stackTrace, 
           hint: Hint.withMap({ "statusCode": result.statusCode.toString() })
         );
-        return const ApiResponse(successful: false);
+        return _readFailure(result, '/stats/config');
       }
     }
     else {
@@ -1007,6 +1425,6 @@ class ApiClientV2 {
       server: server,
       body: body
     );
-    return ApiResponse(successful: result.successful);
+    return _writeResult(result);
   }
 }

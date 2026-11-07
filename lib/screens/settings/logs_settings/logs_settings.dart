@@ -1,11 +1,14 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
+import 'package:adguard_home_manager/functions/desktop_mode.dart';
 import 'package:adguard_home_manager/screens/settings/logs_settings/config_widgets.dart';
 import 'package:adguard_home_manager/widgets/load_status_widgets.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/models/querylog_config.dart';
 import 'package:adguard_home_manager/classes/process_modal.dart';
@@ -123,6 +126,10 @@ class _LogsSettingsState extends State<LogsSettings> {
     final serversProvider = Provider.of<ServersProvider>(context);
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
 
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
+    final width = MediaQuery.sizeOf(context).width;
+
     final validValues = checkValidValues();
 
     void clearQueries() async {
@@ -139,14 +146,14 @@ class _LogsSettingsState extends State<LogsSettings> {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.logsCleared, 
-          color: Colors.green
+          color: p.green
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.logsNotCleared, 
-          color: Colors.red
+          color: p.red
         );
       }
     }
@@ -172,76 +179,92 @@ class _LogsSettingsState extends State<LogsSettings> {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.logsConfigUpdated, 
-          color: Colors.green
+          color: p.green
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.logsConfigNotUpdated, 
-          color: Colors.red
+          color: p.red
         );
       }
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.logsSettings),
-        actions: [
-          if (loadStatus == LoadStatus.loaded) IconButton(
-            onPressed: validValues ? () => updateConfig() : null, 
-            icon: const Icon(Icons.save_rounded),
-            tooltip: AppLocalizations.of(context)!.save,
+    return AppleScreen(
+      title: l.logsSettings,
+      leading: isDesktop(width)
+        ? null
+        : AppleBackButton(
+            label: l.back,
+            onPressed: () => Navigator.pop(context),
           ),
-          if (loadStatus == LoadStatus.loaded) PopupMenuButton(
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                onTap: clearQueries,
-                child: Row(
-                  children: [
-                    const Icon(Icons.delete_rounded),
-                    const SizedBox(width: 8),
-                    Text(AppLocalizations.of(context)!.clearLogs),
-                  ],
-                )
-              )
-            ],
+      actions: [
+        if (loadStatus == LoadStatus.loaded) IconButton(
+          onPressed: validValues ? () => updateConfig() : null, 
+          icon: const Icon(CupertinoIcons.checkmark),
+          tooltip: l.save,
+        ),
+        if (loadStatus == LoadStatus.loaded) IconButton(
+          // The server has no undo and no trash for these rows, so the tap
+          // that asks to clear them is not the tap that empties them.
+          onPressed: () => showDialog(
+            context: context,
+            builder: (ctx) => AppleAlertDialog(
+              title: AppLocalizations.of(ctx)!.clearLogs,
+              message: AppLocalizations.of(ctx)!.clearLogsConfirm,
+              actions: [
+                AppleSheetAction(label: AppLocalizations.of(ctx)!.cancel),
+                AppleSheetAction(
+                  label: AppLocalizations.of(ctx)!.clearLogs,
+                  color: p.red,
+                  destructive: true,
+                  onTap: clearQueries,
+                ),
+              ],
+            ),
           ),
-          const SizedBox(width: 8)
-        ],
-      ),
-      body: Builder(
-        builder: (context) {
-          switch (loadStatus) {
-            case LoadStatus.loading:
-              return LoadingData(text: AppLocalizations.of(context)!.loadingLogsSettings);
-      
-            case LoadStatus.loaded:
-              return LogsConfigOptions(
-                generalSwitch: generalSwitch, 
-                updateGeneralSwitch: (v) => setState(() => generalSwitch = v), 
-                anonymizeClientIp: anonymizeClientIp, 
-                updateAnonymizeClientIp: (v) => setState(() => anonymizeClientIp = v), 
-                retentionItems: retentionItems, 
-                retentionTime: retentionTime, 
-                updateRetentionTime: (v) => setState(() => retentionTime = v), 
-                onClear: clearQueries, 
-                onConfirm: updateConfig,
-                ignoredDomainsControllers: _ignoredDomainsControllers,
-                updateIgnoredDomainsControllers: (v) => setState(() => _ignoredDomainsControllers = v),
-                customTimeController: _customTimeController,
-                customTimeError: _customTimeError,
-                validateCustomTime: validateCustomTime,
-              );
-      
-            case LoadStatus.error:
-              return ErrorLoadData(text: AppLocalizations.of(context)!.logSettingsNotLoaded,);
-      
-            default:
-              return const SizedBox();
-          }
-        },
-      ),
+          icon: Icon(CupertinoIcons.trash, color: p.red),
+          tooltip: l.clearLogs,
+        ),
+      ],
+      slivers: [
+        if (loadStatus == LoadStatus.loading)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: LoadingData(text: l.loadingLogsSettings),
+          ),
+
+        if (loadStatus == LoadStatus.loaded)
+          LogsConfigOptions(
+            generalSwitch: generalSwitch, 
+            updateGeneralSwitch: (v) => setState(() => generalSwitch = v), 
+            anonymizeClientIp: anonymizeClientIp, 
+            updateAnonymizeClientIp: (v) => setState(() => anonymizeClientIp = v), 
+            retentionItems: retentionItems, 
+            retentionTime: retentionTime, 
+            updateRetentionTime: (v) => setState(() => retentionTime = v), 
+            onClear: clearQueries, 
+            onConfirm: updateConfig,
+            ignoredDomainsControllers: _ignoredDomainsControllers,
+            updateIgnoredDomainsControllers: (v) => setState(() => _ignoredDomainsControllers = v),
+            customTimeController: _customTimeController,
+            customTimeError: _customTimeError,
+            validateCustomTime: validateCustomTime,
+          ),
+
+        if (loadStatus == LoadStatus.error)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: ErrorLoadData(
+              text: l.logSettingsNotLoaded,
+              onRetry: () async {
+                setState(() => loadStatus = LoadStatus.loading);
+                loadData();
+              },
+            ),
+          ),
+      ],
     );
   }
 }

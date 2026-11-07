@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:animations/animations.dart';
 import 'package:provider/provider.dart';
@@ -33,26 +34,6 @@ class _LayoutState extends State<Layout> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
 
     super.initState();
-      
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // if (kDebugMode) return;   // Don't check for app updates on debug mode
-      // final appConfigProvider = Provider.of<AppConfigProvider>(context, listen: false);
-      // final result = await checkAppUpdates(
-      //   currentBuildNumber: appConfigProvider.getAppInfo!.buildNumber,
-      //   installationSource: appConfigProvider.installationSource,
-      //   setUpdateAvailable: appConfigProvider.setAppUpdatesAvailable,
-      //   isBeta: appConfigProvider.getAppInfo!.version.contains('beta'),
-      // );
-      // if (result != null && appConfigProvider.doNotRememberVersion != result.tagName && mounted) {
-      //   await showDialog(
-      //     context: context, 
-      //     builder: (context) => UpdateModal(
-      //       gitHubRelease: result,
-      //       onDownload: (link, version) => openUrl(link),
-      //     ),
-      //   );
-      // }
-    }); 
   }
 
   @override
@@ -91,158 +72,60 @@ class _LayoutState extends State<Layout> with WidgetsBindingObserver {
       }
     }
 
-    final bool apple = appConfigProvider.useAppleStyle;
-
     final bool updateAvailable = serversProvider.updateAvailable.data != null
       && serversProvider.updateAvailable.data!.canAutoupdate == true;
 
     if (width > desktopBreakpoint) {
-      if (apple) {
-        return OverlayStyle(
-          child: Row(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.ease,
-                width: _drawerExpanded ? 240 : 84,
-                child: AppleSidebar(
-                  compact: !_drawerExpanded,
-                  currentIndex: appConfigProvider.selectedScreen < screens.length
-                    ? appConfigProvider.selectedScreen
-                    : 0,
-                  onChanged: _goBranch,
-                  header: _AppleSidebarHeader(
-                    expanded: _drawerExpanded,
-                    onToggle: () => setState(() => _drawerExpanded = !_drawerExpanded),
-                    closeTooltip: AppLocalizations.of(context)!.closeMenu,
-                    openTooltip: AppLocalizations.of(context)!.openMenu,
-                  ),
-                  items: screens.asMap().entries.map((s) => AppleSidebarItem(
-                    icon: s.value.appleIcon ?? s.value.icon,
-                    label: translatedName(s.value.name),
-                    badge: s.value.name == 'settings' && updateAvailable,
-                  )).toList(),
-                ),
-              ),
-              Expanded(
-                child: PageTransitionSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  transitionBuilder: (
-                    (child, primaryAnimation, secondaryAnimation) => FadeThroughTransition(
-                      animation: primaryAnimation,
-                      secondaryAnimation: secondaryAnimation,
-                      child: child,
-                    )
-                  ),
-                  child: appConfigProvider.selectedScreen < screens.length
-                    ? screens[appConfigProvider.selectedScreen].child
-                    : screens[0].child,
-                ),
-              ),
-            ],
-          ),
-        );
-      }
-
       return OverlayStyle(
-        child: Material(
-          child: Row(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.ease,
-                width: _drawerExpanded ? 250 : 90,
-                child: ListView(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8, 
-                            vertical: 16
-                          ),
-                          child: IconButton(
-                            onPressed: () => setState(() => _drawerExpanded = !_drawerExpanded), 
-                            icon: const Icon(Icons.menu_open_rounded),
-                            tooltip: _drawerExpanded == true
-                              ? AppLocalizations.of(context)!.closeMenu
-                              : AppLocalizations.of(context)!.openMenu,
-                          ),
-                        ),
-                      ],
-                    ),
-                    ...screens.asMap().entries.map(
-                      (s) => DrawerTile(
-                        icon: s.value.icon,
-                        title: translatedName(s.value.name),
-                        isSelected: appConfigProvider.selectedScreen == s.key,
-                        onSelect: () => _goBranch(s.key),
-                        withoutTitle: !_drawerExpanded,
-                      ),
-                    ),
-                  ],
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.ease,
+              width: _drawerExpanded ? 240 : 84,
+              child: AppleSidebar(
+                compact: !_drawerExpanded,
+                currentIndex: appConfigProvider.selectedScreen < screens.length
+                  ? appConfigProvider.selectedScreen
+                  : 0,
+                onChanged: _goBranch,
+                header: _AppleSidebarHeader(
+                  expanded: _drawerExpanded,
+                  onToggle: () => setState(() => _drawerExpanded = !_drawerExpanded),
+                  closeTooltip: AppLocalizations.of(context)!.closeMenu,
+                  openTooltip: AppLocalizations.of(context)!.openMenu,
                 ),
+                items: screens.asMap().entries.map((s) => AppleSidebarItem(
+                  icon: s.value.appleIcon ?? s.value.icon,
+                  label: translatedName(s.value.name),
+                  badge: s.value.name == 'settings' && updateAvailable,
+                )).toList(),
               ),
-              Expanded(
-                child: PageTransitionSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  transitionBuilder: (
-                    (child, primaryAnimation, secondaryAnimation) => FadeThroughTransition(
-                      animation: primaryAnimation, 
-                      secondaryAnimation: secondaryAnimation,
-                      child: child,
-                    )
-                  ),
-                  child: appConfigProvider.selectedScreen < screens.length
-                    ? screens[appConfigProvider.selectedScreen].child
-                    : screens[0].child,
+            ),
+            Expanded(
+              child: PageTransitionSwitcher(
+                duration: const Duration(milliseconds: 200),
+                transitionBuilder: (
+                  (child, primaryAnimation, secondaryAnimation) => FadeThroughTransition(
+                    animation: primaryAnimation,
+                    secondaryAnimation: secondaryAnimation,
+                    child: child,
+                  )
                 ),
+                child: appConfigProvider.selectedScreen < screens.length
+                  ? screens[appConfigProvider.selectedScreen].child
+                  : screens[0].child,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
     else {
-      final screens = serversProvider.selectedServer != null && serversProvider.apiClient2 != null
-        ? screensServerConnected 
-        : screensSelectServer;
-
-      if (apple) {
-        final currentIndex = (serversProvider.selectedServer == null || serversProvider.apiClient2 == null)
-            && appConfigProvider.selectedScreen > 1
-          ? 0
-          : appConfigProvider.selectedScreen;
-
-        return OverlayStyle(
-          child: Scaffold(
-            body: PageTransitionSwitcher(
-              duration: const Duration(milliseconds: 200),
-              transitionBuilder: (
-                (child, primaryAnimation, secondaryAnimation) => FadeThroughTransition(
-                  animation: primaryAnimation,
-                  secondaryAnimation: secondaryAnimation,
-                  child: child,
-                )
-              ),
-              child: appConfigProvider.selectedScreen < screens.length
-                ? screens[appConfigProvider.selectedScreen].child
-                : screens[0].child,
-            ),
-            bottomNavigationBar: AppleTabBar(
-              currentIndex: currentIndex < screens.length ? currentIndex : 0,
-              onChanged: _goBranch,
-              items: screens.asMap().entries.map((screen) => AppleTabItem(
-                icon: screen.value.appleIcon ?? screen.value.icon,
-                activeIcon: screen.value.appleSelectedIcon ?? screen.value.appleIcon ?? screen.value.icon,
-                label: translatedName(screen.value.name),
-                badge: screen.value.name == 'settings' && updateAvailable,
-              )).toList(),
-            ),
-          ),
-        );
-      }
+      final currentIndex = (serversProvider.selectedServer == null || serversProvider.apiClient2 == null)
+          && appConfigProvider.selectedScreen > 1
+        ? 0
+        : appConfigProvider.selectedScreen;
 
       return OverlayStyle(
         child: Scaffold(
@@ -250,7 +133,7 @@ class _LayoutState extends State<Layout> with WidgetsBindingObserver {
             duration: const Duration(milliseconds: 200),
             transitionBuilder: (
               (child, primaryAnimation, secondaryAnimation) => FadeThroughTransition(
-                animation: primaryAnimation, 
+                animation: primaryAnimation,
                 secondaryAnimation: secondaryAnimation,
                 child: child,
               )
@@ -259,125 +142,19 @@ class _LayoutState extends State<Layout> with WidgetsBindingObserver {
               ? screens[appConfigProvider.selectedScreen].child
               : screens[0].child,
           ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: (serversProvider.selectedServer == null || serversProvider.apiClient2 == null) && appConfigProvider.selectedScreen > 1
-              ? 0
-              : appConfigProvider.selectedScreen,
-            onDestinationSelected: (s) => _goBranch(s),
-            destinations: screens.asMap().entries.map((screen) => NavigationDestination(
-              icon: Stack(
-                children: [
-                  Icon(
-                    screen.value.icon,
-                    color: appConfigProvider.selectedScreen == screen.key
-                      ? Theme.of(context).colorScheme.onSecondaryContainer
-                      : Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  if (
-                    screen.value.name == 'settings' &&
-                    serversProvider.updateAvailable.data != null &&
-                    serversProvider.updateAvailable.data!.canAutoupdate == true
-                  ) Positioned(
-                      bottom: 0,
-                      right: -12,
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        margin: const EdgeInsets.only(right: 12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          color: Colors.red
-                        ),
-                      ),
-                    )
-                ],
-              ), 
-              label: translatedName(screen.value.name)
+          bottomNavigationBar: AppleTabBar(
+            currentIndex: currentIndex < screens.length ? currentIndex : 0,
+            onChanged: _goBranch,
+            items: screens.asMap().entries.map((screen) => AppleTabItem(
+              icon: screen.value.appleIcon ?? screen.value.icon,
+              activeIcon: screen.value.appleSelectedIcon ?? screen.value.appleIcon ?? screen.value.icon,
+              label: translatedName(screen.value.name),
+              badge: screen.value.name == 'settings' && updateAvailable,
             )).toList(),
-          )
+          ),
         ),
       );
     }
-  }
-}
-
-class DrawerTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final bool isSelected;
-  final void Function() onSelect;
-  final bool? withoutTitle;
-
-  const DrawerTile({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.isSelected,
-    required this.onSelect,
-    this.withoutTitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    Widget iconWidget = withoutTitle == true
-        ? Tooltip(
-            message: title,
-            child: Icon(
-              icon,
-              color: isSelected
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          )
-        : Icon(
-            icon,
-            color: isSelected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.onSurfaceVariant,
-          );
-
-    return Padding(
-      padding: const EdgeInsets.only(right: 16),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: const BorderRadius.only(
-            topRight: Radius.circular(30),
-            bottomRight: Radius.circular(30),
-          ),
-          onTap: onSelect,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? Theme.of(context).colorScheme.secondaryContainer
-                  : null,
-              borderRadius: const BorderRadius.only(
-                topRight: Radius.circular(30),
-                bottomRight: Radius.circular(30),
-              ),
-            ),
-            child: Row(children: [
-              iconWidget,
-              const SizedBox(width: 16),
-              Flexible(
-                child: Text(
-                  title,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              )
-            ]),
-          ),
-        ),
-      ),
-    );
   }
 }
 
@@ -407,7 +184,9 @@ class _AppleSidebarHeader extends StatelessWidget {
             onPressed: onToggle,
             tooltip: expanded ? closeTooltip : openTooltip,
             icon: Icon(
-              expanded ? Icons.menu_open_rounded : Icons.menu_rounded,
+              expanded
+                  ? CupertinoIcons.line_horizontal_3_decrease
+                  : CupertinoIcons.line_horizontal_3,
               color: p.label2,
             ),
           ),
@@ -419,7 +198,7 @@ class _AppleSidebarHeader extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                   letterSpacing: -0.2,
                   color: p.label,
                 ),

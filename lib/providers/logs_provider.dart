@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
+import 'package:adguard_home_manager/providers/error_reason.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/models/applied_filters.dart';
 import 'package:adguard_home_manager/models/clients.dart';
 import 'package:adguard_home_manager/models/logs.dart';
 
-class LogsProvider with ChangeNotifier {
+class LogsProvider with ChangeNotifier, ErrorReason {
   ServersProvider? _serversProvider;
 
   void update(ServersProvider? provider) {
@@ -161,8 +162,37 @@ class LogsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Seeds the client filter before a screen's first fetch, without
+  /// notifying: the screen that calls this is still being built, and a
+  /// notification then would mark the provider's scope dirty mid-build.
+  /// The first fetch and the first paint both read the primed filters, so
+  /// the list and its chip agree from the frame the screen appears on.
+  void primeClientFilter(List<String> clients) {
+    _selectedClients = List.of(clients);
+    _appliedFilters = AppliedFiters(
+      statuses: _selectedStatuses,
+      searchText: _searchText,
+      clients: _selectedClients,
+      timeRange: _timeRange,
+    );
+  }
+
   void setIsLoadingMore(bool status) {
     _isLoadingMore = status;
+  }
+
+  /// Stock AdGuard Home answers `since` and `client` with the whole retained
+  /// log, so the narrowing happens here.  Reading only one page would then
+  /// show nothing whenever the rows that survive the filter sit past the first
+  /// hundred, so the pages are walked until the window is full.
+  static const int _maxFilterPages = 12;
+
+  bool _keep(Log item, AppliedFiters applied, DateTime since) {
+    if (!item.time.isAfter(since)) return false;
+    if (applied.clients.isEmpty) return true;
+
+    return applied.clients.contains(item.client) ||
+        applied.clients.contains(item.clientInfo?.name);
   }
 
   Future<bool> fetchLogs({
@@ -170,45 +200,74 @@ class LogsProvider with ChangeNotifier {
     bool? loadingMore,
     String? searchText,
   }) async {
-    int offst = inOffset ?? offset;
+    final applied = _appliedFilters;
+    final since = applied.since(DateTime.now());
+    final api = _serversProvider!.apiClient2!;
+    setErrorMessage(null);
 
     if (loadingMore != null && loadingMore == true) {
       _isLoadingMore = true;
       notifyListeners();
     }
 
-    final applied = _appliedFilters;
-    final result = await _serversProvider!.apiClient2!.getLogs(
-      count: logsQuantity, 
-      offset: offst,
-      olderThan: logsOlderThan,
-      since: applied.since(DateTime.now()),
-      reasons: applied.reasons,
-      clients: applied.clients,
-      search: searchText ?? _searchText
-    );
+    final collected = <Log>[];
+    var cursor = inOffset ?? offset;
+    DateTime? oldest;
+    var successful = false;
+
+    for (var page = 0; page < _maxFilterPages; page++) {
+      final result = await api.getLogs(
+        count: logsQuantity,
+        offset: cursor,
+        olderThan: logsOlderThan,
+        since: since,
+        reasons: applied.reasons,
+        clients: applied.clients,
+        search: searchText ?? _searchText
+      );
+
+      if (result.successful != true) {
+        // The walk stops at the first page the server refused, and the reason
+        // it gave for that page is the reason the table says on screen.
+        captureErrorReason(
+          result,
+          fallback: 'the server gave nothing back for the query log',
+        );
+        break;
+      }
+      successful = true;
+
+      final incoming = result.content as LogsData;
+      oldest = incoming.oldest;
+      if (incoming.data.isEmpty) break;
+
+      cursor += incoming.data.length;
+
+      // Newest first, so the first row outside the window ends the search:
+      // nothing further down can be inside it.
+      final outsideWindow = incoming.data.any((item) => !item.time.isAfter(since));
+
+      collected.addAll(
+        incoming.data.where((item) => _keep(item, applied, since)),
+      );
+
+      if (collected.length >= logsQuantity || outsideWindow) break;
+      if (incoming.data.length < logsQuantity) break;
+    }
 
     if (loadingMore != null && loadingMore == true) {
       _isLoadingMore = false;
       notifyListeners();
     }
 
-    if (result.successful == true) {
-      final incoming = result.content as LogsData;
-      _offset = offst + incoming.data.length;
-      // Servers that predate the `client` parameter ignore it, so the rows are
-      // narrowed here as well; on a server that honours it this changes
-      // nothing.  The selection may hold an address or a device name.
-      final matching = incoming.data.where((item) =>
-        applied.clients.isEmpty ||
-        applied.clients.contains(item.client) ||
-        applied.clients.contains(item.clientInfo?.name));
+    if (successful) {
+      _offset = cursor;
       _logsData = LogsData(
         data: [
           if (loadingMore == true && logsData != null) ...logsData!.data,
-          ...matching,
+          ...collected,
         ],
-        oldest: incoming.oldest,
+        oldest: oldest,
       );
       _loadStatus = LoadStatus.loaded;
       notifyListeners();

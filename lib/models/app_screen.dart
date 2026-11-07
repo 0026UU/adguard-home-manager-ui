@@ -5,7 +5,7 @@ class AppScreen {
   final String name;
   final IconData icon;
 
-  /// Cupertino glyphs used by the Apple shell ([AppConfigProvider.useAppleStyle]).
+  /// Cupertino glyphs used by the app shell.
   final IconData? appleIcon;
   final IconData? appleSelectedIcon;
 

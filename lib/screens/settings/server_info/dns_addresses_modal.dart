@@ -1,10 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
-import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
-import 'package:adguard_home_manager/widgets/list_bottom_sheet.dart';
-
+/// The addresses the server answers on, read from `/status`.
 class DnsAddressesModal extends StatelessWidget {
   final bool isDialog;
   final List<String> dnsAddresses;
@@ -17,56 +16,43 @@ class DnsAddressesModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (isDialog == true) {
-      return AlertDialog(
-        title: Column(
-          children: [
-            Icon(
-              Icons.route_rounded,
-              color: Theme.of(context).listTileTheme.iconColor
-            ),
-            const SizedBox(height: 16),
-            Text(
-              AppLocalizations.of(context)!.dnsAddresses,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface
-              ),
-            )
-          ],
-        ),
-        content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500),
-          child: SingleChildScrollView(
-            child: Wrap(
-              children: dnsAddresses.map((address) => ListTile(
-                title: Text(
-                  address,
-                  style: TextStyle(
-                    fontWeight: FontWeight.normal,
-                    color: Theme.of(context).listTileTheme.textColor
-                  ),
+    final l = AppLocalizations.of(context)!;
+
+    return AppleFormModal(
+      title: l.dnsAddresses,
+      icon: CupertinoIcons.globe,
+      dialog: isDialog,
+      maxWidth: 500,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: AppleListSection(
+                  margin: EdgeInsets.zero,
+                  children: [
+                    for (final address in dnsAddresses)
+                      AppleListTile(
+                        title: address,
+                        mono: true,
+                        showChevron: false,
+                      ),
+                  ],
                 ),
-              )).toList(),
+              ),
             ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(AppLocalizations.of(context)!.close)
-          )
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            child: AppleButton(
+              label: l.close,
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
         ],
-      );
-    }
-    else {
-      return ListBottomSheet(
-        icon: Icons.route_rounded,
-        title: AppLocalizations.of(context)!.dnsAddresses,
-        children: dnsAddresses.map((address) => CustomListTile(
-          title: address,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        )).toList(),
-      );
-    }
+      ),
+    );
   }
 }

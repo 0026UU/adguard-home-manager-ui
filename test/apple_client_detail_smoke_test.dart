@@ -7,6 +7,7 @@ import 'package:adguard_home_manager/screens/clients/client/client_detail.dart';
 import 'package:adguard_home_manager/screens/clients/client/client_rules_modal.dart';
 import 'package:adguard_home_manager/screens/clients/client/client_screen.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
+import 'package:adguard_home_manager/widgets/process_dialog.dart';
 
 import 'client_detail_harness.dart';
 
@@ -175,6 +176,43 @@ void main() {
       tester.widget<CupertinoSwitch>(find.byType(CupertinoSwitch).at(3)).value,
       false,
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a refused write says what the server said', (tester) async {
+    const reason = 'another client "living-room" uses the same MAC';
+    final h = await pumpClientDetail(
+      tester,
+      succeeds: false,
+      editFailureMessage: reason,
+    );
+
+    await tester.tap(find.byType(CupertinoSwitch).at(3));
+    await tester.pumpAndSettle();
+
+    // AdGuard Home puts the reason for a 4xx in the response body, and the
+    // page used to throw it away: a name already taken, a malformed address
+    // and a server that never answered all read as the same sentence.
+    expect(find.text(reason), findsOneWidget);
+    expect(find.text(l.clientNotUpdated), findsNothing);
+    expect(h.clients.edited, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the blocking sheet goes away even when the write throws',
+      (tester) async {
+    final h = await pumpClientDetail(tester, throwsOnEdit: true);
+
+    await tester.tap(find.byType(CupertinoSwitch).at(3));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    // ProcessModal has a barrier that cannot be dismissed, so an exception
+    // between its open and its close left the whole app under a sheet nobody
+    // could close, and the switch stayed looking saved.
+    expect(find.byType(ProcessDialog), findsNothing);
+    expect(find.text(l.clientNotUpdated), findsOneWidget);
+    expect(h.clients.edited, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
@@ -359,7 +397,7 @@ void main() {
         client: clientFixture(rules: const ['||tracker.example^']),
       );
 
-      await tester.tap(ruleRow(l.blockList));
+      await tester.tap(find.widgetWithText(AppleHeaderAction, l.editRules));
       await tester.pumpAndSettle();
 
       expect(find.byType(ClientRulesModal), findsOneWidget);
@@ -399,7 +437,13 @@ void main() {
 
       expect(find.text(l.noClientRules), findsNothing);
 
-      await tester.tap(find.widgetWithText(AppleHeaderAction, l.add));
+      // The two count rows only report what the device holds; the header is
+      // the single way into the one editor that serves both kinds.
+      await tester.tap(ruleRow(l.blockList));
+      await tester.pumpAndSettle();
+      expect(find.byType(ClientRulesModal), findsNothing);
+
+      await tester.tap(find.widgetWithText(AppleHeaderAction, l.editRules));
       await tester.pumpAndSettle();
 
       expect(find.byType(ClientRulesModal), findsOneWidget);

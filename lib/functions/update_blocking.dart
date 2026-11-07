@@ -6,6 +6,7 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 /// Turns one protection on or off and reports what the server answered.
 ///
@@ -30,8 +31,11 @@ Future<void> toggleProtection({
   if (context.mounted && result == false) {
     showSnackbar(
       appConfigProvider: appConfigProvider,
-      label: AppLocalizations.of(context)!.invalidUsernamePassword,
-      color: Colors.red,
+      // A rejected switch is not necessarily an auth problem; the server can
+      // refuse for any number of reasons and blaming the password sends the
+      // user to change a credential that was fine.
+      label: AppLocalizations.of(context)!.protectionNotChanged,
+      color: ApplePalette.of(context).red,
     );
   }
 }

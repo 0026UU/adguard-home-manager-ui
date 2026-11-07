@@ -1,16 +1,13 @@
 // ignore_for_file: use_build_context_synchronously
 
-import 'package:expandable/expandable.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/screens/settings/dns/rate_limit_allowlist_modal.dart';
-import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
-import 'package:adguard_home_manager/widgets/custom_radio_list_tile.dart';
-import 'package:adguard_home_manager/widgets/section_label.dart';
-import 'package:adguard_home_manager/widgets/custom_switch_list_tile.dart';
 
 import 'package:adguard_home_manager/functions/desktop_mode.dart';
 import 'package:adguard_home_manager/classes/process_modal.dart';
@@ -18,6 +15,12 @@ import 'package:adguard_home_manager/providers/dns_provider.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
 
+/// The server's own answers: how often a client may ask, what a blocked
+/// request is answered with and how the server is told who asked.
+///
+/// Every field writes the single `/dns_config` payload this screen has always
+/// sent, so nothing about the save or its validation changed on the way into
+/// the design layer.
 class DnsServerSettingsScreen extends StatefulWidget {
   const DnsServerSettingsScreen({super.key});
 
@@ -33,8 +36,10 @@ class _DnsServerSettingsScreenState extends State<DnsServerSettingsScreen> {
   String? _ipv6PrefixSubnetError;
   List<String> _rateLimitAllowlist = [];
   String? _limitRequestsError;
-  final _expandableCustomEdns = ExpandableController();
-  final _expandableEdnsIp = ExpandableController();
+
+  // The rows under a switch are drawn only while it is on, the way the rest of
+  // the design layer hides the option behind the choice that owns it, so the
+  // switches themselves are the whole expandable state of this screen.
   bool _enableEdns = false;
   bool _useCustomIpEdns = false;
   final _customIpEdnsController = TextEditingController();
@@ -135,8 +140,6 @@ class _DnsServerSettingsScreenState extends State<DnsServerSettingsScreen> {
     _enableEdns = dnsProvider.dnsInfo!.ednsCsEnabled;
     _useCustomIpEdns = dnsProvider.dnsInfo!.ednsCsUseCustom ?? false;
     _customIpEdnsController.text = dnsProvider.dnsInfo!.ednsCsCustomIp ?? "";
-    if (dnsProvider.dnsInfo!.ednsCsEnabled == true) _expandableCustomEdns.toggle();
-    if (dnsProvider.dnsInfo!.ednsCsUseCustom == true) _expandableEdnsIp.toggle();
     _enableDnssec = dnsProvider.dnsInfo!.dnssecEnabled;
     _disableIpv6Resolving = dnsProvider.dnsInfo!.disableIpv6;
     blockingMode = dnsProvider.dnsInfo!.blockingMode;
@@ -160,10 +163,12 @@ class _DnsServerSettingsScreenState extends State<DnsServerSettingsScreen> {
     final dnsProvider = Provider.of<DnsProvider>(context);
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
     final width = MediaQuery.of(context).size.width;
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
     void saveData() async {
       ProcessModal processModal = ProcessModal();
-      processModal.open(AppLocalizations.of(context)!.savingConfig);
+      processModal.open(l.savingConfig);
 
       final result = await dnsProvider.saveDnsServerConfig({
         "ratelimit": int.tryParse(_limitRequestsController.text),
@@ -186,22 +191,22 @@ class _DnsServerSettingsScreenState extends State<DnsServerSettingsScreen> {
       if (result.successful == true) {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsConfigSaved, 
-          color: Colors.green
+          label: l.dnsConfigSaved, 
+          color: p.green
         );
       }
       else if (result.successful == false && result.statusCode == 400) {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.someValueNotValid, 
-          color: Colors.red
+          label: l.someValueNotValid, 
+          color: p.red
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsConfigNotSaved, 
-          color: Colors.red
+          label: l.dnsConfigNotSaved, 
+          color: p.red
         );
       } 
     }
@@ -219,301 +224,220 @@ class _DnsServerSettingsScreenState extends State<DnsServerSettingsScreen> {
 
     final dataValid = validateData();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.dnsServerSettings),
-        surfaceTintColor: isDesktop(width) ? Colors.transparent : null,
-        actions: [
-          IconButton(
-            onPressed: dataValid == true
-              ? () => saveData()
-              : null, 
-            icon: const Icon(Icons.save_rounded),
-            tooltip: AppLocalizations.of(context)!.save,
+    // The blocking modes are one group of rows, one of which carries the mark
+    // the iOS answer list puts on the choice in force.
+    AppleListTile blockingRow(String value, String title, String description) =>
+        AppleListTile(
+          title: title,
+          subtitle: description,
+          showChevron: false,
+          onTap: () => updateBlockingMode(value),
+          trailing: blockingMode == value
+            ? Icon(CupertinoIcons.checkmark, color: p.tint)
+            : const SizedBox.shrink(),
+        );
+
+    return AppleScreen(
+      title: l.dnsServerSettings,
+      subtitle: l.dnsServerSettingsDescription,
+      leading: isDesktop(width)
+        ? null
+        : AppleBackButton(
+            label: l.back,
+            onPressed: () => Navigator.pop(context),
           ),
-          const SizedBox(width: 10)
-        ],
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.only(top: 0),
-          children: [
-            SectionLabel(
-              label: AppLocalizations.of(context)!.rateLimit,
-              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 8),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24, top: 4),
-              child: TextFormField(
-                controller: _limitRequestsController,
-                onChanged: (v) => setState(() => _limitRequestsError = validateNumber(v)),
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.looks_one_rounded),
-                  border: const OutlineInputBorder(
-                    borderRadius: BorderRadius.all(
-                      Radius.circular(10)
-                    )
-                  ),
-                  labelText: AppLocalizations.of(context)!.limitRequestsSecond,
-                  errorText: _limitRequestsError
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
-              child: TextFormField(
-                controller: _ipv4PrefixSubnetController,
-                onChanged: (v) => setState(() => _ipv4PrefixSubnetError = validateNumber(v)),
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.skip_previous_rounded),
-                  border: const OutlineInputBorder(
-                    borderRadius: BorderRadius.all(
-                      Radius.circular(10)
-                    )
-                  ),
-                  labelText: AppLocalizations.of(context)!.subnetPrefixLengthIpv4,
-                  errorText: _ipv4PrefixSubnetError
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: TextFormField(
-                controller: _ipv6PrefixSubnetController,
-                onChanged: (v) => setState(() => _ipv6PrefixSubnetError = validateNumber(v)),
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.skip_previous_rounded),
-                  border: const OutlineInputBorder(
-                    borderRadius: BorderRadius.all(
-                      Radius.circular(10)
-                    )
-                  ),
-                  labelText: AppLocalizations.of(context)!.subnetPrefixLengthIpv6,
-                  errorText: _ipv6PrefixSubnetError
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ),
-            const SizedBox(height: 16),
-            CustomListTile(
-              title: AppLocalizations.of(context)!.rateLimitAllowlist,
-              subtitle: AppLocalizations.of(context)!.rateLimitAllowlistDescription,
-              onTap: () => showDialog(
-                context: context, 
-                builder: (context) => RateLimitAllowlistModal(
-                  values: _rateLimitAllowlist,
-                  onConfirm: (ips) => setState(() => _rateLimitAllowlist = ips)
-                ),
-              ),
-              trailing: _rateLimitAllowlist.isNotEmpty ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(40)
-                ),
-                child: Text(
-                  _rateLimitAllowlist.length.toString(),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer
-                  ),
-                ),
-              ) : null,
-            ),
-            SectionLabel(label: AppLocalizations.of(context)!.dnsOptions),
-            CustomSwitchListTile(
-              value: _enableEdns, 
-              onChanged: (value) => setState(() {
-                _enableEdns = value;
-                _expandableCustomEdns.toggle();
-                if (value == false) {
-                  _useCustomIpEdns = false;
-                  if (_expandableEdnsIp.expanded == true) _expandableEdnsIp.toggle();
-                  _customIpEdnsController.text = "";
-                  _ednsIpError = null;
-                }
-                validateData();
-              }), 
-              title: AppLocalizations.of(context)!.enableEdns,
-              subtitle: AppLocalizations.of(context)!.enableEdnsDescription,
-            ),
-            ExpandableNotifier(
-              controller: _expandableCustomEdns,
-              child: Expandable(
-                collapsed: const SizedBox(),
-                expanded: Column(
-                  children: [
-                    CustomSwitchListTile(
-                      padding: const EdgeInsets.only(
-                        left: 50,
-                        top: 12,
-                        bottom: 12,
-                        right: 16
-                      ),
-                      value: _useCustomIpEdns, 
-                      onChanged: (value) => setState(() {
-                        _useCustomIpEdns = value;
-                        _expandableEdnsIp.toggle();
-                        if (_useCustomIpEdns == false) {
-                          _customIpEdnsController.text = "";
-                          _ednsIpError = null;
-                        }
-                        validateData();
-                      }), 
-                      title: AppLocalizations.of(context)!.useCustomIpEdns,
-                      subtitle: AppLocalizations.of(context)!.useCustomIpEdnsDescription,
-                    ),
-                    ExpandableNotifier(
-                      controller: _expandableEdnsIp,
-                      child: Expandable(
-                        collapsed: const SizedBox(),
-                        expanded: Padding(
-                          padding: const EdgeInsets.only(
-                            top: 16,
-                            bottom: 16,
-                            right: 16,
-                            left: 70
-                          ),
-                          child: TextFormField(
-                            controller: _customIpEdnsController,
-                            onChanged: validateEdns,
-                            decoration: InputDecoration(
-                              prefixIcon: const Icon(Icons.link_rounded),
-                              border: const OutlineInputBorder(
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(10)
-                                )
-                              ),
-                              errorText: _ednsIpError,
-                              labelText: AppLocalizations.of(context)!.ipAddress,
-                            ),
-                          ),
-                        ),
-                      )
-                    ),
-                  ],
-                ),
-              )
-            ),
-            CustomSwitchListTile(
-              value: _enableDnssec, 
-              onChanged: (value) => setState(() => _enableDnssec = value), 
-              title: AppLocalizations.of(context)!.enableDnssec,
-              subtitle: AppLocalizations.of(context)!.enableDnssecDescription,
-            ),
-            CustomSwitchListTile(
-              value: _disableIpv6Resolving, 
-              onChanged: (value) => setState(() => _disableIpv6Resolving = value), 
-              title: AppLocalizations.of(context)!.disableResolvingIpv6,
-              subtitle: AppLocalizations.of(context)!.disableResolvingIpv6Description,
-            ),
-            SectionLabel(label: AppLocalizations.of(context)!.blockingMode),
-            CustomRadioListTile(
-              groupValue: blockingMode, 
-              value: "default", 
-              title: AppLocalizations.of(context)!.defaultMode,
-              subtitle: AppLocalizations.of(context)!.defaultDescription,
-              onChanged: updateBlockingMode,
-            ),
-            CustomRadioListTile(
-              groupValue: blockingMode, 
-              value: "refused", 
-              title: "REFUSED",
-              subtitle: AppLocalizations.of(context)!.refusedDescription,
-              onChanged: updateBlockingMode,
-            ),
-            CustomRadioListTile(
-              groupValue: blockingMode, 
-              value: "nxdomain", 
-              title: "NXDOMAIN",
-              subtitle: AppLocalizations.of(context)!.nxdomainDescription,
-              onChanged: updateBlockingMode,
-            ),
-            CustomRadioListTile(
-              groupValue: blockingMode, 
-              value: "null_ip", 
-              title: AppLocalizations.of(context)!.nullIp,
-              subtitle: AppLocalizations.of(context)!.nullIpDescription,
-              onChanged: updateBlockingMode,
-            ),
-            CustomRadioListTile(
-              groupValue: blockingMode, 
-              value: "custom_ip", 
-              title: AppLocalizations.of(context)!.customIp,
-              subtitle: AppLocalizations.of(context)!.customIpDescription,
-              onChanged: updateBlockingMode,
-            ),
-            const SizedBox(height: 10),
-            if (blockingMode == 'custom_ip') ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: TextFormField(
-                  controller: _ipv4controller,
-                  onChanged: validateIpv4,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.link_rounded),
-                    border: const OutlineInputBorder(
-                      borderRadius: BorderRadius.all(
-                        Radius.circular(10)
-                      )
-                    ),
-                    errorText: _ipv4error,
-                    helperText: AppLocalizations.of(context)!.blockingIpv4Description,
-                    helperMaxLines: 10,
-                    labelText: AppLocalizations.of(context)!.blockingIpv4,
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-              const SizedBox(height: 30),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: TextFormField(
-                  controller: _ipv6controller,
-                  onChanged: validateIpv6,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.link_rounded),
-                    border: const OutlineInputBorder(
-                      borderRadius: BorderRadius.all(
-                        Radius.circular(10)
-                      )
-                    ),
-                    errorText: ipv6error,
-                    helperText: AppLocalizations.of(context)!.blockingIpv6Description,
-                    helperMaxLines: 10,
-                    labelText: AppLocalizations.of(context)!.blockingIpv6,
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-              const SizedBox(height: 30),
-            ],
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: TextFormField(
-                controller: _ttlController,
-                onChanged: (v) => setState(() => _ttlError = validateTtl(v)),
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.timer_rounded),
-                  border: const OutlineInputBorder(
-                    borderRadius: BorderRadius.all(
-                      Radius.circular(10)
-                    )
-                  ),
-                  errorText: _ttlError,
-                  labelText: AppLocalizations.of(context)!.blockedResponseTtl,
-                  helperText: AppLocalizations.of(context)!.blockedResponseTtlDescription,
-                  helperMaxLines: 2,
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ),
-          ],
+      actions: [
+        IconButton(
+          onPressed: dataValid == true
+            ? () => saveData()
+            : null, 
+          icon: const Icon(CupertinoIcons.checkmark),
+          tooltip: l.save,
         ),
-      ),
+      ],
+      slivers: [
+        SliverToBoxAdapter(
+          child: AppleFormGroupLabel(
+            l.rateLimit,
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 7),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: AppleTextField(
+            controller: _limitRequestsController,
+            onChanged: (v) => setState(() => _limitRequestsError = validateNumber(v)),
+            icon: CupertinoIcons.number,
+            label: l.limitRequestsSecond,
+            error: _limitRequestsError,
+            keyboardType: TextInputType.number,
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: AppleTextField(
+            controller: _ipv4PrefixSubnetController,
+            onChanged: (v) => setState(() => _ipv4PrefixSubnetError = validateNumber(v)),
+            icon: CupertinoIcons.square_split_2x1_fill,
+            label: l.subnetPrefixLengthIpv4,
+            error: _ipv4PrefixSubnetError,
+            keyboardType: TextInputType.number,
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: AppleTextField(
+            controller: _ipv6PrefixSubnetController,
+            onChanged: (v) => setState(() => _ipv6PrefixSubnetError = validateNumber(v)),
+            icon: CupertinoIcons.square_split_2x1_fill,
+            label: l.subnetPrefixLengthIpv6,
+            error: _ipv6PrefixSubnetError,
+            keyboardType: TextInputType.number,
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: AppleListSection(
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            children: [
+              AppleListTile(
+                title: l.rateLimitAllowlist,
+                subtitle: l.rateLimitAllowlistDescription,
+                icon: CupertinoIcons.list_bullet,
+                iconColor: p.indigo,
+                onTap: () => showDialog(
+                  context: context, 
+                  builder: (context) => RateLimitAllowlistModal(
+                    values: _rateLimitAllowlist,
+                    onConfirm: (ips) => setState(() => _rateLimitAllowlist = ips)
+                  ),
+                ),
+                trailing: _rateLimitAllowlist.isNotEmpty
+                  ? ApplePill(
+                      label: _rateLimitAllowlist.length.toString(),
+                      color: p.label2,
+                    )
+                  : null,
+              ),
+            ],
+          ),
+        ),
+        SliverToBoxAdapter(child: AppleFormGroupLabel(l.dnsOptions)),
+        SliverToBoxAdapter(
+          child: AppleListSection(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+            children: [
+              AppleSwitchListTile(
+                icon: CupertinoIcons.bolt_fill,
+                iconColor: p.purple,
+                value: _enableEdns, 
+                onChanged: (value) => setState(() {
+                  _enableEdns = value;
+                  if (value == false) {
+                    _useCustomIpEdns = false;
+                    _customIpEdnsController.text = "";
+                    _ednsIpError = null;
+                  }
+                  validateData();
+                }), 
+                title: l.enableEdns,
+                subtitle: l.enableEdnsDescription,
+              ),
+              // The rows that used to unfold under a switch are drawn only
+              // while it is on, which is exactly what the unfold did.
+              if (_enableEdns)
+                AppleSwitchListTile(
+                  icon: CupertinoIcons.location_fill,
+                  iconColor: p.indigo,
+                  value: _useCustomIpEdns, 
+                  onChanged: (value) => setState(() {
+                    _useCustomIpEdns = value;
+                    if (_useCustomIpEdns == false) {
+                      _customIpEdnsController.text = "";
+                      _ednsIpError = null;
+                    }
+                    validateData();
+                  }), 
+                  title: l.useCustomIpEdns,
+                  subtitle: l.useCustomIpEdnsDescription,
+                ),
+              AppleSwitchListTile(
+                icon: CupertinoIcons.lock_shield,
+                iconColor: p.green,
+                value: _enableDnssec, 
+                onChanged: (value) => setState(() => _enableDnssec = value), 
+                title: l.enableDnssec,
+                subtitle: l.enableDnssecDescription,
+              ),
+              AppleSwitchListTile(
+                icon: CupertinoIcons.number,
+                iconColor: p.gray,
+                value: _disableIpv6Resolving, 
+                onChanged: (value) => setState(() => _disableIpv6Resolving = value), 
+                title: l.disableResolvingIpv6,
+                subtitle: l.disableResolvingIpv6Description,
+              ),
+            ],
+          ),
+        ),
+        if (_enableEdns && _useCustomIpEdns)
+          SliverToBoxAdapter(
+            child: AppleTextField(
+              controller: _customIpEdnsController,
+              onChanged: validateEdns,
+              icon: CupertinoIcons.link,
+              label: l.ipAddress,
+              error: _ednsIpError,
+            ),
+          ),
+        SliverToBoxAdapter(child: AppleFormGroupLabel(l.blockingMode)),
+        SliverToBoxAdapter(
+          child: AppleListSection(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+            children: [
+              blockingRow('default', l.defaultMode, l.defaultDescription),
+              blockingRow('refused', 'REFUSED', l.refusedDescription),
+              blockingRow('nxdomain', 'NXDOMAIN', l.nxdomainDescription),
+              blockingRow('null_ip', l.nullIp, l.nullIpDescription),
+              blockingRow('custom_ip', l.customIp, l.customIpDescription),
+            ],
+          ),
+        ),
+        if (blockingMode == 'custom_ip') ...[
+          SliverToBoxAdapter(
+            child: AppleTextField(
+              controller: _ipv4controller,
+              onChanged: validateIpv4,
+              icon: CupertinoIcons.link,
+              helper: l.blockingIpv4Description,
+              helperMaxLines: 10,
+              label: l.blockingIpv4,
+              error: _ipv4error,
+              keyboardType: TextInputType.number,
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: AppleTextField(
+              controller: _ipv6controller,
+              onChanged: validateIpv6,
+              icon: CupertinoIcons.link,
+              helper: l.blockingIpv6Description,
+              helperMaxLines: 10,
+              label: l.blockingIpv6,
+              error: ipv6error,
+              keyboardType: TextInputType.number,
+            ),
+          ),
+        ],
+        SliverToBoxAdapter(
+          child: AppleTextField(
+            controller: _ttlController,
+            onChanged: (v) => setState(() => _ttlError = validateTtl(v)),
+            icon: CupertinoIcons.timer,
+            label: l.blockedResponseTtl,
+            helper: l.blockedResponseTtlDescription,
+            helperMaxLines: 2,
+            error: _ttlError,
+            keyboardType: TextInputType.number,
+          ),
+        ),
+      ],
     );
   }
 }

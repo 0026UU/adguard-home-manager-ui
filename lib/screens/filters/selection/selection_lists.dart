@@ -1,11 +1,13 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
-
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/models/filtering.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
 
+/// The list of one selection tab: a select-all row on its own card, then the
+/// lists themselves, each with a trailing checkmark while it is selected.
 class SelectionList extends StatelessWidget {
   final List<Filter> lists;
   final List<Filter> selectedLists;
@@ -22,49 +24,51 @@ class SelectionList extends StatelessWidget {
     required this.unselectAll,
   });
 
+  bool get _allSelected =>
+    lists.isNotEmpty && lists.length == selectedLists.length;
+
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      itemCount: lists.length+1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return Card(
-            margin: const EdgeInsets.all(16),
-            child: CheckboxListTile(
-              title: Text(
-                AppLocalizations.of(context)!.selectAll,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface
-                ),
-              ),
-              value: lists.length == selectedLists.length,
-              onChanged: (value) {
-                if (value == true) {
+    final l = AppLocalizations.of(context)!;
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      children: [
+        AppleListSection(
+          margin: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+          children: [
+            SelectionRow(
+              title: l.selectAll,
+              isSelected: _allSelected,
+              onTap: () {
+                if (_allSelected) {
+                  unselectAll();
+                } else {
                   selectAll();
                 }
-                else {
-                  unselectAll();
-                }
               },
-              checkboxShape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4)
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)
-              ),
             ),
-          );
-        }
-        return _CheckboxTile(
-          list: lists[index-1],
-          onSelect: onSelect,
-          isSelected: selectedLists.contains(lists[index-1]),
-        ); 
-      }
+          ],
+        ),
+        if (lists.isNotEmpty)
+          AppleListSection(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              for (final list in lists)
+                SelectionFilterRow(
+                  list: list,
+                  isSelected: selectedLists.contains(list),
+                  onSelect: onSelect,
+                ),
+            ],
+          ),
+      ],
     );
   }
 }
 
+/// The same list as slivers, for the screen that scrolls under a collapsing
+/// large title.
 class SelectionSliverList extends StatelessWidget {
   final List<Filter> lists;
   final List<Filter> selectedLists;
@@ -83,75 +87,103 @@ class SelectionSliverList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Builder(
-        builder: (BuildContext context) {
-          return CustomScrollView(
-            slivers: <Widget>[
-              SliverOverlapInjector(
-                handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-              ),
-              if (lists.isNotEmpty) SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    if (index == 0) {
-                      return Card(
-                        margin: const EdgeInsets.all(16),
-                        child: CheckboxListTile(
-                          title: Text(AppLocalizations.of(context)!.selectAll),
-                          value: lists.length == selectedLists.length,
-                          onChanged: (value) {
-                            if (value == true) {
-                              selectAll();
-                            }
-                            else {
-                              unselectAll();
-                            }
-                          },
-                          checkboxShape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4)
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)
-                          ),
-                        ),
-                      );
-                    }
-                    return _Tile(
-                      list: lists[index-1],
-                      onSelect: onSelect,
-                      isSelected: selectedLists.contains(lists[index-1]),
-                    ); 
-                  },
-                  childCount: lists.length+1
-                ),
-              ),
-              if (lists.isEmpty) SliverFillRemaining(
-                child: Center(
-                  child: Text(
-                    AppLocalizations.of(context)!.noItems,
-                    style: TextStyle(
-                      fontSize: 22,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant
-                    ),
-                  )
-                )
-              )
-            ],
-          );
-        },
+    return CustomScrollView(slivers: slivers(context));
+  }
+
+  List<Widget> slivers(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final allSelected =
+      lists.isNotEmpty && lists.length == selectedLists.length;
+
+    return [
+      SliverToBoxAdapter(
+        child: AppleListSection(
+          margin: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+          children: [
+            SelectionRow(
+              title: l.selectAll,
+              isSelected: allSelected,
+              onTap: () {
+                if (allSelected) {
+                  unselectAll();
+                } else {
+                  selectAll();
+                }
+              },
+            ),
+          ],
+        ),
       ),
+      if (lists.isNotEmpty)
+        ...AppleListCard.slivers(
+          context,
+          itemsCount: lists.length,
+          row: (index) => SelectionFilterRow(
+            list: lists[index],
+            isSelected: selectedLists.contains(lists[index]),
+            onSelect: onSelect,
+          ),
+        ),
+      if (lists.isEmpty)
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: AppleEmptyState(
+              icon: CupertinoIcons.list_bullet,
+              title: l.noItems,
+            ),
+          ),
+        ),
+    ];
+  }
+}
+
+/// The trailing mark both kinds of row carry: a filled checkmark while the row
+/// is selected, an empty circle otherwise, so the column stays aligned.
+Widget selectionCheckmark(BuildContext context, bool isSelected) {
+  final p = ApplePalette.of(context);
+
+  return Icon(
+    isSelected
+      ? CupertinoIcons.checkmark_circle_fill
+      : CupertinoIcons.circle,
+    size: 22,
+    color: isSelected ? p.tint : p.label4,
+  );
+}
+
+/// One tappable row of the selection list.
+class SelectionRow extends StatelessWidget {
+  final String title;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const SelectionRow({
+    super.key,
+    required this.title,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppleListTile(
+      title: title,
+      showChevron: false,
+      trailing: selectionCheckmark(context, isSelected),
+      onTap: onTap,
     );
   }
 }
 
-class _Tile extends StatelessWidget {
+/// One filter list of the selection: the URL and the state under the name.
+class SelectionFilterRow extends StatelessWidget {
   final Filter list;
   final void Function(Filter) onSelect;
   final bool isSelected;
 
-  const _Tile({
+  const SelectionFilterRow({
+    super.key,
     required this.list,
     required this.onSelect,
     required this.isSelected,
@@ -159,154 +191,41 @@ class _Tile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
 
-    return ListTile(
-      title: Text(
-        list.name,
-      ),
-      subtitle: Column(
+    // The colour of a list that does nothing is a statement of state, so it
+    // comes from the palette unless the user asked the theme to carry it.
+    final statusColor = list.enabled == true
+      ? (appConfigProvider.useThemeColorForStatus == true
+        ? p.tint
+        : p.green)
+      : (appConfigProvider.useThemeColorForStatus == true
+        ? p.gray
+        : p.red);
+
+    return AppleListTile(
+      title: list.name,
+      subtitleWidget: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             list.url,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(
-                list.enabled == true 
-                  ? Icons.check_rounded
-                  : Icons.close_rounded,
-                size: 16,
-                color: list.enabled == true
-                  ? appConfigProvider.useThemeColorForStatus == true
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.green
-                  : appConfigProvider.useThemeColorForStatus == true
-                    ? Colors.grey
-                    : Colors.red
-              ),
-              const SizedBox(width: 4),
-              Text(
-                list.enabled == true 
-                  ? AppLocalizations.of(context)!.enabled
-                  : AppLocalizations.of(context)!.disabled,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: list.enabled == true
-                    ? appConfigProvider.useThemeColorForStatus == true
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.green
-                    : appConfigProvider.useThemeColorForStatus == true
-                      ? Colors.grey
-                      : Colors.red
-                ),
-              )
-            ],
-          )
+          const SizedBox(height: 6),
+          ApplePill(
+            label: list.enabled == true ? l.enabled : l.disabled,
+            color: statusColor,
+          ),
         ],
       ),
-      isThreeLine: true,
-      tileColor: isSelected == true
-        ? Theme.of(context).colorScheme.primaryContainer
-        : null,
-      contentPadding: const EdgeInsets.symmetric(
-        vertical: 8, 
-        horizontal: 16
-      ),
+      showChevron: false,
       selected: isSelected,
-      selectedTileColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
-      selectedColor: Theme.of(context).colorScheme.onSurface,
+      trailing: selectionCheckmark(context, isSelected),
       onTap: () => onSelect(list),
     );
   }
 }
-
-class _CheckboxTile extends StatelessWidget {
-  final Filter list;
-  final void Function(Filter) onSelect;
-  final bool isSelected;
-
-  const _CheckboxTile({
-    required this.list,
-    required this.onSelect,
-    required this.isSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final appConfigProvider = Provider.of<AppConfigProvider>(context);
-
-    return ListTile(
-      leading: Checkbox(
-        value: isSelected,
-        onChanged: (_) => onSelect(list),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4)
-        ),
-      ),
-      title: Text(
-        list.name,
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurface
-        ),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            list.url,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(
-                list.enabled == true 
-                  ? Icons.check_rounded
-                  : Icons.close_rounded,
-                size: 16,
-                color: list.enabled == true
-                  ? appConfigProvider.useThemeColorForStatus == true
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.green
-                  : appConfigProvider.useThemeColorForStatus == true
-                    ? Colors.grey
-                    : Colors.red
-              ),
-              const SizedBox(width: 4),
-              Text(
-                list.enabled == true 
-                  ? AppLocalizations.of(context)!.enabled
-                  : AppLocalizations.of(context)!.disabled,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: list.enabled == true
-                    ? appConfigProvider.useThemeColorForStatus == true
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.green
-                    : appConfigProvider.useThemeColorForStatus == true
-                      ? Colors.grey
-                      : Colors.red
-                ),
-              )
-            ],
-          )
-        ],
-      ),
-      isThreeLine: true,
-      contentPadding: const EdgeInsets.symmetric(
-        vertical: 8, 
-        horizontal: 16
-      ),
-      onTap: () => onSelect(list),
-    );
-  }
-}
-

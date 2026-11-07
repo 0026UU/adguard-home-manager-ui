@@ -12,7 +12,8 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/models/blocked_services.dart';
 import 'package:adguard_home_manager/providers/filtering_provider.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
-import 'package:adguard_home_manager/widgets/custom_checkbox_list_tile.dart';
+
+import 'surface.dart';
 
 // The device pickers read the blocked-service catalog from the server and hand
 // their edits back through a callback. No test can reach a server, so the
@@ -74,10 +75,10 @@ Future<void> pumpAppleApp(
   Brightness brightness = Brightness.light,
   Locale locale = const Locale('en'),
 }) async {
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, surface);
 
   final app = MaterialApp(
+    debugShowCheckedModeBanner: false,
     theme: brightness == Brightness.dark ? appleDarkTheme() : appleLightTheme(),
     locale: locale,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -101,18 +102,17 @@ Future<void> settleRoute(WidgetTester tester) async {
   await tester.pump();
 }
 
-Finder checkRow(String label) =>
-    find.widgetWithText(CustomCheckboxListTile, label);
+/// A multi-choice row of the design layer: its title, and the tick it draws on
+/// the trailing edge when the row is chosen.
+Finder checkRow(String label) => find.widgetWithText(AppleListTile, label);
 
-bool isChecked(WidgetTester tester, String label) => tester
-    .widget<CupertinoCheckbox>(find.descendant(
+bool isChecked(WidgetTester tester, String label) => find
+    .descendant(
       of: checkRow(label),
-      matching: find.byType(CupertinoCheckbox),
-    ))
-    .value!;
-
-bool rowEnabled(WidgetTester tester, String label) => tester
-    .widget<AppleListTile>(
-      find.descendant(of: checkRow(label), matching: find.byType(AppleListTile)),
+      matching: find.byIcon(CupertinoIcons.checkmark),
     )
-    .enabled;
+    .evaluate()
+    .isNotEmpty;
+
+bool rowEnabled(WidgetTester tester, String label) =>
+    tester.widget<AppleListTile>(checkRow(label)).enabled;

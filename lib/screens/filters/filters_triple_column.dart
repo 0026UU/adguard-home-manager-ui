@@ -80,7 +80,7 @@ class FiltersTripleColumn extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 15,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: palette.label,
               ),
             ),
@@ -243,7 +243,7 @@ class FiltersTripleColumn extends StatelessWidget {
                                   tooltip: l.editCustomRules,
                                 )
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 8),
                               AddFiltersButton(
                                 type: 'add_custom_rule', 
                                 widget: (fn) => paneActionButton(

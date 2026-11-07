@@ -58,28 +58,63 @@ class _DhcpScreenState extends State<DhcpScreen> {
 
   bool dataValid = false;
 
-  void loadDhcpStatus() async {
-    final result = await Provider.of<DhcpProvider>(context, listen: false).loadDhcpStatus();
+  /// The lease field as the server wants it: a count of seconds, or nothing at
+  /// all when the field is empty. It answers null for anything that does not
+  /// parse, so a stray value can keep the checkmark down instead of throwing
+  /// halfway through a save.
+  static int? _leaseSeconds(String value) {
+    final text = value.trim();
+    return text.isEmpty ? null : int.tryParse(text);
+  }
+
+  Future<void> loadDhcpStatus() async {
+    final result = await Provider.of<DhcpProvider>(
+      context,
+      listen: false,
+    ).loadDhcpStatus(showLoading: true);
     if (!mounted || result == false) return;
 
     final dhcpProvider = Provider.of<DhcpProvider>(context, listen: false);
-    if (dhcpProvider.dhcp == null) return;
-  
+    final status = dhcpProvider.dhcp?.dhcpStatus;
+    if (status == null) return;
+
     setState(() {
-      if (dhcpProvider.dhcp!.dhcpStatus!.interfaceName != null && dhcpProvider.dhcp!.dhcpStatus!.interfaceName != '') {
-        try {selectedInterface = dhcpProvider.dhcp!.networkInterfaces.firstWhere((iface) => iface.name == dhcpProvider.dhcp!.dhcpStatus!.interfaceName);} catch (_) {}
-        enabled = dhcpProvider.dhcp!.dhcpStatus!.enabled;
-        if (dhcpProvider.dhcp!.dhcpStatus!.v4 != null) {
-          ipv4StartRangeController.text = dhcpProvider.dhcp!.dhcpStatus!.v4!.rangeStart;
-          ipv4EndRangeController.text = dhcpProvider.dhcp!.dhcpStatus!.v4!.rangeEnd ?? '';
-          ipv4SubnetMaskController.text = dhcpProvider.dhcp!.dhcpStatus!.v4!.subnetMask ?? '';
-          ipv4GatewayController.text = dhcpProvider.dhcp!.dhcpStatus!.v4!.gatewayIp ?? '';
-          ipv4LeaseTimeController.text = dhcpProvider.dhcp!.dhcpStatus!.v4!.leaseDuration.toString();
-        }
+      selectedInterface = _resolveInterface(dhcpProvider.dhcp!, status);
+      if (selectedInterface == null) return;
+
+      enabled = status.enabled;
+      if (status.v4 != null) {
+        ipv4StartRangeController.text = status.v4!.rangeStart;
+        ipv4EndRangeController.text = status.v4!.rangeEnd ?? '';
+        ipv4SubnetMaskController.text = status.v4!.subnetMask ?? '';
+        ipv4GatewayController.text = status.v4!.gatewayIp ?? '';
+        ipv4LeaseTimeController.text = status.v4!.leaseDuration.toString();
       }
     });
 
     checkDataValid();
+  }
+
+  // AdGuard Home leaves a bridge or a VPN device out of its interface report
+  // whenever that device has no addresses of its own, although DHCP still runs
+  // on it. Taking the list alone would blank the form for a server that is
+  // configured, so a name missing from it is rebuilt from the ranges.
+  NetworkInterface? _resolveInterface(DhcpModel dhcp, DhcpStatus status) {
+    final name = status.interfaceName;
+    if (name == null || name == '') return null;
+
+    final reported = dhcp.networkInterfaces
+        .where((iface) => iface.name == name);
+    if (reported.isNotEmpty) return reported.first;
+
+    return NetworkInterface(
+      name: name,
+      hardwareAddress: '',
+      flags: const [],
+      gatewayIp: status.v4?.gatewayIp,
+      ipv4Addresses: status.v4 == null ? const [] : [status.v4!.rangeStart],
+      ipv6Addresses: status.v6 == null ? const [] : [status.v6!.rangeStart],
+    );
   }
 
   void validateIpV4(String value, String errorVar, String errorMessage) {
@@ -116,15 +151,11 @@ class _DhcpScreenState extends State<DhcpScreen> {
     void setValue(String? error) {
       switch (errorVar) {
         case 'ipv6StartRangeError':
-          setState(() => ipv4StartRangeError = error);
+          setState(() => ipv6StartRangeError = error);
           break;
 
         case 'ipv6EndRangeError':
-          setState(() => ipv4EndRangeError = error);
-          break;
-
-        case 'ipv6GatewayError':
-          setState(() => ipv4GatewayError = error);
+          setState(() => ipv6EndRangeError = error);
           break;
       }
     }
@@ -139,15 +170,31 @@ class _DhcpScreenState extends State<DhcpScreen> {
   }
 
   bool checkDataValid() {
+    // The save only sends the family the interface actually has, so requiring
+    // the other family's fields here would hold the checkmark down forever on
+    // an IPv6-only box.
+    final hasIpv4 = selectedInterface?.ipv4Addresses.isNotEmpty ?? false;
+    final hasIpv6 = selectedInterface?.ipv6Addresses.isNotEmpty ?? false;
+
     if (
-      ipv4StartRangeController.text != '' &&
-      ipv4StartRangeError == null &&
-      ipv4EndRangeController.text != '' &&
-      ipv4EndRangeError == null &&
-      ipv4SubnetMaskController.text != '' && 
-      ipv4SubnetMaskError == null &&
-      ipv4GatewayController.text != '' &&
-      ipv4GatewayError == null 
+      (!hasIpv4 ||
+        (ipv4StartRangeController.text != '' &&
+         ipv4StartRangeError == null &&
+         ipv4EndRangeController.text != '' &&
+         ipv4EndRangeError == null &&
+         ipv4SubnetMaskController.text != '' &&
+         ipv4SubnetMaskError == null &&
+         ipv4GatewayController.text != '' &&
+         ipv4GatewayError == null)) &&
+      // The IPv6 range may stay empty, but whatever is typed into it has to
+      // parse before the config can be sent.
+      (!hasIpv6 ||
+        (ipv6StartRangeError == null && ipv6EndRangeError == null)) &&
+      // The lease fields belong here too: the save below parses them, and an
+      // exception thrown after "Saving settings" opened would leave that
+      // sheet up with no way to dismiss it.
+      ipv4LeaseTimeError == null &&
+      ipv6LeaseTimeError == null
     ) {
       return true;
     }
@@ -197,6 +244,7 @@ class _DhcpScreenState extends State<DhcpScreen> {
     final dhcpProvider = Provider.of<DhcpProvider>(context);
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
 
+    final p = ApplePalette.of(context);
     final width = MediaQuery.of(context).size.width;
 
     void saveSettings() async {
@@ -211,29 +259,32 @@ class _DhcpScreenState extends State<DhcpScreen> {
             "subnet_mask": ipv4SubnetMaskController.text,
             "range_start": ipv4StartRangeController.text,
             "range_end": ipv4EndRangeController.text,
-            "lease_duration": ipv4LeaseTimeController.text != '' ? int.parse(ipv4LeaseTimeController.text) : null
+            "lease_duration": _leaseSeconds(ipv4LeaseTimeController.text)
           },
           if (selectedInterface!.ipv6Addresses.isNotEmpty) "v6": {
             "range_start": ipv6StartRangeController.text,
             "range_end": ipv6EndRangeController.text,
-            "lease_duration": ipv6LeaseTimeController.text != '' ? int.parse(ipv6LeaseTimeController.text) : null
+            "lease_duration": _leaseSeconds(ipv6LeaseTimeController.text)
           }
         }
       );
-      if (!mounted) return;
+      // The progress sheet sits on the global navigator, so it has to come
+      // down even when this page is gone; checking the page first would leave
+      // an undismissable "Saving…" dialog behind.
       processModal.close();
+      if (!mounted) return;
       if (result.successful == true) {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.settingsSaved, 
-          color: Colors.green
+          color: p.green
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
           label: AppLocalizations.of(context)!.settingsNotSaved, 
-          color: Colors.red
+          color: p.red
         );
       }
     }
@@ -243,21 +294,21 @@ class _DhcpScreenState extends State<DhcpScreen> {
         ProcessModal processModal = ProcessModal();
         processModal.open(AppLocalizations.of(context)!.restoringConfig);
         final result = await serversProvider.apiClient2!.resetDhcpConfig();
-        if (!mounted) return;
         processModal.close();
+        if (!mounted) return;
         if (result.successful == true) {
           clearAll();
           showSnackbar(
             appConfigProvider: appConfigProvider,
             label: AppLocalizations.of(context)!.configRestored, 
-            color: Colors.green
+            color: p.green
           );
         }
         else {
           showSnackbar(
             appConfigProvider: appConfigProvider,
             label: AppLocalizations.of(context)!.configNotRestored, 
-            color: Colors.red
+            color: p.red
           );
         }
       });
@@ -281,14 +332,14 @@ class _DhcpScreenState extends State<DhcpScreen> {
           showSnackbar(
             appConfigProvider: appConfigProvider,
             label: AppLocalizations.of(context)!.leasesRestored, 
-            color: Colors.green
+            color: p.green
           );
         }
         else {
           showSnackbar(
             appConfigProvider: appConfigProvider,
             label: AppLocalizations.of(context)!.leasesNotRestored, 
-            color: Colors.red
+            color: p.red
           );
         }
       });
@@ -361,7 +412,6 @@ class _DhcpScreenState extends State<DhcpScreen> {
     }
 
     final l = AppLocalizations.of(context)!;
-    final p = ApplePalette.of(context);
 
     Widget fill(Widget child) => SliverFillRemaining(
       hasScrollBody: false,
@@ -369,11 +419,15 @@ class _DhcpScreenState extends State<DhcpScreen> {
     );
 
     // The lease duration is sent as a plain integer, so anything but a number
-    // is refused before the request is made.
+    // is refused before the request is made. An empty field is not a mistake
+    // — the server keeps its own default for it, which is what the save does
+    // with an empty value too.
     ValueChanged<String> leaseTime(void Function(String? error) setError) =>
       (value) => setState(
         () => setError(
-          int.tryParse(value).runtimeType == int ? null : l.leaseTimeNotValid
+          value.isEmpty || _leaseSeconds(value) != null
+            ? null
+            : l.leaseTimeNotValid
         )
       );
 
@@ -432,6 +486,15 @@ class _DhcpScreenState extends State<DhcpScreen> {
             AppleEmptyState(
               icon: CupertinoIcons.exclamationmark_triangle_fill,
               title: l.dhcpSettingsNotLoaded,
+              // The header refresh only exists over the bar; this card is what
+              // the page is showing instead, so it has to carry the retry.
+              action: SizedBox(
+                width: 320,
+                child: AppleButton(
+                  label: l.refresh,
+                  onPressed: loadDhcpStatus,
+                ),
+              ),
               color: p.red,
             )
           )
@@ -588,6 +651,10 @@ class _DhcpScreenState extends State<DhcpScreen> {
 
     return AppleScreen(
       title: l.dhcpSettings,
+      // The DHCP state is the server's, so the page has to offer the one
+      // control that asks the server again rather than redrawing what it
+      // already holds.
+      onRefresh: loadDhcpStatus,
       actions: selectedInterface != null
         ? [
             IconButton(

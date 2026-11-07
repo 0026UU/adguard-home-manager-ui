@@ -15,6 +15,7 @@ Future<void> _pump(WidgetTester tester, Widget home) async {
 
   await tester.pumpWidget(
     MaterialApp(
+      debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: scaffoldMessengerKey,
       navigatorKey: globalNavigatorKey,
       theme: appleLightTheme(),
@@ -251,8 +252,7 @@ void main() {
   });
 
   group('showSnackbar routing', () {
-    testWidgets('uses the pill and never a Material snack bar in Apple style', (tester) async {
-      await provider.setUseAppleStyle(true);
+    testWidgets('uses the pill and never a Material snack bar', (tester) async {
       await _pump(tester, const SizedBox.shrink());
 
       showSnackbar(
@@ -266,23 +266,6 @@ void main() {
       expect(find.byType(SnackBar), findsNothing);
 
       AppleToast.hide();
-      await tester.pumpAndSettle();
-    });
-
-    testWidgets('keeps the Material snack bar otherwise', (tester) async {
-      await provider.setUseAppleStyle(false);
-      await _pump(tester, const SizedBox.shrink());
-
-      showSnackbar(
-        appConfigProvider: provider,
-        label: '设备已添加',
-        color: Colors.green,
-      );
-      await tester.pump();
-
-      expect(find.byType(SnackBar), findsOneWidget);
-
-      ScaffoldMessenger.of(tester.element(find.byType(SnackBar))).clearSnackBars();
       await tester.pumpAndSettle();
     });
   });

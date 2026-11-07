@@ -164,7 +164,7 @@ class Client {
     "filtering_enabled": filteringEnabled,
     "parental_enabled": parentalEnabled,
     "safebrowsing_enabled": safebrowsingEnabled,
-    "safe_search": safeSearch,
+    "safe_search": safeSearch?.toJson(),
     "use_global_blocked_services": useGlobalBlockedServices,
     "use_global_settings": useGlobalSettings,
     "ignore_querylog": ignoreQuerylog,

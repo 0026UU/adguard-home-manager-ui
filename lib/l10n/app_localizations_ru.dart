@@ -101,6 +101,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get connected => 'Подключено';
 
   @override
+  String get notConnected => 'Not connected';
+
+  @override
   String get selectedDisconnected => 'Выбран, но отключён';
 
   @override
@@ -113,6 +116,10 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get noSavedConnections => 'Нет сохранённых подключений';
+
+  @override
+  String get noSavedConnectionsHint =>
+      'Add the AdGuard Home server you want to manage.';
 
   @override
   String get cannotConnect => 'Не удается подключиться к серверу';
@@ -271,6 +278,13 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get noClientsList => 'Список клиентов пуст';
+
+  @override
+  String get noDevicesInSegment => 'Nothing is in this part of the list';
+
+  @override
+  String get switchDeviceSegment =>
+      'Switch the segment above to see the other devices.';
 
   @override
   String get activeClients => 'Активные';
@@ -509,6 +523,14 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get noLogsThatOld =>
       'Возможно, что за это выбранное время записи журнала не сохранены. Попробуйте выбрать более позднее время.';
+
+  @override
+  String get noLiveLogsMatchingFilters =>
+      'No query has come in since these filters were applied. Widen them to see the rest.';
+
+  @override
+  String get noLogsMatchingFilters =>
+      'Nothing in this time range matches these filters. Widen them to see the rest.';
 
   @override
   String get apply => 'Применить';
@@ -1286,6 +1308,10 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get clearLogs => 'Очистить журнал';
+
+  @override
+  String get clearLogsConfirm =>
+      'This removes every query the server has recorded. It cannot be undone.';
 
   @override
   String get anonymizeClientIp => 'Анонимизировать клиента';
@@ -2202,13 +2228,6 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get topUpstreams => 'Часто запрашиваемые\nupstream-серверы';
-
-  @override
-  String get averageUpstreamResponseTime =>
-      'Среднее время отклика\nupstream-сервера';
-
-  @override
   String get dhcpNotAvailable => 'DHCP сервер не доступен.';
 
   @override
@@ -2293,6 +2312,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get noDataChart => 'Нет данных для отображения графика.';
+
+  @override
+  String get trendNotLoaded => 'Не удалось загрузить график';
 
   @override
   String get noData => 'Нет данных';
@@ -2621,8 +2643,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get identifiedDevices => 'Identified devices';
 
   @override
-  String shownDevices(Object count) {
-    return '$count devices';
+  String shownDevices(num count, Object shown) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$shown devices',
+      one: '$shown device',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -2642,14 +2670,25 @@ class AppLocalizationsRu extends AppLocalizations {
   String get hasDefaultSettings => 'Default settings';
 
   @override
+  String viewDeviceLog(Object device) {
+    return 'View log of $device';
+  }
+
+  @override
   String get onlyCustom => 'Custom';
 
   @override
   String get onlyDefault => 'Default';
 
   @override
-  String protectingDevices(Object count) {
-    return 'Blocking ads and trackers for $count devices';
+  String protectingDevices(num count, Object shown) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Blocking ads and trackers for $shown devices',
+      one: 'Blocking ads and trackers for $shown device',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -2717,27 +2756,57 @@ class AppLocalizationsRu extends AppLocalizations {
   String get customRulesSyntaxHelper => 'Rewrites, exceptions and local rules';
 
   @override
-  String rulesCount(Object count) {
-    return '$count rules';
+  String rulesCount(num count, Object shown) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$shown rules',
+      one: '$shown rule',
+    );
+    return '$_temp0';
   }
 
   @override
   String get customRulesPreview => 'Custom rules preview';
 
   @override
-  String showAllRules(Object count) {
-    return 'Show all $count rules';
+  String showAllRules(num count, Object shown) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Show all $shown rules',
+      one: 'Show all $shown rule',
+    );
+    return '$_temp0';
   }
 
   @override
   String get blockByService => 'Block by service';
 
   @override
+  String get clearBlockedServicesConfirm =>
+      'This stops blocking every service on the list at once.';
+
+  @override
   String get clearAll => 'Clear all';
 
   @override
-  String listsEnabledWithRules(Object lists, Object rules) {
-    return '$lists lists enabled · $rules rules';
+  String listsEnabledWithRules(num lists, num rules) {
+    String _temp0 = intl.Intl.pluralLogic(
+      lists,
+      locale: localeName,
+      other: '$lists lists enabled',
+      one: '1 list enabled',
+      zero: 'No lists enabled',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      rules,
+      locale: localeName,
+      other: '$rules rules',
+      one: '1 rule',
+      zero: 'no rules',
+    );
+    return '$_temp0 · $_temp1';
   }
 
   @override
@@ -2785,7 +2854,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get protectionRunning => 'Protection running';
 
   @override
+  String get protectionNotChanged => 'The server did not accept this change';
+
+  @override
   String get protectionPaused => 'Protection paused';
+
+  @override
+  String get protectionUnknown => 'Status unknown';
 
   @override
   String get protectionOn => 'Protection is on';
@@ -2826,8 +2901,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get activeRules => 'Active rules';
 
   @override
-  String filterListsCount(Object count) {
-    return '$count filter lists';
+  String filterListsCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count filter lists',
+      one: '$count filter list',
+      zero: 'No filter lists',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -2912,8 +2994,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get identity => 'Identity';
 
   @override
-  String blockedServicesCount(Object count) {
-    return '$count services blocked';
+  String blockedServicesCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count services blocked',
+      one: '$count service blocked',
+      zero: 'No services blocked',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -2933,8 +3022,14 @@ class AppLocalizationsRu extends AppLocalizations {
       'Query every upstream at the same time';
 
   @override
-  String queriesPerSecond(Object count) {
-    return '$count queries per second';
+  String queriesPerSecond(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count queries per second',
+      one: '$count query per second',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -2987,13 +3082,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sortedByQueries => 'Sorted by queries';
 
   @override
-  String devicesQueriedLastDay(Object count) {
-    return '$count devices queried in the last 24 hours';
-  }
-
-  @override
-  String deviceQueries(Object count) {
-    return '$count queries';
+  String devicesSeenInStatistics(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count devices seen in the statistics',
+      one: '$count device seen in the statistics',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -3186,4 +3282,103 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get ruleAlreadyOnList => 'That rule is already on the list';
+
+  @override
+  String get logQueryDetails => 'Query details';
+
+  @override
+  String get logResponseDetails => 'Response details';
+
+  @override
+  String get logClientDetails => 'Client details';
+
+  @override
+  String get logProtocol => 'Protocol';
+
+  @override
+  String get logProtocolPlain => 'Plain DNS';
+
+  @override
+  String get logProtocolDoh => 'DNS-over-HTTPS';
+
+  @override
+  String get logProtocolDot => 'DNS-over-TLS';
+
+  @override
+  String get logProtocolDoq => 'DNS-over-QUIC';
+
+  @override
+  String get logStatusProcessed => 'Processed';
+
+  @override
+  String get logStatusRewritten => 'Rewritten';
+
+  @override
+  String get logReasonBlockedByFilter => 'Blocked by filter';
+
+  @override
+  String get logReasonBlockedByParental => 'Blocked by parental control';
+
+  @override
+  String get logReasonBlockedThreats => 'Blocked threats';
+
+  @override
+  String get logReasonSafeSearch => 'Safe search';
+
+  @override
+  String get logReasonBlockedServices => 'Blocked services';
+
+  @override
+  String get logReasonRewrittenByHosts => 'Rewritten by the hosts file rule';
+
+  @override
+  String get logReasonAllowed => 'Allowed';
+
+  @override
+  String get logSourceCustomRules => 'Custom filtering rules';
+
+  @override
+  String get logSourceParentalControl => 'Parental Control';
+
+  @override
+  String get logDetailRules => 'Rule(s)';
+
+  @override
+  String get logDetailSource => 'Source';
+
+  @override
+  String get logDetailServedFromCache => 'Served from cache';
+
+  @override
+  String get logDetailOriginalResponse => 'Original response';
+
+  @override
+  String get logDetailServiceName => 'Service name';
+
+  @override
+  String get logDetailEcs => 'ECS';
+
+  @override
+  String get logDetailDnssec => 'DNSSEC';
+
+  @override
+  String get logDetailValidatedWithDnssec => 'Validated with DNSSEC';
+
+  @override
+  String get logDetailClientIp => 'Client IP';
+
+  @override
+  String get logDetailWhois => 'WHOIS';
+
+  @override
+  String get logDetailAddress => 'Address';
+
+  @override
+  String get logDetailCountry => 'Country';
+
+  @override
+  String get logDetailNetwork => 'Network';
+
+  @override
+  String get logDetailCategory => 'Category';
 }

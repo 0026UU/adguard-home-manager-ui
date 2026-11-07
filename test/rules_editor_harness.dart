@@ -13,6 +13,8 @@ import 'package:adguard_home_manager/providers/filtering_provider.dart';
 import 'package:adguard_home_manager/screens/filters/modals/custom_rules/edit_custom_rules.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+import 'surface.dart';
+
 // The editor writes through `/filtering/set_rules`, which no test can reach, so
 // the caller hands in an `onConfirm` and reads back the lines the page
 // produced. The provider here only supplies what the field opens with.
@@ -47,8 +49,7 @@ Future<void> pumpRulesEditor(
       enabled: true,
     ));
 
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, surface);
 
   await tester.pumpWidget(
     MultiProvider(
@@ -57,6 +58,7 @@ Future<void> pumpRulesEditor(
         ChangeNotifierProvider.value(value: filteringProvider),
       ],
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         navigatorKey: globalNavigatorKey,
         scaffoldMessengerKey: scaffoldMessengerKey,
         theme: appleTheme(brightness),

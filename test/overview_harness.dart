@@ -28,6 +28,8 @@ import 'package:adguard_home_manager/providers/status_provider.dart';
 import 'package:adguard_home_manager/screens/home/home.dart';
 import 'package:adguard_home_manager/services/api_client.dart';
 
+import 'surface.dart';
+
 // The overview asks the server for four things: the status, the statistics of
 // one window, whether DoT is on and how many rewrites exist. No test can reach
 // a server, so [OverviewApi] answers those from the fixtures below and records
@@ -286,9 +288,23 @@ class OverviewApi extends ApiClientV2 {
 
 /// Answers the status call from the fixture instead of the network.
 class OverviewStatus extends StatusProvider {
-  OverviewStatus({this.protectionOn = true});
+  OverviewStatus({
+    this.protectionOn = true,
+    this.loaded = true,
+    this.failAfterLoad = false,
+  });
 
   final bool protectionOn;
+
+  /// False stands in for a server that never answered, which is the only way
+  /// the page can end up with no status to read at all.
+  final bool loaded;
+
+  /// True stands in for a server that answered once and stopped: the page is
+  /// left holding a real answer that is no longer the present state.
+  final bool failAfterLoad;
+
+  int _calls = 0;
 
   @override
   Future<bool> getServerStatus({
@@ -298,6 +314,11 @@ class OverviewStatus extends StatusProvider {
     // The page asks for the status from initState, so a fixture that notifies
     // right away would notify while the first frame is still being built.
     await Future.delayed(Duration.zero);
+    _calls++;
+    if (!loaded || (failAfterLoad && _calls > 1)) {
+      setServerStatusLoad(LoadStatus.error);
+      return false;
+    }
     setServerStatusData(data: statusFixture(protectionOn: protectionOn));
     setServerStatusLoad(LoadStatus.loaded);
     return true;
@@ -368,22 +389,31 @@ Future<OverviewHarness> pumpOverview(
   Brightness brightness = Brightness.light,
   Size surface = const Size(390, 2100),
   bool protectionOn = true,
+  bool statusKnown = true,
+  bool failAfterLoad = false,
   int statisticsIntervalMs = 30 * 24 * 60 * 60 * 1000,
+  List<HomeTopItems>? topItemsOrder,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
 
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, surface);
 
   final api = OverviewApi()..statisticsIntervalMs = statisticsIntervalMs;
   final servers = ServersProvider()
     ..setSelectedServer(overviewServer)
     ..setApiClient2(api);
-  final status = OverviewStatus(protectionOn: protectionOn)..update(servers);
+  final status = OverviewStatus(
+    protectionOn: protectionOn,
+    loaded: statusKnown,
+    failAfterLoad: failAfterLoad,
+  )..update(servers);
   final clients = OverviewClients();
   final logs = OverviewLogs();
   final appConfig = AppConfigProvider(sharedPreferencesInstance: prefs);
+  if (topItemsOrder != null) {
+    await appConfig.setHomeTopItemsOrder(topItemsOrder);
+  }
 
   await tester.pumpWidget(
     MultiProvider(

@@ -6,7 +6,6 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/providers/filtering_provider.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
-import 'package:adguard_home_manager/widgets/custom_checkbox_list_tile.dart';
 
 /// Services a single device blocks.
 ///
@@ -104,10 +103,20 @@ class _ServicesModalState extends State<ServicesModal> {
             margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             children: [
               for (final service in services)
-                CustomCheckboxListTile(
+                AppleListTile(
                   title: service.name,
-                  value: _selected.contains(service.id),
-                  onChanged: (value) => _toggle(service.id, value),
+                  showChevron: false,
+                  // Tapping anywhere on the row ticks it, like the system lists.
+                  onTap: () => _toggle(
+                    service.id,
+                    !_selected.contains(service.id),
+                  ),
+                  trailing: SizedBox(
+                    width: 24,
+                    child: _selected.contains(service.id)
+                        ? Icon(CupertinoIcons.checkmark, size: 20, color: p.tint)
+                        : null,
+                  ),
                 ),
             ],
           );
@@ -120,7 +129,7 @@ class _ServicesModalState extends State<ServicesModal> {
             action: AppleFormButton(
               label: l.refresh,
               background: p.tint,
-              foreground: Colors.white,
+              foreground: onTint(p.tint),
               onPressed: () => filtering.getBlockedServices(showLoader: true),
             ),
           );

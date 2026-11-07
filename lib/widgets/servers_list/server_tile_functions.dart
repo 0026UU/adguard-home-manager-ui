@@ -6,11 +6,13 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/widgets/add_server/unsupported_version_modal.dart';
 import 'package:adguard_home_manager/widgets/servers_list/delete_modal.dart';
 import 'package:adguard_home_manager/widgets/add_server/add_server_functions.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/config/globals.dart';
 import 'package:adguard_home_manager/config/minimum_server_version.dart';
 import 'package:adguard_home_manager/functions/compare_versions.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
+import 'package:adguard_home_manager/functions/auth_error_message.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/models/server_status.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
@@ -89,20 +91,22 @@ void connectToServer({
     final statusProvider = Provider.of<StatusProvider>(context, listen: false);
     
     final ApiClientV2 apiClient2 = ApiClientV2(server: server);
-    serversProvider.setApiClient2(apiClient2);
-         
+
+    // The client is only installed once the server has answered: pointing it
+    // at a row that failed its own status call would leave every screen still
+    // showing the previous server while its writes went to the dead one.
     statusProvider.setServerStatusLoad(LoadStatus.loading);
     final serverStatus = await apiClient2.getServerStatus();
     if (serverStatus.successful == true) {
       final status = serverStatus.content as ServerStatus;
 
       // Check if server version is supported
-      final validVersion = serverVersionIsAhead(
+      final tooOld = serverVersionIsTooOld(
         currentVersion: status.serverVersion, 
         referenceVersion: MinimumServerVersion.stable,
         referenceVersionBeta: MinimumServerVersion.beta
       );
-      if (validVersion == false) {
+      if (tooOld) {
         process.close();
         showDialog(
           context: globalNavigatorKey.currentContext!, 
@@ -116,7 +120,12 @@ void connectToServer({
         return;
       }
       
+      serversProvider.setApiClient2(apiClient2);
       serversProvider.setSelectedServer(server);
+      // Connecting from a tile has to survive the next launch: the row that
+      // is not written as the default is forgotten, and the app comes back on
+      // the two-tab bar with the user reconnecting by hand every time.
+      await serversProvider.setDefaultServer(server);
       statusProvider.setServerStatusData(
         data: status
       );
@@ -127,8 +136,22 @@ void connectToServer({
     }
     else {
       statusProvider.setServerStatusLoad(LoadStatus.error);
+      process.close();
+
+      // The credentials worked but the status call did not, so the sheet just
+      // vanishes and the user is back where they started with nothing said.
+      // Login failure is already reported below; this is the other half.
+      if (context.mounted) {
+        showSnackbar(
+          appConfigProvider:
+              Provider.of<AppConfigProvider>(context, listen: false),
+          label: AppLocalizations.of(context)!.errorLoadServerStatus,
+          color: ApplePalette.of(context).red,
+        );
+      }
+
+      return;
     }
-          
     process.close();
   }
   else {
@@ -137,8 +160,10 @@ void connectToServer({
     final appConfigProvider = Provider.of<AppConfigProvider>(context, listen: false);
     showSnackbar(
       appConfigProvider: appConfigProvider, 
-      label: AppLocalizations.of(context)!.cannotConnect, 
-      color: Colors.red
+      // The tile knows which of the four things went wrong; saying so is the
+      // difference between fixing a typo and rebooting a working server.
+      label: authErrorMessage(context, result), 
+      color: ApplePalette.of(context).red
     );
   }
 }
@@ -155,14 +180,14 @@ void setDefaultServer({
     showSnackbar(
       appConfigProvider: appConfigProvider, 
       label: AppLocalizations.of(context)!.connectionDefaultSuccessfully, 
-      color: Colors.green
+      color: ApplePalette.of(context).green
     );
   }
   else {
     showSnackbar(
       appConfigProvider: appConfigProvider, 
       label: AppLocalizations.of(context)!.connectionDefaultFailed, 
-      color: Colors.red
+      color: ApplePalette.of(context).red
     );
   }
 }

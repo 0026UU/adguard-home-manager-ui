@@ -20,7 +20,10 @@ import 'package:adguard_home_manager/providers/clients_provider.dart';
 import 'package:adguard_home_manager/providers/filtering_provider.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
 import 'package:adguard_home_manager/screens/clients/client/client_detail.dart';
+import 'package:adguard_home_manager/services/api_client.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
+import 'surface.dart';
 
 // The device page reads one client of `/clients` and the query counts of
 // `/stats`. No test here can reach a server, so the client provider below
@@ -114,10 +117,20 @@ class ClientsStub extends ClientsProvider {
     this.stored, {
     this.succeeds = true,
     this.supportsClientRules = false,
+    this.editFailureMessage,
+    this.throwsOnEdit = false,
   });
 
   final Client stored;
   final bool succeeds;
+
+  /// Whether the write throws on the way back instead of answering. A page
+  /// that opens a modal it only closes on the success path hangs on that.
+  final bool throwsOnEdit;
+
+  /// What a refused edit reports as the server's own reason, the way
+  /// `ApiResponse.message` carries it up from a real 4xx body.
+  final String? editFailureMessage;
 
   /// Whether the stubbed server is the forked one, which is what the page reads
   /// to decide if the rules group is drawn at all.
@@ -155,9 +168,12 @@ class ClientsStub extends ClientsProvider {
   Client get entry => clients!.clients.single;
 
   @override
-  Future<bool> editClient(Client client) async {
+  Future<ApiResponse> editClient(Client client) async {
     await _answered();
-    if (!succeeds) return false;
+    if (throwsOnEdit) throw Exception('the write threw on the way back');
+    if (!succeeds) {
+      return ApiResponse(successful: false, message: editFailureMessage);
+    }
 
     edited.add(client);
     setClientsData(
@@ -170,7 +186,7 @@ class ClientsStub extends ClientsProvider {
       true,
     );
 
-    return true;
+    return const ApiResponse(successful: true);
   }
 
   @override
@@ -211,6 +227,8 @@ Future<ClientDetailHarness> pumpClientDetail(
   Client? client,
   int? queries,
   bool succeeds = true,
+  String? editFailureMessage,
+  bool throwsOnEdit = false,
   bool blockWrites = false,
   bool supportsClientRules = false,
   Brightness brightness = Brightness.light,
@@ -219,12 +237,13 @@ Future<ClientDetailHarness> pumpClientDetail(
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
 
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, surface);
 
   final clients = ClientsStub(
     client ?? clientFixture(),
     succeeds: succeeds,
+    editFailureMessage: editFailureMessage,
+    throwsOnEdit: throwsOnEdit,
     supportsClientRules: supportsClientRules,
   )
     ..blockWrites = blockWrites

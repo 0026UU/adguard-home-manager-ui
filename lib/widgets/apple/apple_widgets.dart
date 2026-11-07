@@ -70,21 +70,10 @@ class ApplePalette {
     return _seedColors[_seedIndex(seed) % _seedColors.length];
   }
 
-  /// Second accent of the pair, hashed separately so the two stops of the
-  /// gradient do not land on the same colour.
-  Color seededAlt(String seed) {
-    if (seed.isEmpty) return gray;
-    final first = _seedIndex(seed) % _seedColors.length;
-    var second = _seedIndex(seed, 131) % _seedColors.length;
-    if (second == first) second = (second + 3) % _seedColors.length;
-
-    return _seedColors[second];
-  }
-
-  static int _seedIndex(String seed, [int multiplier = 31]) {
+  static int _seedIndex(String seed) {
     var hash = 0;
     for (final unit in seed.codeUnits) {
-      hash = (hash * multiplier + unit) & 0x7fffffff;
+      hash = (hash * 31 + unit) & 0x7fffffff;
     }
     return hash;
   }
@@ -133,10 +122,6 @@ class AppleScreen extends StatelessWidget {
 
   final Widget? floatingActionButton;
 
-  /// Extra space kept free at the bottom of the scroll, e.g. when the screen
-  /// owns a floating button.
-  final double bottomSpacer;
-
   /// Pinned under the collapsing title, like a segmented control in a
   /// `UINavigationItem`.
   final Widget? header;
@@ -161,10 +146,6 @@ class AppleScreen extends StatelessWidget {
   /// Colour of the status dot drawn in front of [subtitle].
   final Color? subtitleDot;
 
-  /// Puts the same call [onRefresh] makes on the bar as a button. Only worth
-  /// turning off for a screen that already shows its own refresh control.
-  final bool showRefreshAction;
-
   const AppleScreen({
     super.key,
     required this.title,
@@ -172,9 +153,7 @@ class AppleScreen extends StatelessWidget {
     this.actions = const [],
     this.searchbar,
     this.onRefresh,
-    this.showRefreshAction = true,
     this.floatingActionButton,
-    this.bottomSpacer = 24,
     this.header,
     this.body,
     this.scrollController,
@@ -187,9 +166,35 @@ class AppleScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = ApplePalette.of(context);
 
-    final barActions = onRefresh != null && showRefreshAction
-      ? <Widget>[AppleRefreshAction(onRefresh: onRefresh!), ...actions]
-      : actions;
+    // One trailing gap for every screen: a bar built from the injected button
+    // alone sat 7pt closer to the edge than one built from a screen's own
+    // actions, which shifted the large title as the tab changed.
+    final trailing = <Widget>[
+      if (onRefresh != null) AppleRefreshAction(onRefresh: onRefresh!),
+      ...actions,
+    ];
+    // Two words jammed against each other read as one label, so the bar keeps
+    // a fixed 8pt between its actions and the same 8pt before the edge.
+    final barActions = <Widget>[
+      for (var i = 0; i < trailing.length; i++) ...[
+        if (i > 0) const SizedBox(width: 8),
+        trailing[i],
+      ],
+      if (trailing.isNotEmpty) const SizedBox(width: 8),
+    ];
+
+    final largeTitle = AppleLargeTitle(
+      title: title,
+      subtitle: subtitle,
+      subtitleDot: subtitleDot,
+      bottomHeight: header == null ? 0 : 44,
+    );
+    // The collapsed bar is 64pt; the expanded one adds exactly the title block
+    // and a breath, plus the pinned header band when the screen has one. The
+    // old default extent left a tall empty band between the actions and the
+    // large title on every page, and clipped the title on header pages.
+    final expandedHeight =
+        64 + largeTitle.bottomHeight + largeTitle.blockHeight + 6;
 
     final appbar = SliverAppBar.large(
       title: Text(title),
@@ -200,18 +205,14 @@ class AppleScreen extends StatelessWidget {
       actions: barActions,
       bottom: header == null ? null : AppleHeaderBar(child: header!),
       pinned: true,
+      expandedHeight: expandedHeight,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
       backgroundColor: Colors.transparent,
       foregroundColor: p.label,
       iconTheme: IconThemeData(color: p.label),
       actionsIconTheme: IconThemeData(color: p.tint),
-      flexibleSpace: AppleLargeTitle(
-        title: title,
-        subtitle: subtitle,
-        subtitleDot: subtitleDot,
-        bottomHeight: header == null ? 0 : 44,
-      ),
+      flexibleSpace: largeTitle,
     );
 
     if (body != null) {
@@ -238,12 +239,11 @@ class AppleScreen extends StatelessWidget {
       body: CustomScrollView(
         slivers: [
           appbar,
-          if (searchbar != null)
-            SliverToBoxAdapter(child: searchbar!),
-          if (onRefresh != null)
-            const CupertinoSliverRefreshControl(),
+          if (searchbar != null) SliverToBoxAdapter(child: searchbar!),
+          if (onRefresh != null) const CupertinoSliverRefreshControl(),
           ...slivers,
-          SliverToBoxAdapter(child: SizedBox(height: bottomSpacer)),
+          // The last row of a list should not sit against the tab bar.
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
     );
@@ -291,12 +291,12 @@ class _AppleRefreshActionState extends State<AppleRefreshAction> {
       onPressed: _running ? null : _run,
       tooltip: widget.tooltip ?? AppLocalizations.of(context)?.refresh,
       icon: _running
-        ? const SizedBox(
-            width: 17,
-            height: 17,
-            child: CupertinoActivityIndicator(radius: 8),
-          )
-        : const Icon(CupertinoIcons.arrow_clockwise),
+          ? const SizedBox(
+              width: 17,
+              height: 17,
+              child: CupertinoActivityIndicator(radius: 8),
+            )
+          : const Icon(CupertinoIcons.arrow_clockwise),
     );
   }
 }
@@ -332,6 +332,16 @@ class AppleLargeTitle extends StatelessWidget {
     this.subtitleDot,
   });
 
+  /// The vertical space the title block takes once the bar is expanded: the
+  /// 34pt title, the optional status line under it and the breathing room the
+  /// design layer leaves below both. [AppleScreen] sizes the collapsing area
+  /// from this, so the large title sits right under the bar actions instead
+  /// of floating in a tall empty band.
+  double get blockHeight =>
+      34 * 1.15 +
+      (subtitle == null ? 0 : 4 + 14 * 1.25) +
+      (bottomHeight > 0 ? 4 : 10);
+
   @override
   Widget build(BuildContext context) {
     final p = ApplePalette.of(context);
@@ -341,91 +351,97 @@ class AppleLargeTitle extends StatelessWidget {
 
     return AppleBlur(
       color: p.chrome,
-      child: Column(
-        children: [
-          // Give the collapsed toolbar its own band, so the large title can
-          // only ever be drawn under it.
-          Padding(
-            padding: EdgeInsets.only(
-              top: (minExtent - bottomHeight).clamp(0.0, double.infinity),
-            ),
-          ),
-          Flexible(
-            child: ClipRect(
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    leadingInset,
-                    0,
-                    16,
-                    bottomHeight > 0 ? 4 : 10,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 34,
-                          height: 1.15,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -1.1,
-                          color: p.label,
-                        ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Mid-collapse the bar is shorter than the collapsed band plus the
+          // pinned one; the top inset then gives way instead of overflowing
+          // the column by a sub-pixel.
+          final band = constraints.maxHeight < minExtent
+              ? constraints.maxHeight
+              : minExtent;
+          final top = (band - bottomHeight).clamp(0.0, double.infinity);
+          return Column(
+            children: [
+              Padding(padding: EdgeInsets.only(top: top)),
+              Flexible(
+                child: ClipRect(
+                  child: Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        leadingInset,
+                        0,
+                        16,
+                        bottomHeight > 0 ? 4 : 10,
                       ),
-                      if (subtitle != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (subtitleDot != null) ...[
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: subtitleDot,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: subtitleDot!.withValues(
-                                          alpha: 0.22,
-                                        ),
-                                        spreadRadius: 3,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 7),
-                              ],
-                              Flexible(
-                                child: Text(
-                                  subtitle!,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    height: 1.25,
-                                    color: p.label2,
-                                  ),
-                                ),
-                              ),
-                            ],
+                      child: UnconstrainedBox(
+                        alignment: Alignment.bottomLeft,
+                        clipBehavior: Clip.hardEdge,
+                        constrainedAxis: Axis.horizontal,
+                        // Mid-collapse the collapsing area is shorter than the
+                        // title block; the outer ClipRect hides the surplus, so
+                        // the column must keep its width bound (the title still
+                        // ellipsizes) but never see the shrinking height.
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 34,
+                              height: 1.15,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: -1.1,
+                              color: p.label,
+                            ),
                           ),
+                          if (subtitle != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (subtitleDot != null) ...[
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: subtitleDot,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  Flexible(
+                                    child: Text(
+                                      subtitle!,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        height: 1.25,
+                                        color: p.label2,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
                         ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-          if (bottomHeight > 0)
-            Padding(padding: EdgeInsets.only(bottom: bottomHeight)),
-        ],
+              if (bottomHeight > 0)
+                Padding(padding: EdgeInsets.only(bottom: bottomHeight)),
+            ],
+          );
+        },
       ),
     );
   }
@@ -508,14 +524,16 @@ class AppleListSection extends StatelessWidget {
       borderRadius: BorderRadius.circular(insetGrouped ? 10 : 0),
       child: ColoredBox(
         color: background ?? p.card,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows),
+        child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch, children: rows),
       ),
     );
 
     final horizontal = insetGrouped ? 16.0 : 0.0;
 
     return Padding(
-      padding: margin ?? EdgeInsets.only(bottom: 22, left: horizontal, right: horizontal),
+      padding: margin ??
+          EdgeInsets.only(bottom: 22, left: horizontal, right: horizontal),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -585,7 +603,7 @@ class AppleGroupHeader extends StatelessWidget {
     required this.title,
     this.trailing,
     this.trailingWidget,
-    this.padding = const EdgeInsets.fromLTRB(16, 14, 16, 7),
+    this.padding = const EdgeInsets.fromLTRB(16, 16, 16, 8),
   });
 
   @override
@@ -615,7 +633,7 @@ class AppleGroupHeader extends StatelessWidget {
               trailing!,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w400,
                 color: p.label3,
               ),
             ),
@@ -646,17 +664,27 @@ class AppleHeaderAction extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = ApplePalette.of(context);
 
+    // The word keeps its 13pt face and its colour; only the box that takes the
+    // tap grows. At the text height alone it measured about 21pt, under the
+    // 44pt every other control of this layer reaches.
     return GestureDetector(
       onTap: onPressed,
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: destructive ? p.red : p.tint,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+        // The factor keeps the box as wide as the word: without it the label
+        // is asked to fill whatever the bar has left and pushes its neighbours.
+        child: Center(
+          widthFactor: 1,
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: destructive ? p.red : p.tint,
+            ),
           ),
         ),
       ),
@@ -710,7 +738,7 @@ class AppleCardCap extends StatelessWidget {
   final bool top;
   final double radius;
 
-  const AppleCardCap({super.key, this.top = true, this.radius = 10});
+  const AppleCardCap({super.key, this.top = true, this.radius = 12});
 
   @override
   Widget build(BuildContext context) {
@@ -790,35 +818,40 @@ class AppleBackButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = ApplePalette.of(context);
 
+    // The pill reads as a back control to a screen reader only when it says
+    // so; the words alone were painted inside an unlabelled InkWell.
     return Padding(
       padding: const EdgeInsets.only(left: 12, right: 8),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(18),
-          child: Container(
-            height: 36,
-            constraints: const BoxConstraints(maxWidth: 150),
-            padding: const EdgeInsets.only(left: 4, right: 10),
-            decoration: BoxDecoration(
-              color: p.fill3,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(CupertinoIcons.back, size: 22, color: p.tint),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 16, color: p.tint),
+      child: Tooltip(
+        message: label,
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              height: 40,
+              constraints: const BoxConstraints(maxWidth: 150),
+              padding: const EdgeInsets.only(left: 4, right: 10),
+              decoration: BoxDecoration(
+                color: p.fill3,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(CupertinoIcons.back, size: 22, color: p.tint),
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 16, color: p.tint),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -886,7 +919,6 @@ class AppleListTile extends StatelessWidget {
   /// Row highlight for master/detail lists on wide layouts.
   final bool selected;
   final int? subtitleMaxLines;
-  final double? titleMaxWidth;
   final EdgeInsets padding;
 
   /// Width of [leading], so the hairline under the row can start at the text.
@@ -914,8 +946,7 @@ class AppleListTile extends StatelessWidget {
     this.enabled = true,
     this.selected = false,
     this.subtitleMaxLines,
-    this.titleMaxWidth,
-    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     this.leadingWidth,
     this.mono = false,
   });
@@ -943,9 +974,7 @@ class AppleListTile extends StatelessWidget {
             const SizedBox(width: 12),
           ],
           Expanded(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: titleMaxWidth ?? double.infinity),
-              child: Column(
+            child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -953,7 +982,7 @@ class AppleListTile extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: mono ? 13.5 : 17,
+                      fontSize: mono ? 13 : 17,
                       height: mono ? 1.35 : 1.25,
                       fontFamily: mono ? 'monospace' : null,
                       fontWeight: FontWeight.w400,
@@ -964,7 +993,8 @@ class AppleListTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     if (subtitleWidget != null)
                       DefaultTextStyle.merge(
-                        style: TextStyle(fontSize: 13.5, height: 1.25, color: p.label2),
+                        style: TextStyle(
+                            fontSize: 13, height: 1.25, color: p.label2),
                         child: subtitleWidget!,
                       )
                     else
@@ -973,14 +1003,13 @@ class AppleListTile extends StatelessWidget {
                         maxLines: subtitleMaxLines ?? 3,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 13.5,
+                          fontSize: 13,
                           height: 1.25,
                           color: p.label2,
                         ),
                       ),
                   ],
                 ],
-              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -1014,6 +1043,9 @@ class AppleListTile extends StatelessWidget {
       splashColor: Colors.transparent,
       highlightColor: p.fill3,
       child: Container(
+        // Every single line row lands on this height, switch rows included;
+        // a subtitle is what makes a row grow, never the trailing control.
+        constraints: const BoxConstraints(minHeight: 48),
         decoration: selected
             ? BoxDecoration(
                 color: p.fill2,
@@ -1048,7 +1080,7 @@ class AppleSwitchListTile extends StatelessWidget {
     this.leading,
     this.icon,
     this.iconColor,
-    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
   });
 
   double get separatorIndent {
@@ -1061,8 +1093,10 @@ class AppleSwitchListTile extends StatelessWidget {
     final p = ApplePalette.of(context);
     final enabled = onChanged != null;
 
-    return Padding(
+    return Container(
       padding: padding,
+      // Same floor as a plain row: the control never makes a row taller.
+      constraints: const BoxConstraints(minHeight: 48),
       child: Row(
         children: [
           if (leading != null) ...[
@@ -1090,7 +1124,8 @@ class AppleSwitchListTile extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: DefaultTextStyle.merge(
-                      style: TextStyle(fontSize: 13.5, height: 1.25, color: p.label2),
+                      style: TextStyle(
+                          fontSize: 13, height: 1.25, color: p.label2),
                       child: subtitleWidget!,
                     ),
                   )
@@ -1099,17 +1134,23 @@ class AppleSwitchListTile extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
                       subtitle!,
-                      style: TextStyle(fontSize: 13.5, height: 1.25, color: p.label2),
+                      style: TextStyle(
+                          fontSize: 13, height: 1.25, color: p.label2),
                     ),
                   ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          CupertinoSwitch(
-            value: value,
-            onChanged: onChanged,
-            activeTrackColor: AppleColors.green(p.b),
+          SizedBox(
+            // A switch box is 39 tall by default, which made every switch row
+            // taller than the plain row above it; 31 is the track itself.
+            height: 31,
+            child: CupertinoSwitch(
+              value: value,
+              onChanged: onChanged,
+              activeTrackColor: AppleColors.green(p.b),
+            ),
           ),
         ],
       ),
@@ -1132,10 +1173,15 @@ class AppleSwitch extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = ApplePalette.of(context);
 
-    return CupertinoSwitch(
-      value: value,
-      onChanged: onChanged == null ? null : (_) => onChanged!(),
-      activeTrackColor: AppleColors.green(p.b),
+    return SizedBox(
+      // Same 31 as inside a switch row, so a trailing switch never pushes
+      // its row past the shared height.
+      height: 31,
+      child: CupertinoSwitch(
+        value: value,
+        onChanged: onChanged == null ? null : (_) => onChanged!(),
+        activeTrackColor: AppleColors.green(p.b),
+      ),
     );
   }
 }
@@ -1286,37 +1332,56 @@ class ApplePill extends StatelessWidget {
     required this.label,
     required this.color,
     this.filled = true,
-    this.fontSize = 11.5,
+    this.fontSize = 12,
   });
 
   @override
   Widget build(BuildContext context) {
     final p = ApplePalette.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: filled ? p.pill(color) : Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
-        border: filled ? null : Border.all(color: color, width: 1),
-      ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
-          height: 1.2,
-          color: color,
+    // A Row lays its non-flexible children out with an unbounded main axis,
+    // which is how most callers receive this capsule: the text below then
+    // never had a width to measure against, so `maxLines: 1` and the ellipsis
+    // stood there doing nothing while a long localized word ran out of the
+    // card. The capsule bounds itself the same way [AppleFilterChip] bounds
+    // its label, and the flexible child shrinks to whatever is left.
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 180),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: filled ? p.pill(color) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          border: filled
+              ? null
+              : Border.all(color: color.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                  height: 1.2,
+                  color: color,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-/// One label/value line of a detail card: a fixed label column and a value
-/// that wraps anywhere, the way the design layer reads a record with `dl`.
+/// One label/value line of a detail card: a label column wide enough to hold
+/// the line the values of the card line up on, and a value that wraps
+/// anywhere, the way the design layer reads a record with `dl`.
 class AppleDetailRow extends StatelessWidget {
   final String label;
   final String value;
@@ -1336,17 +1401,25 @@ class AppleDetailRow extends StatelessWidget {
     final p = ApplePalette.of(context);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 9),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 96,
+          // 96pt is the column every value of a card lines up on, kept as the
+          // floor; the ceiling is what a label may borrow before the row stops
+          // being one line. A German or Turkish name that did not fit the 96pt
+          // used to fold into a third line and break the column the card reads
+          // as, so the label now takes up to a second line and ellipsizes
+          // rather than re-stacking the row.
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 96, maxWidth: 140),
             child: Text(
               label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 15,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w400,
                 color: p.label2,
                 height: 1.4,
               ),
@@ -1390,7 +1463,7 @@ class AppleDetailCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: color ?? p.window,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
@@ -1436,7 +1509,7 @@ class AppleLogRow extends StatelessWidget {
       splashColor: Colors.transparent,
       highlightColor: p.fill3,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         color: selected ? p.fill2 : null,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1444,7 +1517,7 @@ class AppleLogRow extends StatelessWidget {
             Row(
               children: [
                 leading,
-                const SizedBox(width: 9),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     title,
@@ -1460,19 +1533,19 @@ class AppleLogRow extends StatelessWidget {
                   ),
                 ),
                 if (time != null) ...[
-                  const SizedBox(width: 9),
-                  SizedBox(
-                    width: 52,
-                    child: Text(
-                      time!,
-                      textAlign: TextAlign.right,
-                      maxLines: 1,
-                      overflow: TextOverflow.clip,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: p.label3,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+                  const SizedBox(width: 12),
+                  // A fixed column cut the time off wherever the locale's
+                  // clock format is wider. The text takes its own width, and
+                  // the tabular figures keep every row lining up at the edge.
+                  Text(
+                    time!,
+                    textAlign: TextAlign.right,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: p.label3,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                 ],
@@ -1484,7 +1557,7 @@ class AppleLogRow extends StatelessWidget {
                 children: [
                   for (var i = 0; i < details.length; i++) ...[
                     if (i > 0) ...[
-                      const SizedBox(width: 7),
+                      const SizedBox(width: 8),
                       Container(
                         width: 3,
                         height: 3,
@@ -1493,7 +1566,7 @@ class AppleLogRow extends StatelessWidget {
                           shape: BoxShape.circle,
                         ),
                       ),
-                      const SizedBox(width: 7),
+                      const SizedBox(width: 8),
                     ],
                     Flexible(
                       child: Text(
@@ -1501,7 +1574,7 @@ class AppleLogRow extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 12,
                           height: 1.3,
                           color: p.label2,
                         ),
@@ -1546,9 +1619,9 @@ class AppleSearchField extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = ApplePalette.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Container(
-        height: 38,
+        height: 44,
         decoration: BoxDecoration(
           color: p.fill2,
           borderRadius: BorderRadius.circular(10),
@@ -1570,6 +1643,9 @@ class AppleSearchField extends StatelessWidget {
                 style: TextStyle(fontSize: 16, color: p.label),
                 decoration: InputDecoration(
                   isDense: true,
+                  // The pill above already paints the fill; the theme's filled
+                  // input would draw a second, darker box inside it.
+                  filled: false,
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
@@ -1585,18 +1661,25 @@ class AppleSearchField extends StatelessWidget {
                 valueListenable: controller!,
                 builder: (context, value, _) {
                   if (value.text.isEmpty) return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.only(left: 4),
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        controller!.clear();
-                        onChanged?.call('');
-                      },
-                      child: Icon(
-                        CupertinoIcons.xmark_circle_fill,
-                        size: 18,
-                        color: p.label3,
+                  // The 18pt glyph used to be the whole target. The box now
+                  // measures 44pt across and takes all the pill has vertically
+                  // (the pill is 38pt, so a taller target would redraw it),
+                  // while the glyph stays right-aligned exactly where it was.
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      controller!.clear();
+                      onChanged?.call('');
+                    },
+                    child: SizedBox(
+                      width: 44,
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Icon(
+                          CupertinoIcons.xmark_circle_fill,
+                          size: 18,
+                          color: p.label3,
+                        ),
                       ),
                     ),
                   );
@@ -1638,7 +1721,7 @@ class AppleStatCard extends StatelessWidget {
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: 12.5, color: p.label2, height: 1.2),
+          style: TextStyle(fontSize: 12, color: p.label2, height: 1.2),
         ),
         const SizedBox(height: 3),
         Row(
@@ -1651,7 +1734,7 @@ class AppleStatCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 22,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                   letterSpacing: -0.4,
                   height: 1.1,
                   color: valueColor ?? p.label,
@@ -1664,7 +1747,7 @@ class AppleStatCard extends StatelessWidget {
         if (caption != null)
           Text(
             caption!,
-            style: TextStyle(fontSize: 11.5, color: p.label3, height: 1.3),
+            style: TextStyle(fontSize: 11, color: p.label3, height: 1.3),
           ),
       ],
     );
@@ -1672,6 +1755,11 @@ class AppleStatCard extends StatelessWidget {
 }
 
 /// Card container with the grouped radius.
+///
+/// The layer's radius grammar: 12 for a grouped card, 10 for an inline control
+/// (chip, field, icon badge), 14 for an overlay that floats over the page (a
+/// dialog, an action sheet), 999 for a tappable pill. Pick a token, never a
+/// one-off number.
 class AppleCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -1693,17 +1781,17 @@ class AppleCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: color ?? p.card,
-        borderRadius: radius ?? BorderRadius.circular(10),
+        borderRadius: radius ?? BorderRadius.circular(12),
       ),
       child: child,
     );
   }
 }
 
-/// Status card at the top of the overview: a tinted wash, a soft glow in the
-/// corner, a round action on the leading edge, the state and the actions
-/// underneath. The wash and the glow follow [active], green when the server is
-/// protecting and red when it is not.
+/// Status card at the top of the overview: a round badge on the leading edge,
+/// the state, and the actions underneath. The badge follows [active], green
+/// when the server is protecting and red when it is not; the card itself stays
+/// a plain surface, so the colour only ever means the state.
 class AppleHero extends StatelessWidget {
   final bool active;
   final IconData icon;
@@ -1739,129 +1827,81 @@ class AppleHero extends StatelessWidget {
     final p = ApplePalette.of(context);
     final Color accent = active ? p.green : p.red;
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color.alphaBlend(accent.withValues(alpha: 0.16), p.card),
-            p.card,
-          ],
-          stops: const [0.0, 0.62],
-        ),
-      ),
-      child: Stack(
+    return AppleCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // The glow sits outside the card and is cut by its corner radius.
-          Positioned(
-            right: -70,
-            top: -90,
-            child: Container(
-              width: 220,
-              height: 220,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    accent.withValues(alpha: 0.34),
-                    accent.withValues(alpha: 0),
-                  ],
-                  stops: const [0.0, 0.7],
+          Row(
+            children: [
+              GestureDetector(
+                onTap: onTapIcon,
+                child: AppleIconBadge(
+                  icon: icon,
+                  color: accent,
+                  size: 56,
+                  iconSize: 26,
                 ),
               ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  GestureDetector(
-                    onTap: onTapIcon,
-                    child: Container(
-                      width: 62,
-                      height: 62,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: accent,
-                        boxShadow: [
-                          BoxShadow(
-                            color: accent.withValues(alpha: 0.3),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.5,
+                        color: p.label,
                       ),
-                      child: Icon(icon, size: 30, color: Colors.white),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          maxLines: 1,
+                    if (description != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          description!,
+                          maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
-                            color: p.label,
+                            fontSize: 13,
+                            height: 1.45,
+                            color: p.label2,
                           ),
                         ),
-                        if (description != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 3),
-                            child: Text(
-                              description!,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 13,
-                                height: 1.45,
-                                color: p.label2,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (trailing != null) trailing!,
-                ],
-              ),
-              if (actions.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: Row(
-                    children: [
-                      for (var i = 0; i < actions.length; i++) ...[
-                        if (i > 0) const SizedBox(width: 10),
-                        Expanded(child: actions[i]),
-                      ],
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
+              ),
+              if (trailing != null) trailing!,
             ],
           ),
+          if (actions.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Row(
+                children: [
+                  for (var i = 0; i < actions.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 12),
+                    Expanded(child: actions[i]),
+                  ],
+                ],
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
-/// The oversized card that heads the settings page: a gradient icon tile, the
-/// server name, one line of detail, a status pill, and underneath the card the
-/// action that opens what it describes.
+/// The oversized card that heads the settings page: an icon tile, the server
+/// name, one line of detail, a status pill, and underneath the card the action
+/// that opens what it describes.
 class AppleBigRow extends StatelessWidget {
   final IconData icon;
   final Color color;
-  final Color? colorTo;
   final String title;
   final String? details;
   final String? status;
@@ -1873,7 +1913,6 @@ class AppleBigRow extends StatelessWidget {
     super.key,
     required this.icon,
     required this.color,
-    this.colorTo,
     required this.title,
     this.details,
     this.status,
@@ -1890,22 +1929,13 @@ class AppleBigRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AppleCard(
-          padding: const EdgeInsets.all(14),
-          radius: BorderRadius.circular(18),
           child: Row(
             children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  gradient: LinearGradient(
-                    begin: Alignment(-0.7, -0.7),
-                    end: Alignment(0.7, 0.7),
-                    colors: [color, colorTo ?? color],
-                  ),
-                ),
-                child: Icon(icon, size: 24, color: Colors.white),
+              AppleIconBadge(
+                icon: icon,
+                color: color,
+                size: 46,
+                iconSize: 24,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1919,7 +1949,7 @@ class AppleBigRow extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 18,
                         height: 1.2,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         letterSpacing: -0.4,
                         color: p.label,
                       ),
@@ -1930,7 +1960,8 @@ class AppleBigRow extends StatelessWidget {
                         details!,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 13, height: 1.25, color: p.label2),
+                        style: TextStyle(
+                            fontSize: 13, height: 1.25, color: p.label2),
                       ),
                     ],
                   ],
@@ -1999,10 +2030,10 @@ class AppleStatTile extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: p.card,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Stack(
           children: [
@@ -2010,48 +2041,60 @@ class AppleStatTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: p.label2,
-                    height: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        value,
+                // The sparkline owns the right of the tile, so only the label
+                // and the number step around it. Reserving the same gutter for
+                // the caption is what cut it to "Block rate 42…".
+                Padding(
+                  padding: EdgeInsets.only(right: sparkline != null ? 80 : 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -1.2,
-                          height: 1.05,
-                          color: p.label,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: p.label2,
+                          height: 1.2,
                         ),
                       ),
-                    ),
-                    if (unit != null)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 2),
-                        child: Text(
-                          unit!,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: p.label2,
+                      const SizedBox(height: 4),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              value,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: -1.2,
+                                height: 1.05,
+                                color: p.label,
+                              ),
+                            ),
                           ),
-                        ),
+                          if (unit != null)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 2),
+                              child: Text(
+                                unit!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: p.label2,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                  ],
+                    ],
+                  ),
                 ),
                 if (caption != null)
                   Padding(
@@ -2062,7 +2105,7 @@ class AppleStatTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         color: captionColor ?? p.label3,
                         height: 1.2,
                       ),
@@ -2070,11 +2113,12 @@ class AppleStatTile extends StatelessWidget {
                   ),
               ],
             ),
+            // Anchored to the top so the caption keeps the width it needs.
             if (sparkline != null)
               Positioned(
                 right: 8,
                 top: 10,
-                child: Opacity(opacity: 0.42, child: sparkline!),
+                child: Opacity(opacity: 0.62, child: sparkline!),
               ),
           ],
         ),
@@ -2127,16 +2171,12 @@ class AppleStatGrid extends StatelessWidget {
   }
 }
 
-/// Leading circle with the initial of a client / domain.
+/// Leading circle with the initial of a client / domain, or an icon.
 class AppleAvatar extends StatelessWidget {
   final String text;
   final Color color;
   final double size;
   final IconData? icon;
-
-  /// When set, the badge is filled with a 140° gradient to this colour and the
-  /// initial turns white, the way the design layer paints device avatars.
-  final Color? gradientTo;
 
   const AppleAvatar({
     super.key,
@@ -2144,38 +2184,28 @@ class AppleAvatar extends StatelessWidget {
     required this.color,
     this.size = 34,
     this.icon,
-    this.gradientTo,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bool gradient = gradientTo != null;
-
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: gradient
-          ? LinearGradient(
-              begin: Alignment(-0.76, -0.64),
-              end: Alignment(0.76, 0.64),
-              colors: [color, gradientTo!],
-            )
-          : null,
-        color: gradient ? null : color.withValues(alpha: 0.16),
+        color: color.withValues(alpha: 0.16),
       ),
       alignment: Alignment.center,
       child: icon != null
-        ? Icon(icon, size: size * 0.5, color: color)
-        : Text(
-            text.isEmpty ? '?' : text.characters.first.toUpperCase(),
-            style: TextStyle(
-              fontSize: gradient ? size * 0.375 : size * 0.42,
-              fontWeight: gradient ? FontWeight.w700 : FontWeight.w600,
-              color: gradient ? Colors.white : color,
+          ? Icon(icon, size: size * 0.5, color: color)
+          : Text(
+              text.isEmpty ? '?' : text.characters.first.toUpperCase(),
+              style: TextStyle(
+                fontSize: size * 0.42,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
             ),
-          ),
     );
   }
 }
@@ -2223,46 +2253,46 @@ class AppleButton extends StatelessWidget {
       opacity: enabled ? 1 : 0.35,
       child: Material(
         color: background,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           splashColor: Colors.transparent,
           highlightColor: base.withValues(alpha: 0.12),
           onTap: enabled ? onPressed : null,
           child: Container(
-            height: 50,
+            height: 48,
             alignment: Alignment.center,
             child: busy
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.2,
-                    color: foreground,
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (icon != null) ...[
-                      Icon(icon, size: 19, color: foreground),
-                      const SizedBox(width: 7),
-                    ],
-                    Flexible(
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          color: foreground,
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: foreground,
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (icon != null) ...[
+                        Icon(icon, size: 19, color: foreground),
+                        const SizedBox(width: 8),
+                      ],
+                      Flexible(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                            color: foreground,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
           ),
         ),
       ),
@@ -2357,7 +2387,8 @@ class AppleCaption extends StatelessWidget {
   final String text;
   final EdgeInsetsGeometry padding;
 
-  const AppleCaption(this.text, {super.key, this.padding = const EdgeInsets.fromLTRB(16, 0, 16, 8)});
+  const AppleCaption(this.text,
+      {super.key, this.padding = const EdgeInsets.fromLTRB(16, 0, 16, 8)});
 
   @override
   Widget build(BuildContext context) {

@@ -52,6 +52,7 @@ class _FiltersPageState extends State<FiltersPage> {
   void initState() {
     final filteringProvider = Provider.of<FilteringProvider>(context, listen: false);
     final serversProvider = Provider.of<ServersProvider>(context, listen: false);
+    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
 
     // The service names live in their own endpoint, so the grid at the bottom
     // of the page needs a second request.
@@ -60,17 +61,31 @@ class _FiltersPageState extends State<FiltersPage> {
       filteringProvider.loadBlockedServices();
     }
 
+    // The protection switches come from the status rather than the filtering
+    // answer, so a tab opened before any other tab had read the status would
+    // draw a Filters page with no protection group on it at all.
+    if (serversProvider.apiClient2 != null &&
+        statusProvider.serverStatus == null) {
+      statusProvider.getServerStatus(withLoadingIndicator: false);
+    }
+
     super.initState();
   }
 
   Future<void> _refresh() async {
     final filteringProvider = Provider.of<FilteringProvider>(context, listen: false);
     final serversProvider = Provider.of<ServersProvider>(context, listen: false);
+    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
 
     await filteringProvider.fetchFilters();
 
     if (serversProvider.apiClient2 != null) {
       await filteringProvider.loadBlockedServices();
+      // The protection switches at the top of this tab are drawn from the
+      // status, not from the filtering answer, so a refresh that re-reads the
+      // lists but not the status would leave four switches showing whatever
+      // the last tab visit happened to record.
+      await statusProvider.getServerStatus(withLoadingIndicator: false);
     }
   }
 
@@ -123,13 +138,22 @@ class _FiltersPageState extends State<FiltersPage> {
     );
   }
 
+  /// True while a service write is on its way to the server.
+  bool _servicesBusy = false;
+
   Future<void> _updateBlockedServices(List<String> values) async {
+    if (_servicesBusy) return;
+
     final filteringProvider = Provider.of<FilteringProvider>(context, listen: false);
     final appConfigProvider = Provider.of<AppConfigProvider>(context, listen: false);
     final l = AppLocalizations.of(context)!;
     final palette = ApplePalette.of(context);
 
+    // Two taps in a row would post two different lists, and the slower answer
+    // would win: one chip flips back under a toast that says it was saved.
+    _servicesBusy = true;
     final result = await filteringProvider.updateBlockedServices(values);
+    _servicesBusy = false;
 
     if (!mounted) return;
 
@@ -140,18 +164,17 @@ class _FiltersPageState extends State<FiltersPage> {
     );
   }
 
-  /// The line under the title: what is actually working right now.
+  /// The line under the title: what is actually working right now. Both kinds
+  /// of list are on the page now, so both kinds count toward it.
   String _footnote(AppLocalizations l, Filtering filtering) {
-    final enabled = filtering.filters
-        .where((list) => list.enabled == true)
-        .toList();
+    final enabled = [
+      ...filtering.filters,
+      ...filtering.whitelistFilters,
+    ].where((list) => list.enabled == true).toList();
 
     final rules = enabled.fold<int>(0, (total, list) => total + list.rulesCount);
 
-    return l.listsEnabledWithRules(
-      intFormat(enabled.length, Platform.localeName),
-      intFormat(rules, Platform.localeName),
-    );
+    return l.listsEnabledWithRules(enabled.length, rules);
   }
 
   List<Widget> _protectionChildren(
@@ -216,6 +239,9 @@ class _FiltersPageState extends State<FiltersPage> {
         valueColor: status.generalEnabled ? null : p.tint,
         icon: CupertinoIcons.pause_circle,
         iconColor: p.label3,
+        // The row reports a state and opens the durations sheet, so the
+        // disclosure stays away: only a row that pushes a screen owns one.
+        showChevron: false,
         onTap: () => _openPauseSheet(l, status.generalEnabled),
       ),
     ];
@@ -231,7 +257,10 @@ class _FiltersPageState extends State<FiltersPage> {
     Widget row(int index) {
       final filter = lists[index];
 
-      final rules = l.rulesCount(intFormat(filter.rulesCount, Platform.localeName));
+      final rules = l.rulesCount(
+        filter.rulesCount,
+        intFormat(filter.rulesCount, Platform.localeName),
+      );
       final subtitle = filter.lastUpdated == null
         ? rules
         : '$rules · ${l.updatedOn(convertTimestampLocalTimezone(filter.lastUpdated!, 'yMMMd'))}';
@@ -268,12 +297,28 @@ class _FiltersPageState extends State<FiltersPage> {
       SliverToBoxAdapter(
         child: AppleGroupHeader(
           title: title,
-          trailingWidget: AddFiltersButton(
-            type: type,
-            widget: (onAdd) => AppleHeaderAction(
-              label: l.addList,
-              onPressed: onAdd,
-            ),
+          // The count is the quiet header meta the design layer uses; the add
+          // action shares the trailing slot with it.
+          trailingWidget: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l.filterListsCount(lists.length),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  color: p.label3,
+                ),
+              ),
+              const SizedBox(width: 10),
+              AddFiltersButton(
+                type: type,
+                widget: (onAdd) => AppleHeaderAction(
+                  label: l.addList,
+                  onPressed: onAdd,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -329,7 +374,10 @@ class _FiltersPageState extends State<FiltersPage> {
               widget: (onEdit) => AppleListTile(
                 title: l.editRules,
                 subtitle: l.customRulesSyntaxHelper,
-                value: l.rulesCount(intFormat(rules.length, Platform.localeName)),
+                value: l.rulesCount(
+                  rules.length,
+                  intFormat(rules.length, Platform.localeName),
+                ),
                 icon: CupertinoIcons.doc_text,
                 iconColor: p.purple,
                 onTap: onEdit,
@@ -348,7 +396,10 @@ class _FiltersPageState extends State<FiltersPage> {
                 title: l.customRulesPreview,
                 rules: preview,
                 showAll: rules.length > _previewLines
-                  ? l.showAllRules(intFormat(rules.length, Platform.localeName))
+                  ? l.showAllRules(
+                      rules.length,
+                      intFormat(rules.length, Platform.localeName),
+                    )
                   : null,
                 onShowAll: onEdit,
               ),
@@ -411,6 +462,17 @@ class _FiltersPageState extends State<FiltersPage> {
       content = AppleEmptyState(
         icon: CupertinoIcons.exclamationmark_triangle,
         title: l.blockedServicesListNotLoaded,
+        // The service names live in an endpoint of their own, so nothing else
+        // on the page can reach them: the card has to carry its own retry.
+        action: AppleFormButton(
+          label: l.refresh,
+          background: p.tint,
+          foreground: Colors.white,
+          onPressed: () => Provider.of<FilteringProvider>(
+            context,
+            listen: false,
+          ).loadBlockedServices(showLoading: true),
+        ),
         color: p.orange,
       );
     }
@@ -423,7 +485,28 @@ class _FiltersPageState extends State<FiltersPage> {
             ? AppleHeaderAction(
                 label: l.clearAll,
                 destructive: true,
-                onPressed: () => _updateBlockedServices(const []),
+                // One tap here rewrites the whole list the server blocks, and
+                // nothing else on the page puts it back, so the tap confirms
+                // first like every other destructive control in the app.
+                onPressed: () => showDialog(
+                  context: context,
+                  builder: (ctx) {
+                    final dialogL = AppLocalizations.of(ctx)!;
+                    return AppleAlertDialog(
+                      title: dialogL.blockByService,
+                      message: dialogL.clearBlockedServicesConfirm,
+                      actions: [
+                        AppleSheetAction(label: dialogL.cancel),
+                        AppleSheetAction(
+                          label: dialogL.clearAll,
+                          color: ApplePalette.of(ctx).red,
+                          destructive: true,
+                          onTap: () => _updateBlockedServices(const []),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               )
             : null,
         ),
@@ -459,7 +542,11 @@ class _FiltersPageState extends State<FiltersPage> {
     final slivers = <Widget>[];
 
     if (loaded) {
-      if (statusProvider.serverStatus != null) {
+      // A status the server has stopped confirming is not a status: these four
+      // switches would go on offering to change what the app can no longer
+      // read, in the state it last saw rather than the state it is in.
+      if (statusProvider.serverStatus != null &&
+          statusProvider.loadStatus != LoadStatus.error) {
         slivers.add(
           SliverToBoxAdapter(
             child: AppleListSection(
@@ -470,13 +557,25 @@ class _FiltersPageState extends State<FiltersPage> {
         );
       }
 
+      // Two sections, one per kind of list: the server keeps them apart under
+      // `filters` and `whitelist_filters`, and every list of both has a row.
       slivers.addAll(
         _listGroup(
           l: l,
           p: palette,
-          title: l.filterLists,
+          title: l.blacklists,
           type: 'blacklist',
           lists: filtering.filters,
+        ),
+      );
+
+      slivers.addAll(
+        _listGroup(
+          l: l,
+          p: palette,
+          title: l.whitelists,
+          type: 'whitelist',
+          lists: filtering.whitelistFilters,
         ),
       );
 
@@ -489,6 +588,15 @@ class _FiltersPageState extends State<FiltersPage> {
           child: AppleEmptyState(
             icon: CupertinoIcons.exclamationmark_triangle,
             title: l.filtersNotLoaded,
+            // The pull handle is gone with the lists it would have pulled, so
+            // the retry has to live in the message itself or the tab is a
+            // dead end until the user leaves it and comes back.
+            action: AppleFormButton(
+              label: l.refresh,
+              background: palette.tint,
+              foreground: Colors.white,
+              onPressed: _refresh,
+            ),
             color: palette.orange,
           ),
         ),

@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:adguard_home_manager/classes/http_client.dart';
 import 'package:adguard_home_manager/models/dns_statistics.dart';
 import 'package:adguard_home_manager/models/filtering_status.dart';
 import 'package:adguard_home_manager/models/server.dart';
@@ -264,6 +265,9 @@ void main() {
     cachedBefore = cachedFiltering.toJson();
     loadedBefore = loadedFiltering.toJson();
     http = await _FilteringHttpServer.start(latest);
+    // The retry backoff of a transport failure must not add real seconds to
+    // the suite: the clock the HTTP layer waits on is the test's.
+    HttpRequestClient.delayOverride = (_) => Future.value();
     api = _ObservedApi(server: http.server);
     servers = ServersProvider()
       ..setSelectedServer(api.server)
@@ -279,6 +283,7 @@ void main() {
 
   tearDown(() async {
     await http.close();
+    HttpRequestClient.delayOverride = null;
     status.dispose();
     servers.dispose();
   });
@@ -418,7 +423,13 @@ void main() {
         newStatus: 'block',
       ), isFalse);
       expect(http.requests, [
-        'GET /control/filtering/status',
+        // A destroyed socket is transient, so the idempotent GET is attempted
+        // until its retry budget is exhausted before the failure surfaces;
+        // the non-idempotent POST is attempted exactly once.
+        for (int i = 0;
+            i < (method == 'GET' ? transientRetryMaxAttempts : 1);
+            i++)
+          'GET /control/filtering/status',
         if (method == 'POST') 'POST /control/filtering/set_rules',
       ]);
       expectNoStateChange();

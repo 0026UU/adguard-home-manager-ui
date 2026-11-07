@@ -70,16 +70,31 @@ class ClientDetailScreen extends StatelessWidget {
       final processModal = ProcessModal();
       processModal.open(l.savingChanges);
 
-      final result = await clientsProvider.editClient(updated);
-
-      processModal.close();
+      var saved = false;
+      String? reason;
+      try {
+        final result = await clientsProvider.editClient(updated);
+        saved = result.successful == true;
+        // The server says which rule it broke; the app used to answer every
+        // refusal with the same sentence, so a name that is taken looked like
+        // a network problem.
+        reason = result.message;
+      } on Object {
+        // A device whose body could not even be built used to throw here with
+        // the sheet already open, and the whole app sat under a dialog nobody
+        // could dismiss. A failed save is a failure, not a hang.
+      } finally {
+        // The sheet has a barrier that cannot be dismissed, so anything thrown
+        // between the open and the close would leave the page stuck.
+        processModal.close();
+      }
 
       showSnackbar(
         appConfigProvider: appConfigProvider,
-        label: result
+        label: saved
           ? l.clientUpdatedSuccessfully
-          : l.clientNotUpdated,
-        color: result ? p.green : p.red,
+          : reason ?? l.clientNotUpdated,
+        color: saved ? p.green : p.red,
       );
     }
 
@@ -102,8 +117,10 @@ class ClientDetailScreen extends StatelessWidget {
             color: result ? p.green : p.red,
           );
 
-          // The entry is gone, so there is nothing left to show here.
-          if (result == true) Navigator.pop(context);
+          // The entry is gone, so there is nothing left to show here — but
+          // only while the user is still standing on this page. Backing out
+          // during the delete would otherwise pop the page underneath it.
+          if (result == true && context.mounted) Navigator.pop(context);
         },
       );
     }
@@ -153,7 +170,6 @@ class ClientDetailScreen extends StatelessWidget {
                     text: current.name,
                     size: 52,
                     color: p.seeded(current.name),
-                    gradientTo: p.seededAlt(current.name),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -223,23 +239,27 @@ class ClientDetailScreen extends StatelessWidget {
               title: l.clientRules,
               margin: const EdgeInsets.fromLTRB(16, 22, 16, 0),
               headerTrailing: AppleHeaderAction(
-                label: l.add,
+                // One editor holds both kinds, so the header names the way in
+                // and says what it opens rather than the "Add" that is only
+                // half of what this sheet does.
+                label: l.editRules,
                 onPressed: openRules,
               ),
               children: [
+                // These two lines report how many rules of each kind the
+                // device has. They are not two destinations, so they stay
+                // untappable and wear no disclosure.
                 AppleListTile(
                   icon: CupertinoIcons.plus_circle,
                   iconColor: p.green,
                   title: l.allowList,
                   value: '$allowRules',
-                  onTap: openRules,
                 ),
                 AppleListTile(
                   icon: CupertinoIcons.nosign,
                   iconColor: p.red,
                   title: l.blockList,
                   value: '$blockRules',
-                  onTap: openRules,
                 ),
               ],
             ),

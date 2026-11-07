@@ -11,6 +11,8 @@ import 'package:adguard_home_manager/screens/clients/client/client_screen_functi
 import 'package:adguard_home_manager/screens/clients/client/tags_modal.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+import 'surface.dart';
+
 const _catalog = ['device_laptop', 'os_macos', 'user_admin'];
 const _openKey = ValueKey('open-tags');
 
@@ -31,8 +33,7 @@ Future<_Harness> _openTags(
   bool nestedNavigator = false,
   ValueChanged<List<String>>? onSelected,
 }) async {
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, surface);
   final harness = _Harness();
   harness.clients = ClientsProvider()
     ..setClientsData(
@@ -65,6 +66,7 @@ Future<_Harness> _openTags(
     ChangeNotifierProvider<ClientsProvider>.value(
       value: harness.clients,
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         navigatorKey: harness.rootNavigator,
         theme: brightness == Brightness.dark
             ? appleDarkTheme()

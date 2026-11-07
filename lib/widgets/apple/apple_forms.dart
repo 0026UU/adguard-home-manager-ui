@@ -49,7 +49,7 @@ class AppleFormModal extends StatelessWidget {
               title,
               style: TextStyle(
                 fontSize: 17,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: p.label,
               ),
             ),
@@ -159,7 +159,7 @@ class AppleFormFooter extends StatelessWidget {
           // both get the same share of it and a long label ellipsizes.
           Expanded(
             child: SizedBox(
-              height: 44,
+              height: 48,
               child: AppleFormButton(
                 label: cancelLabel ?? l.cancel,
                 background: p.fill2,
@@ -172,7 +172,7 @@ class AppleFormFooter extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: SizedBox(
-              height: 44,
+              height: 48,
               child: AppleFormButton(
                 label: confirmLabel,
                 background: destructive ? p.red : p.tint,
@@ -193,6 +193,10 @@ class AppleFormButton extends StatelessWidget {
   final Color background;
   final Color foreground;
   final VoidCallback? onPressed;
+
+  /// The width the button is asked to be at least as wide as, not a fixed
+  /// width: a localized label that needs more room than the caller's number
+  /// takes it instead of losing its end to the ellipsis.
   final double? width;
   final double radius;
 
@@ -218,8 +222,12 @@ class AppleFormButton extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(radius),
           onTap: onPressed,
-          child: SizedBox(
-            width: width,
+          child: ConstrainedBox(
+            // The width the caller asks for is the button's floor, not its
+            // ceiling: "Speichern" or "Connessione" in a 96pt capsule used to
+            // be cut in half, while a button that fits stayed exactly the
+            // width it was given.
+            constraints: BoxConstraints(minWidth: width ?? 0),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               child: Text(
@@ -307,7 +315,7 @@ class AppleFormGroupLabel extends StatelessWidget {
   const AppleFormGroupLabel(
     this.label, {
     super.key,
-    this.padding = const EdgeInsets.fromLTRB(16, 10, 16, 7),
+    this.padding = const EdgeInsets.fromLTRB(16, 16, 16, 8),
   });
 
   @override

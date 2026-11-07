@@ -21,6 +21,8 @@ import 'package:adguard_home_manager/screens/settings/server_info/server_info.da
 import 'package:adguard_home_manager/services/api_client.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+import 'surface.dart';
+
 // The page asks the server only one question: `/status`. No test here can reach
 // a server, so the API client below answers that question from the fixture and
 // counts the times the page asked it.
@@ -122,8 +124,7 @@ Future<ServerInfoHarness> pumpServerInfo(
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
 
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, surface);
 
   final server = serverFixture();
   final api = ServerInfoApiStub(server: server, data: data ?? serverInfoFixture())

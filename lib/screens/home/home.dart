@@ -10,6 +10,7 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/screens/home/management_modal/management_modal.dart';
+import 'package:adguard_home_manager/screens/clients/client/device_tile.dart';
 import 'package:adguard_home_manager/screens/settings/dhcp/dhcp.dart';
 import 'package:adguard_home_manager/screens/settings/dns_rewrites/dns_rewrites.dart';
 import 'package:adguard_home_manager/screens/settings/encryption/encryption.dart';
@@ -24,6 +25,7 @@ import 'package:adguard_home_manager/providers/status_provider.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/functions/format_time.dart';
 import 'package:adguard_home_manager/functions/number_format.dart';
+import 'package:adguard_home_manager/functions/retention_label.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/functions/update_blocking.dart';
 import 'package:adguard_home_manager/models/applied_filters.dart';
@@ -52,9 +54,15 @@ class _HomeState extends State<Home> {
   /// The processing time the design layer measures the average against.
   static const int _referenceMs = 40;
 
-  /// Which trend window and which ranking list are showing.
+  /// Which trend window is showing.
   int _range = 0;
-  int _rank = 0;
+
+  /// Which ranking the card shows, or null until the user picks one.
+  ///
+  /// Held as the item rather than as a segment index: the sequence and the set
+  /// of rankings come from a setting the user can change while this page is
+  /// alive, and an index would then point at a segment that moved or went away.
+  HomeTopItems? _rank;
 
   /// Bucket of the trend chart the user touched, or -1 for none.
   int _tip = -1;
@@ -89,9 +97,12 @@ class _HomeState extends State<Home> {
       withLoadingIndicator: withLoadingIndicator,
     );
 
-    // Refreshing is silent about everything but the status itself, which is
-    // the only part a pull-to-refresh gesture can be expected to answer for.
-    if (!mounted) return result;
+    // Nothing below this line can be shown without the status, so a server
+    // that did not answer for it is not asked four more times. Each of those
+    // calls waits out its own timeout, and a refresh that keeps spinning for
+    // half a minute after the page already said "could not be loaded" reads
+    // as a hung app rather than an unreachable server.
+    if (!mounted || !result) return result;
 
     await statusProvider.getStatisticsConfig();
     if (!mounted) return result;
@@ -130,7 +141,7 @@ class _HomeState extends State<Home> {
     showSnackbar(
       appConfigProvider: appConfigProvider,
       label: AppLocalizations.of(context)!.serverStatusNotRefreshed,
-      color: AppleColors.red(Theme.of(context).brightness)
+      color: ApplePalette.of(context).red,
     );
   }
 
@@ -196,7 +207,7 @@ class _HomeState extends State<Home> {
       showSnackbar(
         appConfigProvider: appConfigProvider,
         label: l.statisticsConfigNotUpdated,
-        color: AppleColors.red(Theme.of(context).brightness),
+        color: ApplePalette.of(context).red,
       );
       return;
     }
@@ -212,7 +223,7 @@ class _HomeState extends State<Home> {
     showSnackbar(
       appConfigProvider: appConfigProvider,
       label: l.statisticsConfigUpdated,
-      color: AppleColors.green(Theme.of(context).brightness),
+      color: ApplePalette.of(context).green,
     );
   }
 
@@ -221,18 +232,8 @@ class _HomeState extends State<Home> {
       [l.hours24, l.days7, l.days30][index];
 
   /// How a retention period of [ms] is written out.
-  static String _windowLabel(AppLocalizations l, int ms) {
-    if (ms == Duration(hours: 24).inMilliseconds) return l.hours24;
-    if (ms == Duration(days: 3).inMilliseconds) return l.days3;
-    if (ms == Duration(days: 7).inMilliseconds) return l.days7;
-    if (ms == Duration(days: 30).inMilliseconds) return l.days30;
-    if (ms == Duration(days: 90).inMilliseconds) return l.days90;
-    if (ms < Duration(hours: 24).inMilliseconds) {
-      return l.hours(Duration(milliseconds: ms).inHours);
-    }
-
-    return l.days(Duration(milliseconds: ms).inDays);
-  }
+  static String _windowLabel(AppLocalizations l, int ms) =>
+      retentionLabel(l, ms);
 
   /// The shield button. Running, it asks what to do about the protection;
   /// paused, it simply resumes it, which is what the design layer does.
@@ -307,14 +308,14 @@ class _HomeState extends State<Home> {
     );
   }
 
-  void _openAllRankings() {
+  void _openAllRankings(List<HomeTopItems> rankings, HomeTopItems rank) {
     showAppleSheet(
       context,
       title: AppLocalizations.of(context)!.topRanking,
       initialFraction: 0.85,
       body: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-        child: _RankingSheet(rank: _rank),
+        child: _RankingSheet(rankings: rankings, rank: rank),
       ),
       actions: [
         AppleButton(
@@ -341,24 +342,45 @@ class _HomeState extends State<Home> {
 
     final Server? server = serversProvider.selectedServer;
     final stats = statusProvider.serverStatus?.stats;
+
+    // The rankings the card offers: one stored list that carries both halves of
+    // the setting, since turning a ranking off takes it out of the order. The
+    // one showing is null while the user has every ranking turned off, which
+    // leaves the card out rather than showing a control with no segments.
+    final rankings = appConfigProvider.homeTopItemsOrder;
+    final shown = rankings.isEmpty
+      ? null
+      : rankings.contains(_rank) ? _rank : rankings.first;
     final bool protectedOn = statusProvider.serverStatus?.generalEnabled == true;
+    // A server that never answered has no protection state to report, and
+    // neither does one that answered once and has not answered since: the
+    // numbers left on screen are then the last truth, not the present one.
+    // Either way, saying "paused" or "running" sends the user off to fix
+    // something the app has no evidence is broken.
+    final bool statusKnown =
+        statusProvider.serverStatus != null &&
+        statusProvider.loadStatus != LoadStatus.error;
 
     final address = server == null
       ? ''
       : "${server.connectionMethod}://${server.domain}${server.path ?? ""}${server.port != null ? ':${server.port}' : ""}";
 
-    // The line the design layer hangs under every page title: which server this
-    // is, where it lives, and whether it is still protecting.
+    // The line the design layer hangs under every page title: which server
+    // this is and whether it is still protecting. The address comes last
+    // because it is the long part and the line cuts its tail when the phone
+    // is narrow: the state is what has to survive.
     final subtitle = [
       server?.name,
+      !statusKnown
+        ? l.protectionUnknown
+        : protectedOn ? l.protectionRunning : l.protectionPaused,
       if (!appConfigProvider.hideServerAddress) address,
-      protectedOn ? l.protectionRunning : l.protectionPaused,
     ].where((part) => part != null && part.isNotEmpty).join(' · ');
 
     return AppleScreen(
       title: l.overview,
       subtitle: subtitle,
-      subtitleDot: protectedOn ? p.green : p.red,
+      subtitleDot: !statusKnown ? p.label3 : protectedOn ? p.green : p.red,
       onRefresh: _refresh,
       slivers: [
         if (statusProvider.loadStatus == LoadStatus.loading)
@@ -377,6 +399,14 @@ class _HomeState extends State<Home> {
             child: AppleEmptyState(
               icon: CupertinoIcons.exclamationmark_triangle,
               title: AppLocalizations.of(context)!.errorLoadServerStatus,
+              // Pull-to-refresh works here but is invisible on a page that
+              // shows nothing else, so the failure offers the way out itself.
+              action: AppleFormButton(
+                label: AppLocalizations.of(context)!.refresh,
+                background: p.tint,
+                foreground: onTint(p.tint),
+                onPressed: () => _refresh(),
+              ),
               color: p.red,
             ),
           ),
@@ -386,10 +416,11 @@ class _HomeState extends State<Home> {
             child: _HeroCard(
               stats: stats,
               protectionOn: protectedOn,
-              devices: clientsProvider.clients?.autoClients.length ?? 0,
+              devices: mergeDevices(
+                active: clientsProvider.clients?.autoClients ?? const [],
+                added: clientsProvider.clients?.clients ?? const [],
+              ).length,
               onToggleProtection: _toggleProtection,
-              onManage: _openProtectionSheet,
-              onOpenLogs: () => _openLogs(const []),
             ),
           ),
 
@@ -415,14 +446,16 @@ class _HomeState extends State<Home> {
             ),
           ),
 
-          SliverToBoxAdapter(
-            child: _RankCard(
-              stats: stats,
-              rank: _rank,
-              onRank: (index) => setState(() => _rank = index),
-              onSeeAll: _openAllRankings,
+          if (shown != null)
+            SliverToBoxAdapter(
+              child: _RankCard(
+                stats: stats,
+                rankings: rankings,
+                rank: shown,
+                onRank: (item) => setState(() => _rank = item),
+                onSeeAll: () => _openAllRankings(rankings, shown),
+              ),
             ),
-          ),
 
           SliverToBoxAdapter(
             child: _ServicesGroup(
@@ -479,7 +512,9 @@ List<String> _bucketLabels(AppLocalizations l, DnsStatistics s) {
 }
 
 /// The card the design layer opens the overview with: the shield, what the
-/// server is doing, how much it has stopped and the two ways in.
+/// server is doing and how much it has stopped. The shield itself is the only
+/// way in: the buttons the card used to carry duplicated the log tab and the
+/// sheet the shield already offers.
 class _HeroCard extends StatelessWidget {
   final DnsStatistics stats;
   final bool protectionOn;
@@ -487,16 +522,12 @@ class _HeroCard extends StatelessWidget {
   /// Devices the server knows about, shown on the first line of the card.
   final int devices;
   final VoidCallback onToggleProtection;
-  final VoidCallback onManage;
-  final VoidCallback onOpenLogs;
 
   const _HeroCard({
     required this.stats,
     required this.protectionOn,
     required this.devices,
     required this.onToggleProtection,
-    required this.onManage,
-    required this.onOpenLogs,
   });
 
   @override
@@ -509,9 +540,11 @@ class _HeroCard extends StatelessWidget {
       : 0;
 
     // Two lines, like the design layer: what the server is doing right now,
-    // then how much of the traffic the blocking accounts for.
+    // then how much of the traffic the blocking accounts for. The count is the
+    // same set the devices page lists, so the two screens never disagree about
+    // how many devices the server is working for.
     final status = protectionOn
-      ? l.protectingDevices(devices)
+      ? l.protectingDevices(devices, intFormat(devices, Platform.localeName))
       : l.allQueriesAllowedDirectly;
     final counts = l.blockedOfQueries(
       intFormat(stats.numBlockedFiltering, Platform.localeName),
@@ -533,34 +566,18 @@ class _HeroCard extends StatelessWidget {
           size: 58,
           stroke: 7,
           color: p.red,
-          child: Text.rich(
-            TextSpan(
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
-                color: p.label,
-              ),
-              children: [
-                TextSpan(text: rate.toStringAsFixed(0)),
-                TextSpan(
-                  text: '%',
-                  style: TextStyle(fontSize: 10, letterSpacing: 0),
-                ),
-              ],
+          child: Text(
+            // A bare ring over "0%" reads as a spinner that never finished.
+            // With no queries there is no rate to show, so say so.
+            stats.numDnsQueries > 0 ? '${rate.toStringAsFixed(0)}%' : '—',
+            style: TextStyle(
+              fontSize: stats.numDnsQueries > 0 ? 15 : 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.5,
+              color: stats.numDnsQueries > 0 ? p.label : p.label3,
             ),
           ),
         ),
-        actions: [
-          AppleButton.secondary(
-            label: l.manageProtection,
-            onPressed: onManage,
-          ),
-          AppleButton(
-            label: l.viewLogs,
-            onPressed: onOpenLogs,
-          ),
-        ],
       ),
     );
   }
@@ -619,9 +636,9 @@ class _StatGrid extends StatelessWidget {
       padding: const EdgeInsets.only(top: 20),
       child: AppleStatGrid(
         tiles: [
-          AppleStatTile(
+          _StatTile(
             label: l.totalQueries,
-            value: compactFormat(stats.numDnsQueries, locale),
+            value: intFormat(stats.numDnsQueries, locale),
             caption: versus,
             captionColor: versus == null
               ? null
@@ -634,11 +651,13 @@ class _StatGrid extends StatelessWidget {
             ),
             onTap: onOpenLogs,
           ),
-          AppleStatTile(
+          _StatTile(
             label: l.blocked,
-            value: compactFormat(stats.numBlockedFiltering, locale),
+            value: intFormat(stats.numBlockedFiltering, locale),
             caption: l.blockRate("${percentFormat(rate, locale)}%"),
-            captionColor: p.red,
+            // Danger colour on a rate measured over no traffic is an alarm
+            // about nothing.
+            captionColor: stats.numDnsQueries > 0 ? p.red : p.label2,
             sparkline: AppleSparkline(
               values: series(stats.blockedFiltering),
               color: p.red,
@@ -647,22 +666,164 @@ class _StatGrid extends StatelessWidget {
             ),
             onTap: onOpenBlockedLogs,
           ),
-          AppleStatTile(
+          _StatTile(
             label: l.avgProcessingTime,
             value: doubleFormat(millis, locale),
             unit: 'ms',
-            caption: fast
-              ? l.belowReference('${_HomeState._referenceMs}')
-              : l.aboveReference('${_HomeState._referenceMs}'),
+            caption: stats.numDnsQueries == 0
+              ? null
+              : fast
+                ? l.belowReference('${_HomeState._referenceMs}')
+                : l.aboveReference('${_HomeState._referenceMs}'),
             captionColor: p.label2,
           ),
-          AppleStatTile(
+          _StatTile(
             label: l.activeRules,
-            value: compactFormat(rules, locale),
-            caption: l.filterListsCount(intFormat(lists, locale)),
+            value: intFormat(rules, locale),
+            caption: l.filterListsCount(lists),
             captionColor: p.label2,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One tile of the statistics grid, drawn like `AppleStatTile` but with the
+/// number told in full: the page promises exact figures, and an exact figure
+/// of seven digits does not fit a half-width tile at the design layer's 26pt.
+/// A [FittedBox] scales the number down until it fits instead of cutting it
+/// to "54,7…", so every digit stays on one line, in tabular figures.
+class _StatTile extends StatelessWidget {
+  final String label;
+  final String value;
+
+  /// Unit shown after the number, smaller and grey.
+  final String? unit;
+
+  /// Note under the number, e.g. a percentage.
+  final String? caption;
+  final Color? captionColor;
+
+  /// Series drawn behind the number, e.g. an `AppleSparkline`.
+  final Widget? sparkline;
+
+  final VoidCallback? onTap;
+
+  const _StatTile({
+    required this.label,
+    required this.value,
+    this.unit,
+    this.caption,
+    this.captionColor,
+    this.sparkline,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = ApplePalette.of(context);
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: p.card,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // The sparkline owns the right of the tile, so only the label
+                // and the number step around it. The caption keeps the full
+                // width, as it does in the design layer's tile.
+                Padding(
+                  padding: EdgeInsets.only(right: sparkline != null ? 80 : 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: p.label2,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.bottomLeft,
+                              child: Text(
+                                value,
+                                maxLines: 1,
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: -1.2,
+                                  height: 1.05,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                  color: p.label,
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (unit != null)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 2),
+                              child: Text(
+                                unit!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: p.label2,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                if (caption != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      caption!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: captionColor ?? p.label3,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            // Anchored to the top so the caption keeps the width it needs.
+            if (sparkline != null)
+              Positioned(
+                right: 8,
+                top: 10,
+                child: Opacity(opacity: 0.62, child: sparkline!),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -700,9 +861,13 @@ class _TrendCard extends StatelessWidget {
     final labels = t == null ? const <String>[] : _bucketLabels(l, t);
     final queries = t == null ? const <double>[] : [for (final v in t.dnsQueries) v.toDouble()];
     final blocked = t == null ? const <double>[] : [for (final v in t.blockedFiltering) v.toDouble()];
-    final total = t == null ? 0 : t.dnsQueries.fold<int>(0, (a, b) => a + b);
+    final queriesTotal = t == null ? 0 : t.dnsQueries.fold<int>(0, (a, b) => a + b);
+    final blockedTotal = t == null ? 0 : t.blockedFiltering.fold<int>(0, (a, b) => a + b);
 
-    final bool drawn = queries.length > 1;
+    // A run of empty buckets is not a chart: the painter gives up below two
+    // values, so asking it for 24 zeros leaves a blank card instead of the
+    // "no data" note.
+    final bool drawn = queries.length > 1 && queries.any((v) => v > 0);
 
     final String note;
     if (tip >= 0 && tip < queries.length) {
@@ -749,22 +914,16 @@ class _TrendCard extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
                   child: Row(
                     children: [
-                      Flexible(child: _legend(p.tint, l.queries)),
+                      // Each series carries its own exact total: one combined
+                      // compact figure told the user nothing about the split
+                      // the chart draws, and rounded numbers are not the
+                      // accuracy the page promises.
+                      Expanded(
+                        child: _legend(p.tint, l.queries, intFormat(queriesTotal, locale), p.label2),
+                      ),
                       const SizedBox(width: 14),
-                      Flexible(child: _legend(p.red, l.blocked)),
-                      const Spacer(),
-                      Flexible(
-                        child: Text(
-                          l.queriesTotal(compactFormat(total, locale)),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.end,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: p.label,
-                          ),
-                        ),
+                      Expanded(
+                        child: _legend(p.red, l.blocked, intFormat(blockedTotal, locale), p.label2),
                       ),
                     ],
                   ),
@@ -787,7 +946,7 @@ class _TrendCard extends StatelessWidget {
                     height: 170,
                     child: Center(
                       child: Text(
-                        failed ? l.errorLoadServerStatus : l.noDataChart,
+                        failed ? l.trendNotLoaded : l.noDataChart,
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 13, color: p.label3),
                       ),
@@ -809,7 +968,7 @@ class _TrendCard extends StatelessWidget {
     );
   }
 
-  Widget _legend(Color color, String label) {
+  Widget _legend(Color color, String label, String count, Color textColor) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -820,11 +979,28 @@ class _TrendCard extends StatelessWidget {
         ),
         const SizedBox(width: 5),
         Flexible(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12)),
+          // Scaled down rather than ellipsized: an exact total is the point of
+          // the legend, so a long figure shrinks instead of losing digits.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(text: '$label '),
+                  TextSpan(
+                    text: count,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ),
+              maxLines: 1,
+              style: TextStyle(fontSize: 12, color: textColor),
+            ),
+          ),
         ),
       ],
     );
@@ -835,12 +1011,16 @@ class _TrendCard extends StatelessWidget {
 /// the 全部 action.
 class _RankCard extends StatelessWidget {
   final DnsStatistics stats;
-  final int rank;
-  final ValueChanged<int> onRank;
+
+  /// The rankings on offer, in the sequence the setting stores them in.
+  final List<HomeTopItems> rankings;
+  final HomeTopItems rank;
+  final ValueChanged<HomeTopItems> onRank;
   final VoidCallback onSeeAll;
 
   const _RankCard({
     required this.stats,
+    required this.rankings,
     required this.rank,
     required this.onRank,
     required this.onSeeAll,
@@ -871,9 +1051,11 @@ class _RankCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
                   child: AppleSegmented(
-                    labels: [l.blockedDomainsShort, l.queriedDomainsShort, l.activeDevices],
-                    selectedIndex: rank,
-                    onChanged: onRank,
+                    labels: <String>[
+                      for (final item in rankings) _rankSegmentLabel(l, item),
+                    ],
+                    selectedIndex: rankings.indexOf(rank),
+                    onChanged: (index) => onRank(rankings[index]),
                   ),
                 ),
                 if (rows.isEmpty)
@@ -907,17 +1089,37 @@ class _RankCard extends StatelessWidget {
 }
 
 /// The entries of one ranking, in the order the server sent them.
-List<MapEntry<String, int>> _rankEntries(DnsStatistics stats, int rank) {
-  final source = rank == 0
-    ? stats.topBlockedDomains
-    : rank == 1
-      ? stats.topQueriedDomains
-      : stats.topClients;
+List<MapEntry<String, int>> _rankEntries(DnsStatistics stats, HomeTopItems rank) {
+  final List<Map<String, int>> source;
+  switch (rank) {
+    case HomeTopItems.blockedDomains:
+      source = stats.topBlockedDomains;
+      break;
+    case HomeTopItems.queriedDomains:
+      source = stats.topQueriedDomains;
+      break;
+    case HomeTopItems.recurrentClients:
+      source = stats.topClients;
+      break;
+  }
 
   return [
     for (final item in source)
       for (final entry in item.entries) entry,
   ];
+}
+
+/// The short label one ranking carries on the segment control. The settings
+/// page names the same three rankings with their long titles.
+String _rankSegmentLabel(AppLocalizations l, HomeTopItems item) {
+  switch (item) {
+    case HomeTopItems.blockedDomains:
+      return l.blockedDomainsShort;
+    case HomeTopItems.queriedDomains:
+      return l.queriedDomainsShort;
+    case HomeTopItems.recurrentClients:
+      return l.activeDevices;
+  }
 }
 
 /// One row of a ranking: the place, the name, a bar measured against the
@@ -927,7 +1129,7 @@ class _RankRow extends StatelessWidget {
   final int place;
 
   /// Which ranking this row belongs to, which decides the colour of the bar.
-  final int variant;
+  final HomeTopItems variant;
   final int largest;
 
   const _RankRow({
@@ -940,7 +1142,9 @@ class _RankRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = ApplePalette.of(context);
-    final color = variant == 0 ? p.red : variant == 2 ? p.indigo : p.tint;
+    final color = variant == HomeTopItems.blockedDomains
+      ? p.red
+      : variant == HomeTopItems.recurrentClients ? p.indigo : p.tint;
     final fraction = largest <= 0 ? 0.0 : (entry.value / largest).clamp(0.0, 1.0);
 
     return Padding(
@@ -953,7 +1157,7 @@ class _RankRow extends StatelessWidget {
               '${place + 1}',
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: p.label3,
               ),
             ),
@@ -1013,16 +1217,17 @@ class _RankRow extends StatelessWidget {
 
 /// The whole ranking, behind the 全部 action of the card.
 class _RankingSheet extends StatefulWidget {
-  final int rank;
+  final List<HomeTopItems> rankings;
+  final HomeTopItems rank;
 
-  const _RankingSheet({required this.rank});
+  const _RankingSheet({required this.rankings, required this.rank});
 
   @override
   State<_RankingSheet> createState() => _RankingSheetState();
 }
 
 class _RankingSheetState extends State<_RankingSheet> {
-  late int _rank = widget.rank;
+  late HomeTopItems _rank = widget.rank;
 
   @override
   Widget build(BuildContext context) {
@@ -1034,10 +1239,12 @@ class _RankingSheetState extends State<_RankingSheet> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AppleSegmented(
-          labels: [l.blockedDomainsShort, l.queriedDomainsShort, l.activeDevices],
-          selectedIndex: _rank,
+          labels: <String>[
+            for (final item in widget.rankings) _rankSegmentLabel(l, item),
+          ],
+          selectedIndex: widget.rankings.indexOf(_rank),
           large: true,
-          onChanged: (index) => setState(() => _rank = index),
+          onChanged: (index) => setState(() => _rank = widget.rankings[index]),
         ),
         const SizedBox(height: 12),
         AppleListSection(
@@ -1100,7 +1307,7 @@ class _ServicesGroup extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 20, 16, 0),
       children: [
         AppleListTile(
-          icon: Icons.dns,
+          icon: CupertinoIcons.desktopcomputer,
           iconColor: p.indigo,
           title: l.serverInformation,
           subtitle: status.serverVersion,

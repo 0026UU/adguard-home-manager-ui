@@ -1,7 +1,10 @@
 import 'package:adguard_home_manager/constants/regexps.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
+
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 
 class _IpListItemController {
@@ -75,112 +78,82 @@ class _RateLimitAllowlistModalState extends State<RateLimitAllowlistModal> {
   @override
   Widget build(BuildContext context) {
     final validData = _controllersList.where((e) => e.error == true).isEmpty;
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
-    return Dialog(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Center(
-                        child: Icon(
-                          Icons.check_circle_rounded,
-                          size: 24,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        AppLocalizations.of(context)!.rateLimitAllowlist,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 24,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ..._controllersList.map((item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: item.controller,
-                                onChanged: (v) => _validateIp(v, item),
-                                decoration: InputDecoration(
-                                  prefixIcon: const Icon(Icons.link_rounded),
-                                  border: const OutlineInputBorder(
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(10)
-                                    )
-                                  ),
-                                  labelText: AppLocalizations.of(context)!.ipAddress,
-                                  errorText: item.error == true
-                                    ? AppLocalizations.of(context)!.invalidIp
-                                    : null
-                                ),
-                                keyboardType: TextInputType.number,
-                              ),
+    return AppleFormModal(
+      title: l.rateLimitAllowlist,
+      icon: CupertinoIcons.list_bullet,
+      dialog: true,
+      maxWidth: 500,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(top: 4),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final item in _controllersList)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 6, 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: AppleTextField(
+                              label: l.ipAddress,
+                              icon: CupertinoIcons.link,
+                              controller: item.controller,
+                              keyboardType: TextInputType.number,
+                              error: item.error == true ? l.invalidIp : null,
+                              onChanged: (v) => _validateIp(v, item),
+                              padding: EdgeInsets.zero,
                             ),
-                            const SizedBox(width: 16),
-                            IconButton(
-                              onPressed: () => setState(
-                                () => _controllersList = _controllersList.where((c) => c.id != item.id).toList()
-                              ), 
-                              icon: const Icon(Icons.remove_circle_outline_rounded),
-                              tooltip: AppLocalizations.of(context)!.remove,
-                            )
-                          ],
+                          ),
+                          IconButton(
+                            onPressed: () => setState(
+                              () => _controllersList = _controllersList.where((c) => c.id != item.id).toList()
+                            ), 
+                            icon: Icon(
+                              CupertinoIcons.minus_circle,
+                              size: 19,
+                              color: p.red,
+                            ),
+                            tooltip: l.remove,
+                          )
+                        ],
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                    child: AppleButton.secondary(
+                      label: l.addItem,
+                      icon: CupertinoIcons.plus,
+                      onPressed: () => setState(() => _controllersList.add(
+                        _IpListItemController(
+                          id: uuid.v4(), 
+                          controller: TextEditingController(),
+                          error: false
                         ),
                       )),
-                      Center(
-                        child: ElevatedButton.icon(
-                          onPressed: () => setState(() => _controllersList.add(
-                            _IpListItemController(
-                              id: uuid.v4(), 
-                              controller: TextEditingController(),
-                              error: false
-                            ),
-                          )),
-                          icon: const Icon(Icons.add_rounded),
-                          label: Text(AppLocalizations.of(context)!.addItem),
-                        ),
-                      )
-                    ],
-                  ),
-                )
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context), 
-                    child: Text(AppLocalizations.of(context)!.cancel)
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: validData == true
-                      ? () {
-                          widget.onConfirm(
-                            _controllersList.map((e) => e.controller.text).toList()
-                          );
-                          Navigator.pop(context);
-                        }
-                      : null, 
-                    child: Text(AppLocalizations.of(context)!.confirm)
-                  ),
+                    ),
+                  )
                 ],
-              )
-            ],
+              ),
+            )
           ),
-        ),
+          AppleFormFooter(
+            confirmLabel: l.confirm,
+            confirmEnabled: validData,
+            onConfirm: () {
+              widget.onConfirm(
+                _controllersList.map((e) => e.controller.text).toList()
+              );
+              Navigator.pop(context);
+            },
+          ),
+        ],
       ),
     );
   }

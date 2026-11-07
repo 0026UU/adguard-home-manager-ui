@@ -157,6 +157,10 @@ class _ContentState extends State<_Content> {
         ),
         AppleFormFooter(
           confirmLabel: widget.list != null ? l.save : l.confirm,
+          // A blank or malformed URL would otherwise be written as a filter
+          // list that can never update, and the row would only show an empty
+          // rule count later on.
+          confirmEnabled: validData && urlError == null,
           onConfirm: () {
             Navigator.pop(context);
             if (widget.list != null) {

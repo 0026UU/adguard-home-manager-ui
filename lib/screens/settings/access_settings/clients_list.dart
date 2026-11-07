@@ -2,381 +2,185 @@
 
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/screens/settings/access_settings/add_client_modal.dart';
 import 'package:adguard_home_manager/screens/clients/client/remove_client_modal.dart';
-import 'package:adguard_home_manager/widgets/tab_content_list.dart';
 
+import 'package:adguard_home_manager/classes/process_modal.dart';
+import 'package:adguard_home_manager/functions/desktop_mode.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
-import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/providers/clients_provider.dart';
-import 'package:adguard_home_manager/classes/process_modal.dart';
+import 'package:adguard_home_manager/services/api_client.dart';
 
-class ClientsList extends StatefulWidget {
+/// One of the three lists the server keeps under `/access`.
+///
+/// The rows are strings the server owns, so the group offers only the two
+/// writes `/access/set` takes: add an entry, remove one. Both go through
+/// [ClientsProvider], which redraws the card from `clientsAllowedBlocked` -
+/// a write the server refused leaves the entry exactly where it was.
+class ClientsList extends StatelessWidget {
   final AccessSettingsList type;
-  final ScrollController scrollController;
-  final LoadStatus loadStatus;
   final List<String> data;
 
   const ClientsList({
     super.key,
     required this.type,
-    required this.scrollController,
-    required this.loadStatus,
     required this.data,
   });
 
   @override
-  State<ClientsList> createState() => _ClientsListState();
-}
-
-class _ClientsListState extends State<ClientsList> {
-  late bool isVisible;
-
-  @override
-  initState(){
-    super.initState();
-
-    isVisible = true;
-    widget.scrollController.addListener(() {
-      if (mounted) {
-        if (widget.scrollController.position.userScrollDirection == ScrollDirection.reverse) {
-          if (mounted && isVisible == true) {
-            setState(() => isVisible = false);
-          }
-        } 
-        else {
-          if (widget.scrollController.position.userScrollDirection == ScrollDirection.forward) {
-            if (mounted && isVisible == false) {
-              setState(() => isVisible = true);
-            }
-          }
-        }
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final clientsProvider =
+        Provider.of<ClientsProvider>(context, listen: false);
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
-    final clientsProvider = Provider.of<ClientsProvider>(context);
 
     final width = MediaQuery.of(context).size.width;
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
-    Future refetchClients() async {
-      final result = await clientsProvider.fetchClients();
-      if (result == false && mounted) {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.clientsNotLoaded, 
-          color: Colors.red
-        );
-      }
-    }
+    final isClient = type != AccessSettingsList.domains;
 
-    void confirmRemoveItem(String client, AccessSettingsList type) async {
-      Map<String, List<String>> body = {
-        "allowed_clients": clientsProvider.clients!.clientsAllowedBlocked?.allowedClients ?? [],
-        "disallowed_clients": clientsProvider.clients!.clientsAllowedBlocked?.disallowedClients ?? [],
-        "blocked_hosts": clientsProvider.clients!.clientsAllowedBlocked?.blockedHosts ?? [],
-      };
-
-      if (type == AccessSettingsList.allowed) {
-        body['allowed_clients'] = body['allowed_clients']!.where((c) => c != client).toList();
-      }
-      else if (type == AccessSettingsList.disallowed) {
-        body['disallowed_clients'] = body['disallowed_clients']!.where((c) => c != client).toList();
-      }
-      else if (type == AccessSettingsList.domains) {
-        body['blocked_hosts'] = body['blocked_hosts']!.where((c) => c != client).toList();
-      }
-
-      ProcessModal processModal = ProcessModal();
-      processModal.open(AppLocalizations.of(context)!.removingClient);
-
-      final result = await clientsProvider.removeClientList(client, type);
-
-      processModal.close();
-
-      if (result.successful == true) {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.clientRemovedSuccessfully, 
-          color: Colors.green
-        );
-      }
-      else if (result.successful == false && result.content == 'client_another_list') {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.clientAnotherList, 
-          color: Colors.red
-        );
-      }
-      else {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: type == AccessSettingsList.allowed || type == AccessSettingsList.disallowed
-            ? AppLocalizations.of(context)!.clientNotRemoved
-            : AppLocalizations.of(context)!.domainNotAdded,
-          color: Colors.red
-        );
-      }
-    }
-
-    void confirmAddItem(String item, AccessSettingsList type) async {
-      ProcessModal processModal = ProcessModal();
-      processModal.open(AppLocalizations.of(context)!.removingClient);
-
-      final result = await clientsProvider.addClientList(item, type);
-
-      processModal.close();
-
-      if (result.successful == true) {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.clientAddedSuccessfully, 
-          color: Colors.green
-        );
-      }
-      else if (result.successful == false && result.content == 'client_another_list') {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.clientAnotherList, 
-          color: Colors.red
-        );
-      }
-      else {
-        showSnackbar(
-          appConfigProvider: appConfigProvider,
-          label: type == AccessSettingsList.allowed || type == AccessSettingsList.disallowed
-            ? AppLocalizations.of(context)!.clientNotRemoved
-            : AppLocalizations.of(context)!.domainNotAdded,
-          color: Colors.red
-        );
+    String title() {
+      switch (type) {
+        case AccessSettingsList.allowed:
+          return l.allowedClients;
+        case AccessSettingsList.disallowed:
+          return l.disallowedClients;
+        case AccessSettingsList.domains:
+          return l.disallowedDomains;
       }
     }
 
     String description() {
-      switch (widget.type) {
+      switch (type) {
         case AccessSettingsList.allowed:
-          return AppLocalizations.of(context)!.allowedClientsDescription;
-
+          return l.allowedClientsDescription;
         case AccessSettingsList.disallowed:
-          return AppLocalizations.of(context)!.blockedClientsDescription;
-
+          return l.blockedClientsDescription;
         case AccessSettingsList.domains:
-          return AppLocalizations.of(context)!.disallowedDomainsDescription;
-
-        default:
-          return "";
+          return l.disallowedDomainsDescription;
       }
     }
 
-    String noItems() {
-      switch (widget.type) {
+    String empty() {
+      switch (type) {
         case AccessSettingsList.allowed:
-          return AppLocalizations.of(context)!.noAllowedClients;
-
+          return l.noAllowedClients;
         case AccessSettingsList.disallowed:
-          return AppLocalizations.of(context)!.noBlockedClients;
-
+          return l.noBlockedClients;
         case AccessSettingsList.domains:
-          return AppLocalizations.of(context)!.noDisallowedDomains;
-
-        default:
-          return "";
+          return l.noDisallowedDomains;
       }
     }
 
-    return CustomTabContentList(
-      insetCard: true,
-      noSliver: !(Platform.isAndroid || Platform.isIOS) ? true : false,
-      loadingGenerator: () => SizedBox(
-        width: double.maxFinite,
-        height: MediaQuery.of(context).size.height-171,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 30),
-            Text(
-              AppLocalizations.of(context)!.loadingClients,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 22,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            )
-          ],
-        ),
-      ), 
-      itemsCount: widget.data.isNotEmpty
-        ? widget.data.length+1
-        : 0, 
-      contentWidget: (index) {
-        if (index == 0) {
-          return Padding(
-            padding: const EdgeInsets.all(10),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_rounded,
-                      color: Theme.of(context).listTileTheme.iconColor,
-                    ),
-                    const SizedBox(width: 20),
-                    Flexible(
-                      child: Text(
-                        description(),
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                    )
-                  ],
-                ),
-              ),
-            ),
-          );
-        }
-        else {
-          return ListTile(
-            title: Text(
-              widget.data[index-1],
-              style: TextStyle(
-                fontWeight: FontWeight.normal,
-                color: Theme.of(context).colorScheme.onSurface
-              ),
-            ),
-            trailing: IconButton(
-              onPressed: () => {
-                showDialog(
-                  context: context, 
+    // The answers one write can get, split by direction so a refused add never
+    // reads as a refused removal, with the server's own "same identifier,
+    // other list" refusal kept apart from a plain failure.
+    void report(ApiResponse result, {required bool adding}) {
+      final Color color;
+      final String label;
+
+      if (result.successful == true) {
+        color = p.green;
+        label = adding ? l.clientAddedSuccessfully : l.clientRemovedSuccessfully;
+      } else if (result.successful == false &&
+          result.content == 'client_another_list') {
+        color = p.red;
+        label = l.clientAnotherList;
+      } else {
+        color = p.red;
+        label = adding
+            ? (isClient ? l.clientNotAdded : l.domainNotAdded)
+            : (isClient ? l.clientNotRemoved : l.domainNotAdded);
+      }
+
+      showSnackbar(
+        appConfigProvider: appConfigProvider,
+        label: label,
+        color: color,
+      );
+    }
+
+    Future<void> add(String item) async {
+      final processModal = ProcessModal();
+      processModal.open(l.savingConfig);
+
+      final result = await clientsProvider.addClientList(item, type);
+
+      processModal.close();
+      report(result, adding: true);
+    }
+
+    Future<void> remove(String item) async {
+      final processModal = ProcessModal();
+      processModal.open(l.savingConfig);
+
+      final result = await clientsProvider.removeClientList(item, type);
+
+      processModal.close();
+      report(result, adding: false);
+    }
+
+    void openAddForm() {
+      final asDialog = isDesktop(width) || !(Platform.isAndroid || Platform.isIOS);
+      final form = AddClientModal(
+        type: type,
+        onConfirm: (item, _) => add(item),
+        dialog: asDialog,
+      );
+
+      if (asDialog) {
+        showDialog(context: context, builder: (context) => form);
+      } else {
+        showModalBottomSheet(
+          context: context,
+          useRootNavigator: true,
+          backgroundColor: Colors.transparent,
+          isScrollControlled: true,
+          builder: (context) => form,
+        );
+      }
+    }
+
+    return AppleListSection(
+      title: title(),
+      footer: description(),
+      headerTrailing: AppleHeaderAction(
+        label: l.add,
+        onPressed: openAddForm,
+      ),
+      children: [
+        if (data.isEmpty)
+          AppleListTile(
+            title: empty(),
+            showChevron: false,
+            enabled: false,
+          )
+        else
+          for (final entry in data)
+            AppleListTile(
+              title: entry,
+              mono: true,
+              showChevron: false,
+              trailing: IconButton(
+                tooltip: l.removeClient,
+                onPressed: () => showDialog(
+                  context: context,
                   builder: (context) => RemoveClientModal(
-                    onConfirm: () => confirmRemoveItem(widget.data[index-1], widget.type),
-                  )
-                )
-              }, 
-              icon: const Icon(Icons.delete_rounded)
-            ),
-          );
-        }
-      },
-      noData: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_rounded,
-                      color: Theme.of(context).listTileTheme.iconColor,
-                    ),
-                    const SizedBox(width: 20),
-                    Flexible(
-                      child: Text(
-                        description(),
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                    )
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  noItems(),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 24,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    onConfirm: () => remove(entry),
                   ),
                 ),
-                const SizedBox(height: 30),
-                TextButton.icon(
-                  onPressed: refetchClients, 
-                  icon: const Icon(Icons.refresh_rounded), 
-                  label: Text(AppLocalizations.of(context)!.refresh),
-                )
-              ],
+                icon: Icon(CupertinoIcons.trash, color: p.red),
+              ),
             ),
-          ),
-        ],
-      ),
-      errorGenerator: () => SizedBox(
-        width: double.maxFinite,
-        height: MediaQuery.of(context).size.height-101,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error,
-              color: Colors.red,
-              size: 50,
-            ),
-            const SizedBox(height: 30),
-            Text(
-              AppLocalizations.of(context)!.clientsNotLoaded,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 22,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            )
-          ],
-        ),
-      ), 
-      loadStatus: widget.loadStatus, 
-      onRefresh: refetchClients,
-      refreshIndicatorOffset: 0,
-      fab: FloatingActionButton(
-        onPressed: () {
-          if (width > 900 || !(Platform.isAndroid || Platform.isIOS)) {
-            showDialog(
-              context: context, 
-              builder: (context) => AddClientModal(
-                type: widget.type,
-                onConfirm: confirmAddItem,
-                dialog: true,
-              ),
-            );
-          }
-          else {
-            showModalBottomSheet(
-              context: context, 
-              useRootNavigator: true,
-              builder: (context) => AddClientModal(
-                type: widget.type,
-                onConfirm: confirmAddItem,
-                dialog: false,
-              ),
-              backgroundColor: Colors.transparent,
-              isScrollControlled: true
-            );
-          }
-        },
-        child: const Icon(Icons.add),
-      ),
-      fabVisible: isVisible,
+      ],
     );
   }
 }

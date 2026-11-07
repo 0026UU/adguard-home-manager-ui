@@ -116,7 +116,6 @@ class _FiltersState extends State<Filters> {
             tooltip: AppLocalizations.of(context)!.addList,
           ),
         ),
-        const SizedBox(width: 8),
       ];
     }
 

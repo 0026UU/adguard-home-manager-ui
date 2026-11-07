@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'package:adguard_home_manager/services/api_client.dart';
+import 'package:adguard_home_manager/providers/error_reason.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/models/dns_info.dart';
 
-class DnsProvider with ChangeNotifier {
+class DnsProvider with ChangeNotifier, ErrorReason {
   ServersProvider? _serversProvider;
 
   void update(ServersProvider? provider) {
@@ -38,11 +39,19 @@ class DnsProvider with ChangeNotifier {
   Future<bool> fetchDnsData({
     bool? showLoading
   }) async {
-    if (showLoading == true) {
+    // Only worth announcing when it is a change: the first fetch runs from
+    // initState, where the status is already loading and notifying would
+    // rebuild the page that is still being built.
+    if (showLoading == true && _loadStatus != LoadStatus.loading) {
       _loadStatus = LoadStatus.loading;
+      notifyListeners();
     }
 
     final result = await _serversProvider!.apiClient2!.getDnsInfo();
+    captureErrorReason(
+      result,
+      fallback: 'the server gave nothing back for the DNS configuration',
+    );
 
     if (result.successful == true) {
       _dnsInfo = result.content as DnsInfo;
@@ -51,10 +60,13 @@ class DnsProvider with ChangeNotifier {
       return true;
     }
     else {
-      if (showLoading == false) {
-        _loadStatus = LoadStatus.loaded;
-        notifyListeners();
-      }
+      // The error is recorded whether or not a spinner was promised. A refresh
+      // that found no server is still a refresh that found no server: keeping
+      // the last answer marked as loaded is what lets this page go on showing
+      // upstreams the server has stopped confirming, and keeping it in loading
+      // is what makes a first fetch spin forever.
+      _loadStatus = LoadStatus.error;
+      notifyListeners();
       return false;
     }
   }

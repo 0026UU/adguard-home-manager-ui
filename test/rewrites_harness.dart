@@ -17,6 +17,8 @@ import 'package:adguard_home_manager/providers/rewrite_rules_provider.dart';
 import 'package:adguard_home_manager/screens/settings/dns_rewrites/dns_rewrites.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+import 'surface.dart';
+
 // The rewrite page reads `/rewrite/list` and writes back through
 // `/rewrite/add`, `/rewrite/update` and `/rewrite/delete`. No test here can
 // reach a server, so the provider below answers from the fixtures and records
@@ -138,8 +140,7 @@ Future<RewriteHarness> pumpRewrites(
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
 
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, surface);
 
   final stub = RewriteStub(
     rules ?? rewriteFixture(),

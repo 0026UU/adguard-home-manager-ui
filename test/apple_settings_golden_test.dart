@@ -12,6 +12,8 @@ import 'package:adguard_home_manager/providers/status_provider.dart';
 import 'package:adguard_home_manager/screens/settings/settings.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+import 'surface.dart';
+
 // The appearance group is the only settings card that carries a control
 // instead of a row, so the golden keeps the segment, its label and the two
 // value rows below it in one frame.
@@ -19,8 +21,7 @@ import 'package:adguard_home_manager/widgets/apple/apple.dart';
 // Regenerate with: flutter test --update-goldens test/apple_settings_golden_test.dart
 
 Future<void> _pump(WidgetTester tester, Size surface) async {
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, surface);
 
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
@@ -94,10 +95,11 @@ void main() {
 
   // The whole page at once: the look group, the app group with its switches
   // and the about group, which is everything a phone shows before a server
-  // has answered.
+  // has answered. The page measures 1244.5pt tall in that state, so the
+  // surface has to be taller than the fold or the footer row is never built.
   testWidgets('the groups are drawn in the order the design gives them',
       (tester) async {
-    await _pump(tester, const Size(390, 1180));
+    await _pump(tester, const Size(390, 1260));
 
     expect(find.text(l.appSettings), findsOneWidget);
     expect(find.text(l.aboutApp), findsOneWidget);

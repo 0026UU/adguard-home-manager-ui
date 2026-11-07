@@ -167,7 +167,8 @@ class ClientForm extends StatelessWidget {
                       ? l.enabled
                       : l.disabled,
               enabled: !useGlobalSettingsFiltering,
-              showChevron: !useGlobalSettingsFiltering,
+              // Opens the safe-search sheet, not a screen.
+              showChevron: false,
               onTap: useGlobalSettingsFiltering
                   ? null
                   : () => openSafeSearchModal(

@@ -25,7 +25,7 @@ Future<SheetsHarness> _applied(
     ..logs.setAppliedFilters(AppliedFiters(
       statuses: const [LogStatus.blocked],
       searchText: null,
-      clients: const ['192.168.1.2'],
+      clients: const ['device-2'],
       timeRange: LogTimeRange.twentyFourHours,
     ));
 

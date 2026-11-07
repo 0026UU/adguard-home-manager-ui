@@ -1,13 +1,14 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
-
 
 import 'package:adguard_home_manager/screens/filters/selection/enable_disable_selection_modal.dart';
 import 'package:adguard_home_manager/screens/filters/selection/delete_selection_modal.dart';
 import 'package:adguard_home_manager/screens/filters/selection/selection_result_modal.dart';
 import 'package:adguard_home_manager/screens/filters/selection/selection_lists.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/classes/process_modal.dart';
 import 'package:adguard_home_manager/models/filtering.dart';
 import 'package:adguard_home_manager/providers/filtering_provider.dart';
@@ -26,21 +27,12 @@ class SelectionScreen extends StatefulWidget {
   State<SelectionScreen> createState() => _SelectionScreenState();
 }
 
-class _SelectionScreenState extends State<SelectionScreen> with TickerProviderStateMixin {
-  late TabController _tabController;
-
+class _SelectionScreenState extends State<SelectionScreen> {
   List<Filter> _selectedWhitelists = [];
   List<Filter> _selectedBlacklists = [];
 
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(
-      initialIndex: 0,
-      length: 2,
-      vsync: this,
-    );
-  }
+  /// The tab the segmented control shows: allowlists first, as the tabs did.
+  int _tab = 0;
 
   void handleSelect(Filter list, ListType type) {
     if (type == ListType.blacklist) {
@@ -65,6 +57,8 @@ class _SelectionScreenState extends State<SelectionScreen> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
     final filteringProvider = Provider.of<FilteringProvider>(context);
 
     final somethingSelected = _selectedBlacklists.isNotEmpty || _selectedWhitelists.isNotEmpty;
@@ -78,7 +72,7 @@ class _SelectionScreenState extends State<SelectionScreen> with TickerProviderSt
           onDelete: () async {
             Navigator.pop(context);
             final processModal = ProcessModal();
-            processModal.open(AppLocalizations.of(context)!.processingLists);
+            processModal.open(l.processingLists);
             final result = await filteringProvider.enableDisableMultipleLists(
               blacklists: _selectedBlacklists, 
               whitelists: _selectedWhitelists
@@ -109,7 +103,7 @@ class _SelectionScreenState extends State<SelectionScreen> with TickerProviderSt
           onDelete: () async {
             Navigator.pop(context);
             final processModal = ProcessModal();
-            processModal.open(AppLocalizations.of(context)!.deletingLists);
+            processModal.open(l.deletingLists);
             final result = await filteringProvider.deleteMultipleLists(
               blacklists: _selectedBlacklists, 
               whitelists: _selectedWhitelists
@@ -130,248 +124,127 @@ class _SelectionScreenState extends State<SelectionScreen> with TickerProviderSt
         barrierDismissible: false
       );
     }
+
+    Widget closeButton() => IconButton(
+      onPressed: () => Navigator.pop(context),
+      icon: Icon(CupertinoIcons.xmark, size: 20, color: p.label2),
+      tooltip: l.close,
+    );
+
+    List<Widget> batchActions() => [
+      IconButton(
+        onPressed: somethingSelected == true
+          ? () => enableDisableSelected()
+          : null, 
+        icon: const Icon(CupertinoIcons.shield_slash),
+        tooltip: l.enableDisableSelected,
+      ),
+      IconButton(
+        onPressed: somethingSelected == true
+          ? () => deleteSelected()
+          : null, 
+        icon: const Icon(CupertinoIcons.trash),
+        tooltip: l.deleteSelectedLists,
+      ),
+    ];
+
+    // The count each tab badge carried now rides in the segment label, so the
+    // selection stays readable without a second glyph grammar.
+    Widget segmented() => AppleSegmented(
+      labels: [
+        '${l.whitelists} (${_selectedWhitelists.length})',
+        '${l.blacklists} (${_selectedBlacklists.length})',
+      ],
+      selectedIndex: _tab,
+      onChanged: (index) => setState(() => _tab = index),
+    );
+
+    SelectionList list() => _tab == 0
+      ? SelectionList(
+          lists: filteringProvider.filtering!.whitelistFilters, 
+          selectedLists: _selectedWhitelists, 
+          onSelect: (list) => handleSelect(list, ListType.whitelist), 
+          selectAll: () => setState(() => _selectedWhitelists = filteringProvider.filtering!.whitelistFilters), 
+          unselectAll: () => setState(() => _selectedWhitelists = [])
+        )
+      : SelectionList(
+          lists: filteringProvider.filtering!.filters, 
+          selectedLists: _selectedBlacklists, 
+          onSelect: (list) => handleSelect(list, ListType.blacklist), 
+          selectAll: () => setState(() => _selectedBlacklists = filteringProvider.filtering!.filters), 
+          unselectAll: () => setState(() => _selectedBlacklists = [])
+        );
+
+    SelectionSliverList sliverList() => _tab == 0
+      ? SelectionSliverList(
+          lists: filteringProvider.filtering!.whitelistFilters,
+          selectedLists: _selectedWhitelists,
+          onSelect: (list) => handleSelect(list, ListType.whitelist),
+          selectAll: () => setState(() => _selectedWhitelists = filteringProvider.filtering!.whitelistFilters),
+          unselectAll: () => setState(() => _selectedWhitelists = []),
+        )
+      : SelectionSliverList(
+          lists: filteringProvider.filtering!.filters,
+          selectedLists: _selectedBlacklists,
+          onSelect: (list) => handleSelect(list, ListType.blacklist),
+          selectAll: () => setState(() => _selectedBlacklists = filteringProvider.filtering!.filters),
+          unselectAll: () => setState(() => _selectedBlacklists = []),
+        );
     
     if (widget.isModal == true) {
       return Dialog(
+        backgroundColor: Colors.transparent,
         child: ConstrainedBox(
           constraints: const BoxConstraints(
             maxWidth: 500
           ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: ColoredBox(
+              color: p.chromeSolid,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                    child: Row(
                       children: [
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.clear_rounded),
-                          tooltip: AppLocalizations.of(context)!.close,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          AppLocalizations.of(context)!.selectionMode,
-                          style: const TextStyle(
-                            fontSize: 22
+                        closeButton(),
+                        Expanded(
+                          child: Text(
+                            l.selectionMode,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                              color: p.label,
+                            ),
                           ),
-                        )
+                        ),
+                        ...batchActions(),
                       ],
                     ),
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: somethingSelected == true
-                            ? () => enableDisableSelected()
-                            : null, 
-                          icon: const Icon(Icons.remove_moderator_rounded),
-                          tooltip: AppLocalizations.of(context)!.enableDisableSelected,
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: somethingSelected == true
-                            ? () => deleteSelected()
-                            : null, 
-                          icon: const Icon(Icons.delete_rounded),
-                          tooltip: AppLocalizations.of(context)!.deleteSelectedLists,
-                        ),
-                      ],
-                    )
-                  ],
-                ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: segmented(),
+                  ),
+                  Expanded(child: list()),
+                ],
               ),
-              Expanded(
-                child: DefaultTabController(
-                  length: 2, 
-                  child: Column(
-                    children: [
-                      TabBar(
-                        controller: _tabController,
-                        unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
-                        tabs: [
-                          _Tab(
-                            icon: Icons.verified_user_rounded, 
-                            text: AppLocalizations.of(context)!.whitelists, 
-                            quantity: _selectedWhitelists.length
-                          ),
-                          _Tab(
-                            icon: Icons.gpp_bad_rounded, 
-                            text: AppLocalizations.of(context)!.blacklists, 
-                            quantity: _selectedBlacklists.length
-                          ),
-                        ]
-                      ),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: [
-                            SelectionList(
-                              lists: filteringProvider.filtering!.whitelistFilters, 
-                              selectedLists: _selectedWhitelists, 
-                              onSelect: (list) => handleSelect(list, ListType.whitelist), 
-                              selectAll: () => setState(() => _selectedWhitelists = filteringProvider.filtering!.whitelistFilters), 
-                              unselectAll: () => setState(() => _selectedWhitelists = [])
-                            ),
-                            SelectionList(
-                              lists: filteringProvider.filtering!.filters, 
-                              selectedLists: _selectedBlacklists, 
-                              onSelect: (list) => handleSelect(list, ListType.blacklist), 
-                              selectAll: () => setState(() => _selectedBlacklists = filteringProvider.filtering!.filters), 
-                              unselectAll: () => setState(() => _selectedBlacklists = [])
-                            ),
-                          ]
-                        ),
-                      )
-                    ],
-                  )
-                ),
-              )
-            ],
+            ),
           ),
         ),
       );
     }
     else {
-      return Dialog.fullscreen(
-        child: Stack(
-          children: [
-            DefaultTabController(
-              length: 2,
-              child: NestedScrollView(
-                headerSliverBuilder: ((context, innerBoxIsScrolled) {
-                  return [
-                    SliverOverlapAbsorber(
-                      handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-                      sliver: SliverAppBar(
-                        leading: CloseButton(
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                        title: Text(AppLocalizations.of(context)!.selectionMode),
-                        pinned: true,
-                        floating: true,
-                        forceElevated: innerBoxIsScrolled,
-                        centerTitle: false,
-                        bottom: TabBar(
-                          controller: _tabController,
-                          unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
-                          tabs: [
-                            _Tab(
-                              icon: Icons.verified_user_rounded, 
-                              text: AppLocalizations.of(context)!.whitelists, 
-                              quantity: _selectedWhitelists.length
-                            ),
-                            _Tab(
-                              icon: Icons.gpp_bad_rounded, 
-                              text: AppLocalizations.of(context)!.blacklists, 
-                              quantity: _selectedBlacklists.length
-                            ),
-                          ]
-                        ),
-                        actions: [
-                          IconButton(
-                            onPressed: somethingSelected == true
-                              ? () => enableDisableSelected()
-                              : null, 
-                            icon: const Icon(Icons.remove_moderator_rounded),
-                            tooltip: AppLocalizations.of(context)!.enableDisableSelected,
-                          ),
-                          IconButton(
-                            onPressed: somethingSelected == true
-                              ? () => deleteSelected()
-                              : null, 
-                            icon: const Icon(Icons.delete_rounded),
-                            tooltip: AppLocalizations.of(context)!.deleteSelectedLists,
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                      ),
-                    )
-                  ];
-                }), 
-                body: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    SelectionSliverList(
-                      lists: filteringProvider.filtering!.whitelistFilters,
-                      selectedLists: _selectedWhitelists,
-                      onSelect: (list) => handleSelect(list, ListType.whitelist),
-                      selectAll: () => setState(() => _selectedWhitelists = filteringProvider.filtering!.whitelistFilters),
-                      unselectAll: () => setState(() => _selectedWhitelists = []),
-                    ),
-                    SelectionSliverList(
-                      lists: filteringProvider.filtering!.filters,
-                      selectedLists: _selectedBlacklists,
-                      onSelect: (list) => handleSelect(list, ListType.blacklist),
-                      selectAll: () => setState(() => _selectedBlacklists = filteringProvider.filtering!.filters),
-                      unselectAll: () => setState(() => _selectedBlacklists = []),
-                    ),
-                  ]
-                )
-              )
-            ),
-          ],
-        ),
+      return AppleScreen(
+        title: l.selectionMode,
+        leading: closeButton(),
+        actions: batchActions(),
+        header: segmented(),
+        slivers: sliverList().slivers(context),
       );
     }
-  }
-}
-
-class _Tab extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final int quantity;
-
-  const _Tab({
-    required this.icon,
-    required this.text,
-    required this.quantity
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Tab(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              text,
-              overflow: TextOverflow.ellipsis,
-            )
-          ),
-          const SizedBox(width: 8),
-          Container(
-            height: 22,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 2
-            ),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(30),
-              color: Theme.of(context).colorScheme.primaryContainer
-            ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                minWidth: 18
-              ),
-              child: Center(
-                child: Text(
-                  quantity.toString(),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer
-                  ),
-                ),
-              ),
-            ),
-          )
-        ],
-      ),
-    );
   }
 }

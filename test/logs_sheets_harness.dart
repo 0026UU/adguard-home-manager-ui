@@ -13,6 +13,8 @@ import 'package:adguard_home_manager/providers/clients_provider.dart';
 import 'package:adguard_home_manager/providers/logs_provider.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
 
+import 'surface.dart';
+
 // The log filter sheets read the devices the server knows and refetch the
 // query log on every change. Neither test file can reach a server, so the
 // doubles below answer from these fixtures.
@@ -110,13 +112,13 @@ Future<void> pumpSheet(
 }) async {
   SharedPreferences.setMockInitialValues({});
 
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, surface);
 
   await tester.pumpWidget(
     MultiProvider(
       providers: harness.providers,
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         theme: appleLightTheme(),
         darkTheme: appleDarkTheme(),
         themeMode: brightness == Brightness.dark

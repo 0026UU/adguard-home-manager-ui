@@ -33,6 +33,7 @@ class _AddedClientIdSelectionModalState
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
     return AppleFormModal(
       title: l.selectIdToFilter,
@@ -55,6 +56,7 @@ class _AddedClientIdSelectionModalState
                   style: AppleInput.style(context),
                   onChanged: (value) => setState(() => _selectedId = value!),
                   borderRadius: const BorderRadius.all(Radius.circular(14)),
+                  dropdownColor: p.card,
                   decoration:
                       AppleInput.decoration(context, label: l.clientIds),
                 ),

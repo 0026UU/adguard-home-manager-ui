@@ -9,6 +9,8 @@ import 'package:adguard_home_manager/models/safe_search.dart';
 import 'package:adguard_home_manager/providers/clients_provider.dart';
 import 'package:adguard_home_manager/screens/clients/client/client_screen.dart';
 
+import 'surface.dart';
+
 // The add/edit form of one device in the Apple layer: an inset-grouped page on
 // a phone, a centred card on the wide layouts.
 //
@@ -56,8 +58,7 @@ Future<void> _pump(
   required bool fullScreen,
   Brightness brightness = Brightness.light,
 }) async {
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, surface);
 
   final clients = ClientsProvider();
   addTearDown(clients.dispose);
@@ -66,6 +67,7 @@ Future<void> _pump(
     ChangeNotifierProvider<ClientsProvider>.value(
       value: clients,
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         theme:
             brightness == Brightness.dark ? appleDarkTheme() : appleLightTheme(),
         locale: const Locale('en'),

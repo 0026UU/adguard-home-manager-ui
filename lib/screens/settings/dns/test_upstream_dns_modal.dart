@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/providers/dns_provider.dart';
@@ -67,107 +68,90 @@ class _TestUpstreamDnsModalState extends State<TestUpstreamDnsModal> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Column(
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
+
+    return AppleFormModal(
+      title: l.testUpstreamDnsServers,
+      dialog: true,
+      icon: CupertinoIcons.checkmark_seal,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.upload_rounded,
-            size: 24,
-            color: Theme.of(context).colorScheme.onSurfaceVariant
+          Builder(
+            builder: (context) {
+              switch (loadStatus) {
+                case LoadStatus.loading:
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: CupertinoActivityIndicator(radius: 14),
+                    ),
+                  );
+        
+                case LoadStatus.loaded:
+                  return Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: values!.map((v) => AppleListTile(
+                          title: v.url,
+                          mono: true,
+                          showChevron: false,
+                          trailing: v.value == true
+                            ? Icon(
+                                CupertinoIcons.checkmark_circle_fill,
+                                color: p.green,
+                                size: 20,
+                              )
+                            : Icon(
+                                CupertinoIcons.xmark_circle_fill,
+                                color: p.red,
+                                size: 20,
+                              ),
+                        )).toList(),
+                      ),
+                    ),
+                  );
+              
+                case LoadStatus.error:
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          CupertinoIcons.exclamationmark_triangle,
+                          color: p.red,
+                          size: 30,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          l.errorTestUpstreamDns,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: p.label2
+                          ),
+                        )
+                      ],
+                    ),
+                  );
+        
+                default:
+                  return const SizedBox();
+              }
+            },
           ),
-          const SizedBox(height: 16),
-          Text(
-            AppLocalizations.of(context)!.testUpstreamDnsServers,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            child: AppleButton.secondary(
+              label: l.close,
+              onPressed: () => Navigator.pop(context),
             ),
-          )
+          ),
         ],
       ),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: 500
-        ),
-        child: Builder(
-          builder: (context) {
-            switch (loadStatus) {
-              case LoadStatus.loading:
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator()
-                    ],
-                  ),
-                );
-        
-              case LoadStatus.loaded:
-                return SingleChildScrollView(
-                  child: Wrap(
-                    children: values!.map((v) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              v.url,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          ...[
-                            const SizedBox(width: 8),
-                            if (v.value == true) const Icon(
-                              Icons.check_circle_rounded,
-                              color: Colors.green,
-                              size: 16,
-                            ),
-                            if (v.value == false) const Icon(
-                              Icons.cancel_rounded,
-                              color: Colors.red,
-                            )
-                          ]
-                        ],
-                      ),
-                    )).toList(),
-                  ),
-                );
-              
-              case LoadStatus.error:
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.error_rounded,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      size: 30,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      AppLocalizations.of(context)!.errorTestUpstreamDns,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant
-                      ),
-                    )
-                  ],
-                );
-        
-              default:
-                return const SizedBox();
-            }
-          },
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context), 
-          child: Text(AppLocalizations.of(context)!.close)
-        ),
-      ],
     );
   }
 }

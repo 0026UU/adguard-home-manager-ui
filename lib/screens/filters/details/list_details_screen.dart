@@ -2,15 +2,15 @@
 
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/screens/filters/details/add_list_modal.dart';
 import 'package:adguard_home_manager/screens/filters/modals/delete_list_modal.dart';
-import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
 
 import 'package:adguard_home_manager/functions/open_url.dart';
 import 'package:adguard_home_manager/functions/format_time.dart';
@@ -20,6 +20,12 @@ import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
 import 'package:adguard_home_manager/models/filtering.dart';
 
+/// What one filter list is and what can be done to it.
+///
+/// The same screen reaches the user two ways: as a card on the wide filter
+/// page, where it closes with the button that opened the other Apple modals,
+/// and as its own screen on a phone, where the bar carries the actions and the
+/// group of rows scrolls under a large title.
 class ListDetailsScreen extends StatefulWidget {
   final int listId;
   final String type;
@@ -37,33 +43,13 @@ class ListDetailsScreen extends StatefulWidget {
 }
 
 class _ListDetailsScreenState extends State<ListDetailsScreen> {
-  final ScrollController scrollController = ScrollController();
-  bool fabVisible = true;
-
-  @override
-  void initState() {
-    scrollController.addListener(() {
-      if (scrollController.position.userScrollDirection == ScrollDirection.reverse) {
-        if (mounted && fabVisible == true) {
-          setState(() => fabVisible = false);
-        }
-      } 
-      else {
-        if (scrollController.position.userScrollDirection == ScrollDirection.forward) {
-          if (mounted && fabVisible == false) {
-            setState(() => fabVisible = true);
-          }
-        }
-      }
-    });
-
-    super.initState();
-  }
-
   @override
   Widget build(BuildContext context) {
     final filteringProvider = Provider.of<FilteringProvider>(context);
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
+
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
     Filter? list;
     try {
@@ -83,10 +69,10 @@ class _ListDetailsScreenState extends State<ListDetailsScreen> {
       ProcessModal processModal = ProcessModal();
       processModal.open(
         action == FilteringListActions.edit
-          ? AppLocalizations.of(context)!.savingList
+          ? l.savingList
           : action == FilteringListActions.disable 
-            ? AppLocalizations.of(context)!.disablingList
-            : AppLocalizations.of(context)!.enablingList,
+            ? l.disablingList
+            : l.enablingList,
       );
       final result = await filteringProvider.updateList(
         list: filterList, 
@@ -97,170 +83,131 @@ class _ListDetailsScreenState extends State<ListDetailsScreen> {
       if (result == true) {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.listDataUpdated, 
-          color: Colors.green
+          label: l.listDataUpdated, 
+          color: p.green
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.listDataNotUpdated, 
-          color: Colors.red
+          label: l.listDataNotUpdated, 
+          color: p.red
         );
       }
     }
 
+    // Turning a list off is the ordinary action of this screen, so it lives on
+    // the bar both ways: as the last button of the card's header row, and as
+    // the action of the pushed screen. The glyph says which way it moves.
+    Widget toggleAction(Filter list) => IconButton(
+      onPressed: () => updateList(
+        action: list.enabled == true
+          ? FilteringListActions.disable
+          : FilteringListActions.enable,
+        filterList: list,
+      ),
+      icon: Icon(
+        list.enabled == true
+          ? CupertinoIcons.shield_slash
+          : CupertinoIcons.checkmark_shield,
+        color: list.enabled == true ? p.label3 : p.green,
+      ),
+      tooltip: list.enabled == true ? l.disableList : l.enableList,
+    );
+
+    Widget closeAction() => IconButton(
+      onPressed: () => Navigator.pop(context),
+      padding: EdgeInsets.zero,
+      tooltip: l.close,
+      icon: Icon(
+        CupertinoIcons.xmark_circle_fill,
+        size: 22,
+        color: p.label3,
+      ),
+    );
+
+    final actions = <Widget>[
+      if (list != null) ...[
+        toggleAction(list),
+        _Actions(
+          list: list, 
+          type: widget.type, 
+          updateList: (action, filterList) => updateList(action: action, filterList: filterList),
+        ),
+      ],
+      closeAction(),
+    ];
+
     if (widget.dialog == true) {
-      return Dialog(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: 500
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.clear_rounded),
-                          tooltip: AppLocalizations.of(context)!.close,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          AppLocalizations.of(context)!.listDetails,
-                          style: const TextStyle(
-                            fontSize: 22
-                          ),
-                        )
-                      ],
-                    ),
-                    if (list != null) Row(
-                      children: [
-                        IconButton(
-                          onPressed: () =>  updateList(
-                            action: list!.enabled == true
-                              ? FilteringListActions.disable
-                              : FilteringListActions.enable,
-                            filterList: list
-                          ),
-                          icon: Icon(
-                            list.enabled == true
-                              ? Icons.gpp_bad_rounded
-                              : Icons.verified_user_rounded,
-                          ),
-                          tooltip: list.enabled == true
-                            ? AppLocalizations.of(context)!.disableList
-                            : AppLocalizations.of(context)!.enableList,
-                        ),
-                        _Actions(
-                          list: list, 
-                          type: widget.type, 
-                          updateList: (action, filterList) => updateList(action: action, filterList: filterList),
-                        )
-                      ],
-                    )
-                  ],
-                ),
+      return AppleFormModal(
+        title: l.listDetails,
+        dialog: true,
+        maxWidth: 500,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: actions,
+        ),
+        body: list != null
+          ? SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: _Content(
+                isDialog: widget.dialog,
+                list: list,
+                type: widget.type,
               ),
-              Flexible(
-                child: list != null
-                  ?  SingleChildScrollView(
-                      child: Wrap(
-                        children: [
-                          _Content(
-                            isDialog: widget.dialog,
-                            list: list,
-                            type: widget.type,
-                          )
-                        ],
-                      ),
-                    )
-                  : Center(
-                      child: Text(
-                        AppLocalizations.of(context)!.listNotAvailable,
-                        style: const TextStyle(
-                          fontSize: 24,
-                        ),
-                      ),
-                    ),
-              )
-            ],
-          ),
-        )
+            )
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
+              child: Text(
+                l.listNotAvailable,
+                style: TextStyle(fontSize: 17, color: p.label2),
+              ),
+            ),
       );
     }
     else {
-      return Dialog.fullscreen(
-        child: Scaffold(
-          appBar: AppBar(
-            title: Text(AppLocalizations.of(context)!.listDetails),
-            actions: list != null 
-              ? [
-                  _Actions(
-                    list: list, 
-                    type: widget.type, 
-                    updateList: (action, filterList) => updateList(action: action, filterList: filterList),
-                  )
-                ]
-              : null,
-          ),
-          body: SafeArea(
-            child: Stack(
-              children: [
-                if (list != null) ListView(
-                  children: [
-                    _Content(
-                      isDialog: widget.dialog,
-                      list: list,
-                      type: widget.type,
-                    )
-                  ],
-                ),
-                if (list == null) Center(
-                  child: Text(
-                    AppLocalizations.of(context)!.listNotAvailable,
-                    style: const TextStyle(
-                      fontSize: 24,
-                    ),
-                  ),
-                ),
-                if (list != null) AnimatedPositioned(
-                  duration: const Duration(milliseconds: 100),
-                  curve: Curves.easeInOut,
-                  bottom: fabVisible ?
-                    appConfigProvider.showingSnackbar
-                      ? 70 : (Platform.isIOS ? 40 : 20)
-                    : -70,
-                  right: 20,
-                  child: FloatingActionButton(
-                    onPressed: () => updateList(
-                      action: list!.enabled == true
-                        ? FilteringListActions.disable
-                        : FilteringListActions.enable,
-                      filterList: list
-                    ),
-                    child: Icon(
-                      list.enabled == true
-                        ? Icons.gpp_bad_rounded
-                        : Icons.verified_user_rounded,
-                    ),
-                  ),
-                )
-              ],
-            ),
-          ),
+      return AppleScreen(
+        title: l.listDetails,
+        leading: AppleBackButton(
+          label: l.back,
+          onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          if (list != null) ...[
+            toggleAction(list),
+            _Actions(
+              list: list, 
+              type: widget.type, 
+              updateList: (action, filterList) => updateList(action: action, filterList: filterList),
+            ),
+          ],
+        ],
+        slivers: [
+          if (list != null)
+            SliverToBoxAdapter(
+              child: _Content(
+                isDialog: widget.dialog,
+                list: list,
+                type: widget.type,
+              ),
+            ),
+          if (list == null)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: AppleEmptyState(
+                icon: CupertinoIcons.exclamationmark_triangle,
+                title: l.listNotAvailable,
+                color: p.red,
+              ),
+            ),
+        ],
       );
     }
   }
 }
 
+/// The record the server keeps for one list, as the group of rows the design
+/// layer reads a record from.
 class _Content extends StatelessWidget {
   final Filter list;
   final bool isDialog;
@@ -275,97 +222,69 @@ class _Content extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
-    return Column(
+    // The colour of a list that does nothing is a statement of state, so it
+    // comes from the palette unless the user asked the theme to carry it.
+    final statusColor = list.enabled == true
+      ? (appConfigProvider.useThemeColorForStatus == true
+        ? p.tint
+        : p.green)
+      : (appConfigProvider.useThemeColorForStatus == true
+        ? p.label3
+        : p.red);
+
+    return AppleListSection(
+      margin: isDialog == true
+        ? EdgeInsets.zero
+        : const EdgeInsets.fromLTRB(16, 20, 16, 0),
       children: [
-        CustomListTile(
-          icon: Icons.shield_rounded, 
-          title: AppLocalizations.of(context)!.currentStatus, 
-          subtitleWidget: Text(
-            list.enabled == true
-              ? AppLocalizations.of(context)!.enabled
-              : AppLocalizations.of(context)!.disabled,
-            style: TextStyle(
-              color: list.enabled == true
-                ? appConfigProvider.useThemeColorForStatus == true
-                  ? Theme.of(context).colorScheme.primary
-                  : Colors.green
-                :  appConfigProvider.useThemeColorForStatus == true
-                  ? Colors.grey
-                  : Colors.red,
-              fontWeight: FontWeight.w500
-            ),
-          ),
-          padding: isDialog == true
-            ? const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 8
-              )
-            : null,
+        AppleListTile(
+          icon: CupertinoIcons.power,
+          iconColor: statusColor,
+          title: l.currentStatus,
+          value: list.enabled == true ? l.enabled : l.disabled,
+          valueColor: statusColor,
+          showChevron: false,
         ),
-        CustomListTile(
-          icon: Icons.badge_rounded, 
-          title: AppLocalizations.of(context)!.name, 
+        AppleListTile(
+          icon: CupertinoIcons.text_badge_checkmark,
+          title: l.name,
           subtitle: list.name,
-          padding: isDialog == true
-            ? const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 8
-              )
-            : null,
+          showChevron: false,
         ),
-        CustomListTile(
-          icon: Icons.link_rounded, 
-          title: "URL", 
+        AppleListTile(
+          icon: CupertinoIcons.link,
+          title: "URL",
           subtitle: list.url,
-          padding: isDialog == true
-            ? const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 8
-              )
-            : null,
+          mono: true,
+          showChevron: false,
           trailing: IconButton(
             onPressed: () => openUrl(list.url), 
-            icon: const Icon(Icons.open_in_browser_rounded),
-            tooltip: AppLocalizations.of(context)!.openListUrl,
+            icon: const Icon(CupertinoIcons.arrow_up_right),
+            tooltip: l.openListUrl,
           ),
         ),
-        CustomListTile(
-          icon: Icons.list_rounded, 
-          title: AppLocalizations.of(context)!.rules, 
-          subtitle: list.rulesCount.toString(),
-          padding: isDialog == true
-            ? const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 8
-              )
-            : null,
+        AppleListTile(
+          icon: CupertinoIcons.list_bullet,
+          title: l.rules,
+          value: list.rulesCount.toString(),
+          showChevron: false,
         ),
-        CustomListTile(
-          icon: Icons.shield_rounded, 
-          title: AppLocalizations.of(context)!.listType, 
-          subtitle: type == 'whitelist'
-            ? AppLocalizations.of(context)!.whitelist
-            : AppLocalizations.of(context)!.blacklist,
-          padding: isDialog == true
-            ? const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 8
-              )
-            : null,
+        AppleListTile(
+          icon: CupertinoIcons.shield_fill,
+          title: l.listType,
+          subtitle: type == 'whitelist' ? l.whitelist : l.blacklist,
+          showChevron: false,
         ),
-        if (list.lastUpdated != null) CustomListTile(
-          icon: Icons.schedule_rounded, 
-          title: AppLocalizations.of(context)!.latestUpdate, 
-          subtitle: convertTimestampLocalTimezone(list.lastUpdated!, 'dd-MM-yyyy HH:mm'), 
-          padding: isDialog == true
-            ? const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 8
-              )
-            : null,
-        ),
-        if (isDialog == true) Container(height: 16)
+        if (list.lastUpdated != null)
+          AppleListTile(
+            icon: CupertinoIcons.clock_fill,
+            title: l.latestUpdate,
+            subtitle: convertTimestampLocalTimezone(list.lastUpdated!, 'dd-MM-yyyy HH:mm'),
+            showChevron: false,
+          ),
       ],
     );
   }
@@ -388,8 +307,11 @@ class _Actions extends StatelessWidget {
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
 
     final width = MediaQuery.of(context).size.width;
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
           onPressed: () => {
@@ -419,8 +341,9 @@ class _Actions extends StatelessWidget {
               )
             }
           }, 
-          icon: const Icon(Icons.edit),
-          tooltip: AppLocalizations.of(context)!.edit,
+          icon: const Icon(CupertinoIcons.pencil),
+          color: p.tint,
+          tooltip: l.edit,
         ),
         IconButton(
           onPressed: () {
@@ -429,7 +352,7 @@ class _Actions extends StatelessWidget {
               builder: (c) => DeleteListModal(
                 onConfirm: () async {
                   ProcessModal processModal = ProcessModal();
-                  processModal.open(AppLocalizations.of(context)!.deletingList);
+                  processModal.open(l.deletingList);
                   final result = await filteringProvider.deleteList(
                     listUrl: list!.url, 
                     type: type,
@@ -438,26 +361,28 @@ class _Actions extends StatelessWidget {
                   if (result == true) {
                     showSnackbar(
                       appConfigProvider: appConfigProvider,
-                      label: AppLocalizations.of(context)!.listDeleted, 
-                      color: Colors.green
+                      label: l.listDeleted, 
+                      color: p.green
                     );
                     Navigator.pop(context);
                   }
                   else {
                     showSnackbar(
                       appConfigProvider: appConfigProvider,
-                      label: AppLocalizations.of(context)!.listNotDeleted, 
-                      color: Colors.red
+                      label: l.listNotDeleted, 
+                      color: p.red
                     );
                   }
                 }
               )
             );
           }, 
-          icon: const Icon(Icons.delete),
-          tooltip: AppLocalizations.of(context)!.delete,
+          // Deleting a list takes the file and every rule read from it, so the
+          // control says so in the colour the layer reserves for it.
+          icon: const Icon(CupertinoIcons.trash),
+          color: p.red,
+          tooltip: l.delete,
         ),
-        const SizedBox(width: 10),
       ],
     );
   }

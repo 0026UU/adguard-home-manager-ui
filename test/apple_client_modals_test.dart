@@ -17,7 +17,6 @@ import 'package:adguard_home_manager/screens/clients/client/client_screen_functi
 import 'package:adguard_home_manager/screens/clients/client/safe_search_modal.dart';
 import 'package:adguard_home_manager/screens/clients/client/services_modal.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
-import 'package:adguard_home_manager/widgets/custom_checkbox_list_tile.dart';
 
 import 'client_modals_harness.dart';
 
@@ -87,7 +86,7 @@ void main() {
       expect(find.text(l.services), findsOneWidget);
       expect(find.byTooltip(l.close), findsOneWidget);
 
-      expect(find.byType(CustomCheckboxListTile), findsNWidgets(3));
+      expect(find.byType(AppleListTile), findsNWidgets(3));
       expect(isChecked(tester, 'Service 0'), isFalse);
       expect(isChecked(tester, 'Service 1'), isTrue);
       expect(isChecked(tester, 'Service 2'), isFalse);
@@ -110,7 +109,7 @@ void main() {
 
       expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
       expect(find.text(l.loadingBlockedServicesList), findsOneWidget);
-      expect(find.byType(CustomCheckboxListTile), findsNothing);
+      expect(find.byType(AppleListTile), findsNothing);
       expect(
         tester.widget<AppleFormFooter>(find.byType(AppleFormFooter)).confirmEnabled,
         isFalse,
@@ -119,7 +118,7 @@ void main() {
       gate.complete(true);
       await tester.pumpAndSettle();
       expect(find.byType(CupertinoActivityIndicator), findsNothing);
-      expect(find.byType(CustomCheckboxListTile), findsNWidgets(3));
+      expect(find.byType(AppleListTile), findsNWidgets(3));
       expect(tester.takeException(), isNull);
     });
 
@@ -187,7 +186,7 @@ void main() {
 
       expect(find.byType(AppleEmptyState), findsOneWidget);
       expect(find.text(l.blockedServicesListNotLoaded), findsOneWidget);
-      expect(find.byType(CustomCheckboxListTile), findsNothing);
+      expect(find.byType(AppleListTile), findsNothing);
       expect(stub.loads, 1);
 
       stub.succeeds = true;
@@ -196,7 +195,7 @@ void main() {
 
       expect(stub.loads, 2);
       expect(find.byType(AppleEmptyState), findsNothing);
-      expect(find.byType(CustomCheckboxListTile), findsNWidgets(3));
+      expect(find.byType(AppleListTile), findsNWidgets(3));
       await tester.tap(checkRow('Service 2'));
       await tester.pumpAndSettle();
       await tester.tap(find.text(l.confirm));
@@ -402,7 +401,12 @@ void main() {
       WidgetTester tester,
       String row,
     ) async {
-      await tester.tap(find.widgetWithText(AppleListTile, row));
+      final tile = find.widgetWithText(AppleListTile, row);
+      // The form scrolls: on a phone the time rows sit below the fold, and a
+      // tap at their off-screen position lands on the footer underneath.
+      await tester.ensureVisible(tile);
+      await tester.pumpAndSettle();
+      await tester.tap(tile);
       await tester.pumpAndSettle();
       expect(find.byType(CupertinoDatePicker), findsOneWidget);
       await tester.tap(find.widgetWithText(AppleFormButton, l.confirm).last);
@@ -416,7 +420,12 @@ void main() {
 
     Future<void> selectFirstTimezone(WidgetTester tester) async {
       final first = tz.timeZoneDatabase.locations.keys.first;
-      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      final zone = find.byType(DropdownButtonFormField<String>);
+      // Picking the times scrolled the form down, so the field is back off
+      // the top of the viewport by now.
+      await tester.ensureVisible(zone);
+      await tester.pumpAndSettle();
+      await tester.tap(zone);
       await tester.pumpAndSettle();
       await tester.tap(find.text(first).last);
       await tester.pumpAndSettle();

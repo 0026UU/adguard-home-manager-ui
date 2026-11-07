@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -6,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:adguard_home_manager/config/apple_theme.dart';
+import 'package:adguard_home_manager/config/globals.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/models/blocked_services.dart';
@@ -17,8 +20,6 @@ import 'package:adguard_home_manager/providers/app_config_provider.dart';
 import 'package:adguard_home_manager/providers/filtering_provider.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
-import 'package:adguard_home_manager/screens/filters/custom_rules_list.dart';
-import 'package:adguard_home_manager/screens/filters/filters_list.dart';
 import 'package:adguard_home_manager/screens/filters/filters_page.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
@@ -31,8 +32,7 @@ Filter _list(int index, {bool enabled = true}) => Filter(
   enabled: enabled,
 );
 
-Future<FilteringProvider> _filteringProvider() async {
-  final provider = FilteringProvider();
+void _seed(FilteringProvider provider, {bool fails = false}) {
   provider.setFilteringData(Filtering(
     filters: [_list(0), _list(1, enabled: false)],
     whitelistFilters: [_list(9)],
@@ -45,7 +45,8 @@ Future<FilteringProvider> _filteringProvider() async {
     interval: 24,
     enabled: true,
   ));
-  provider.setFilteringLoadStatus(LoadStatus.loaded, false);
+  provider.setFilteringLoadStatus(
+      fails ? LoadStatus.error : LoadStatus.loaded, false);
 
   // The catalog of services is a second endpoint; the page reads it as loaded
   // data so the grid can be checked without an API client.
@@ -54,8 +55,32 @@ Future<FilteringProvider> _filteringProvider() async {
     BlockedService(id: 'twitch', name: 'Twitch', iconSvg: '', rules: const []),
   ]);
   provider.setBlockedServicesListLoadStatus(LoadStatus.loaded, false);
+}
 
+Future<FilteringProvider> _filteringProvider({bool fails = false}) async {
+  final provider = FilteringProvider();
+  _seed(provider, fails: fails);
   return provider;
+}
+
+/// The services page with its write held open, so a test can tap twice before
+/// the server has answered the first time.
+class _PendingServices extends FilteringProvider {
+  _PendingServices() {
+    _seed(this);
+  }
+
+  /// Every list the page posted, in the order it posted them.
+  final List<List<String>> posted = [];
+
+  final Completer<void> gate = Completer<void>();
+
+  @override
+  Future<bool> updateBlockedServices(List<String> values) async {
+    posted.add(values);
+    await gate.future;
+    return true;
+  }
 }
 
 ServerStatus _status({bool protectionOn = true}) => ServerStatus(
@@ -112,9 +137,11 @@ Future<void> _pump(
   WidgetTester tester,
   Widget body, {
   bool protectionOn = true,
+  bool fails = false,
+  FilteringProvider? filtering,
 }) async {
   final appConfigProvider = await _appConfigProvider();
-  final filteringProvider = await _filteringProvider();
+  final filteringProvider = filtering ?? await _filteringProvider(fails: fails);
   final statusProvider = StatusProvider()
     ..setServerStatusData(data: _status(protectionOn: protectionOn))
     ..setServerStatusLoad(LoadStatus.loaded);
@@ -129,6 +156,10 @@ Future<void> _pump(
         ChangeNotifierProvider(create: (_) => ServersProvider()),
       ],
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        // The Apple toast attaches to the root navigator's overlay, so without
+        // this key the page would save correctly but never say so.
+        navigatorKey: globalNavigatorKey,
         theme: appleLightTheme(),
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
@@ -149,6 +180,8 @@ Future<void> _pump(
 Future<void> _pumpPage(
   WidgetTester tester, {
   bool protectionOn = true,
+  bool fails = false,
+  FilteringProvider? filtering,
   void Function(Filter, String)? onOpenDetailsModal,
 }) async {
   await _pump(
@@ -158,6 +191,8 @@ Future<void> _pumpPage(
       onOpenDetailsModal: onOpenDetailsModal ?? (_, __) {},
     ),
     protectionOn: protectionOn,
+    fails: fails,
+    filtering: filtering,
   );
 }
 
@@ -172,102 +207,11 @@ Future<void> _scrollTo(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
 }
 
-/// Screen shell used by the list tests: the same collapsing-title + tab body
-/// the real screen builds.
-Future<void> _pumpList(WidgetTester tester, Widget list) async {
-  await _pump(
-    tester,
-    AppleScreen(
-      title: 'Filters',
-      header: AppleSegmented(
-        labels: const ['Lists', 'Rules'],
-        selectedIndex: 0,
-        onChanged: (_) {},
-      ),
-      body: list,
-    ),
-  );
-}
-
 void main() {
   late AppLocalizations l;
 
   setUpAll(() async {
     l = await AppLocalizations.delegate.load(const Locale('en'));
-  });
-
-  testWidgets('filter lists carry one switch per row', (tester) async {
-    await _pumpList(
-      tester,
-      FiltersList(
-        loadStatus: LoadStatus.loaded,
-        scrollController: ScrollController(),
-        type: 'blacklist',
-        data: [_list(0), _list(1, enabled: false)],
-        onOpenDetailsScreen: (_, __) {},
-      ),
-    );
-
-    expect(tester.takeException(), isNull);
-    expect(find.text('List 0'), findsOneWidget);
-    // The design layer switches a list from the row itself rather than
-    // showing a status capsule, so the state is the switch position.
-    expect(find.byType(ApplePill), findsNothing);
-    final switches = tester
-        .widgetList<CupertinoSwitch>(find.byType(CupertinoSwitch))
-        .toList();
-    expect(switches, hasLength(2));
-    expect(switches[0].value, isTrue);
-    expect(switches[1].value, isFalse);
-  });
-
-  testWidgets('opening a list row reports the filter and its type', (tester) async {
-    Filter? opened;
-    String? openedType;
-
-    await _pumpList(
-      tester,
-      FiltersList(
-        loadStatus: LoadStatus.loaded,
-        scrollController: ScrollController(),
-        type: 'whitelist',
-        data: [_list(3)],
-        onOpenDetailsScreen: (filter, type) {
-          opened = filter;
-          openedType = type;
-        },
-      ),
-    );
-
-    await tester.tap(find.text('List 3'));
-    await tester.pumpAndSettle();
-
-    expect(opened?.id, 3);
-    expect(openedType, 'whitelist');
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('custom rules are labelled by their kind', (tester) async {
-    var removed = '';
-
-    await _pumpList(
-      tester,
-      CustomRulesList(
-        loadStatus: LoadStatus.loaded,
-        scrollController: ScrollController(),
-        data: const ['||ads.example.org^', '@@allowed.example.org'],
-        onRemoveCustomRule: (rule) => removed = rule,
-      ),
-    );
-
-    expect(tester.takeException(), isNull);
-    expect(find.text(l.blocked), findsOneWidget);
-    expect(find.text(l.allowed), findsOneWidget);
-
-    await tester.tap(find.byIcon(CupertinoIcons.trash).first);
-    await tester.pumpAndSettle();
-
-    expect(removed, '||ads.example.org^');
   });
 
   testWidgets('the page leads with the protections', (tester) async {
@@ -291,10 +235,9 @@ void main() {
   testWidgets('the title line counts what is working', (tester) async {
     await _pumpPage(tester);
 
-    // Only list 0 is enabled, and its rules are what the server is actually
-    // applying; the allowlists are not counted, because the page does not
-    // show them.
-    expect(find.text(l.listsEnabledWithRules('1', '100')), findsOneWidget);
+    // List 0 (100 rules) blocks and List 9 (109 rules) allows: the footnote
+    // counts both kinds, because the page now shows both kinds.
+    expect(find.text(l.listsEnabledWithRules(2, 209)), findsOneWidget);
   });
 
   testWidgets('the pause row offers the durations', (tester) async {
@@ -321,7 +264,8 @@ void main() {
     expect(find.text(l.resumeProtection), findsOneWidget);
   });
 
-  testWidgets('the page keeps the blocklists and the way to add one', (tester) async {
+  testWidgets('the page keeps both kinds of list in their own sections',
+      (tester) async {
     var detailsId = -1;
     var detailsType = '';
 
@@ -333,9 +277,16 @@ void main() {
       },
     );
 
-    expect(find.text(l.filterLists), findsOneWidget);
+    expect(find.text(l.blacklists), findsOneWidget);
     expect(find.text('List 0'), findsOneWidget);
     expect(find.text(l.addList), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('List 0'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('List 0'));
     await tester.pumpAndSettle();
@@ -343,10 +294,16 @@ void main() {
     expect(detailsId, 0);
     expect(detailsType, 'blacklist');
 
-    // The allowlists the server also keeps have no place in this design, so
-    // the page leaves them out rather than inventing a group for them.
-    expect(find.text(l.whitelists), findsNothing);
-    expect(find.text('List 9'), findsNothing);
+    // The allowlists the server keeps have a section of their own, below the
+    // blocklists, with the same row behaviour.
+    await _scrollTo(tester, find.text(l.whitelists));
+    expect(find.text('List 9'), findsOneWidget);
+
+    await tester.tap(find.text('List 9'));
+    await tester.pumpAndSettle();
+
+    expect(detailsId, 9);
+    expect(detailsType, 'whitelist');
     expect(tester.takeException(), isNull);
   });
 
@@ -356,7 +313,7 @@ void main() {
 
     expect(find.text(l.customRules), findsOneWidget);
     expect(find.text(l.editRules), findsOneWidget);
-    expect(find.text(l.rulesCount('3')), findsOneWidget);
+    expect(find.text(l.rulesCount(3, '3')), findsOneWidget);
 
     final preview = tester.widgetList<Text>(find.byType(Text))
         .where((text) => (text.textSpan?.toPlainText() ?? '').contains('||ads.example.org^'))
@@ -394,20 +351,82 @@ void main() {
     );
   });
 
-  testWidgets('an empty list falls back to the Apple empty state', (tester) async {
-    await _pumpList(
-      tester,
-      FiltersList(
-        loadStatus: LoadStatus.loaded,
-        scrollController: ScrollController(),
-        type: 'blacklist',
-        data: const [],
-        onOpenDetailsScreen: (_, __) {},
+  testWidgets('clearing every blocked service asks before it writes',
+      (tester) async {
+    final services = _PendingServices();
+    await _pumpPage(tester, filtering: services);
+
+    await _scrollTo(tester, find.text(l.clearAll));
+    await tester.tap(find.text(l.clearAll));
+    await tester.pumpAndSettle();
+
+    // The header action used to post the empty list on the tap that opened it,
+    // so one stray touch switched the whole block list off with no way back.
+    expect(find.byType(AppleAlertDialog), findsOneWidget);
+    expect(find.text(l.clearBlockedServicesConfirm), findsOneWidget);
+    expect(services.posted, isEmpty);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AppleAlertDialog),
+        matching: find.text(l.cancel),
       ),
     );
+    await tester.pumpAndSettle();
 
-    expect(tester.takeException(), isNull);
-    expect(find.byType(AppleEmptyState), findsOneWidget);
-    expect(find.text(l.noBlackLists), findsOneWidget);
+    expect(find.byType(AppleAlertDialog), findsNothing);
+    expect(services.posted, isEmpty);
+
+    await tester.tap(find.text(l.clearAll));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AppleAlertDialog),
+        matching: find.text(l.clearAll),
+      ),
+    );
+    await tester.pump();
+
+    expect(services.posted, [<String>[]]);
+
+    services.gate.complete();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('a refused filter read can be asked for again', (tester) async {
+    await _pumpPage(tester, fails: true);
+
+    expect(find.text(l.filtersNotLoaded), findsOneWidget);
+    // Nothing is left on the tab to pull once the lists are gone: the pull
+    // handle belongs to the list that failed to arrive.
+    expect(find.widgetWithText(AppleFormButton, l.refresh), findsOneWidget);
+  });
+
+  testWidgets('a second service tap waits for the first write to answer',
+      (tester) async {
+    final services = _PendingServices();
+    await _pumpPage(tester, filtering: services);
+
+    await _scrollTo(tester, find.text(l.blockByService));
+
+    await tester.tap(find.text('Twitch'));
+    await tester.pump();
+
+    await tester.tap(find.text('Twitch'));
+    await tester.pump();
+
+    // The second tap reads the same snapshot the first one did, so posting it
+    // too would let the older list win and flip the chip back under a toast
+    // that says the change was saved.
+    expect(services.posted, [
+      ['netflix', 'twitch'],
+    ]);
+
+    services.gate.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.text(l.blockedServicesUpdated), findsOneWidget);
+    expect(services.posted.length, 1);
   });
 }

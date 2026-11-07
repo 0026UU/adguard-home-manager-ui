@@ -54,6 +54,7 @@ class _ContentState extends State<_Content> {
   final TextEditingController domainController = TextEditingController();
   String? domainError;
   final TextEditingController answerController = TextEditingController();
+  String? answerError;
 
   bool validData = false;
 
@@ -71,10 +72,30 @@ class _ContentState extends State<_Content> {
     checkValidValues();
   }
 
+  /// What a rewrite may point at: an address the resolver can answer with, or
+  /// a name it can answer with a CNAME for.  Anything else the server answers
+  /// 400 and the page only said "the rule was not added".
+  bool isRewriteAnswer(String value) =>
+      Regexps.ipv4Address.hasMatch(value) ||
+      Regexps.ipv6Address.hasMatch(value) ||
+      Regexps.domain.hasMatch(value);
+
+  void validateAnswer(String value) {
+    setState(() {
+      answerError = value == ''
+          ? null
+          : isRewriteAnswer(value)
+              ? null
+              : AppLocalizations.of(context)!.invalidValue;
+    });
+    checkValidValues();
+  }
+
   void checkValidValues() {
     if (domainController.text != '' &&
         domainError == null &&
-        answerController.text != '') {
+        answerController.text != '' &&
+        answerError == null) {
       setState(() => validData = true);
     } else {
       setState(() => validData = false);
@@ -126,10 +147,11 @@ class _ContentState extends State<_Content> {
                   TextFormField(
                     controller: answerController,
                     style: AppleInput.style(context),
-                    onChanged: (_) => checkValidValues(),
+                    onChanged: validateAnswer,
                     decoration: AppleInput.decoration(
                       context,
                       icon: CupertinoIcons.arrow_up_right,
+                      error: answerError,
                       label: l.answer,
                     ),
                   ),

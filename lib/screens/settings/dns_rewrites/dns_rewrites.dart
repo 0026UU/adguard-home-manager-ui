@@ -167,6 +167,14 @@ class _DnsRewritesScreenState extends State<DnsRewritesScreen> {
             child: AppleEmptyState(
               icon: CupertinoIcons.exclamationmark_triangle,
               title: l.rewriteRulesNotLoaded,
+              // The pull handle only exists over the list, and the list is
+              // what did not arrive.
+              action: AppleFormButton(
+                label: l.refresh,
+                background: p.tint,
+                foreground: Colors.white,
+                onPressed: () => rewriteRulesProvider.fetchData(showLoading: true),
+              ),
               color: p.red,
             ),
           ),
@@ -178,6 +186,14 @@ class _DnsRewritesScreenState extends State<DnsRewritesScreen> {
               child: AppleEmptyState(
                 icon: CupertinoIcons.arrow_2_circlepath_circle,
                 title: l.noRewriteRules,
+                // The add button lives in the bar at the bottom, which a
+                // phone user has to scroll past a full-height card to see;
+                // the empty state should start the form itself.
+                action: AppleButton(
+                  label: l.addDnsRewrite,
+                  icon: CupertinoIcons.plus,
+                  onPressed: () => openForm(isAdd: true),
+                ),
                 color: p.label3,
               ),
             )

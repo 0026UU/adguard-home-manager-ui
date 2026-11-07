@@ -1,7 +1,8 @@
 import 'package:adguard_home_manager/constants/regexps.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
 
@@ -51,30 +52,32 @@ String? validatePath(BuildContext context, String cert) {
 }
 
 Widget generateStatus(BuildContext context, AppConfigProvider appConfigProvider, bool localValidation, int dataValidApi, bool formEdited) {
+  final p = ApplePalette.of(context);
+
   if (localValidation == true || formEdited == false) {
     if (dataValidApi == 0) {
       return const SizedBox(
         height: 25,
         width: 25,
-        child: CircularProgressIndicator(
-          strokeWidth: 3,
-        )
+        child: Center(
+          child: CupertinoActivityIndicator(radius: 12),
+        ),
       );
     }
     else if (dataValidApi == 1) {
       return Icon(
-        Icons.check_circle_rounded,
+        CupertinoIcons.checkmark_circle_fill,
         color: appConfigProvider.useThemeColorForStatus == true
-          ? Theme.of(context).colorScheme.primary
-          : Colors.green,
+          ? p.tint
+          : p.green,
       );
     }
     else if (dataValidApi == 2) {
       return Icon(
-        Icons.cancel_rounded,
+        CupertinoIcons.xmark_circle_fill,
         color: appConfigProvider.useThemeColorForStatus == true
-          ? Theme.of(context).listTileTheme.iconColor
-          : Colors.red,
+          ? p.label2
+          : p.red,
       );
     }
     else {
@@ -82,9 +85,9 @@ Widget generateStatus(BuildContext context, AppConfigProvider appConfigProvider,
     }
   }
   else {
-    return const Icon(
-      Icons.error_outline,
-      color: Colors.grey,
+    return Icon(
+      CupertinoIcons.exclamationmark_circle,
+      color: p.gray,
     );
   }
 }

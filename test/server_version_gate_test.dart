@@ -82,6 +82,33 @@ void main() {
     });
   });
 
+  group('serverVersionIsTooOld', () {
+    bool blocked(String serverVersion) => serverVersionIsTooOld(
+      currentVersion: serverVersion,
+      referenceVersion: MinimumServerVersion.stable,
+      referenceVersionBeta: MinimumServerVersion.beta,
+    );
+
+    test('does not throw away a server that reports no version', () {
+      // A backend built from source answers "version": "".  The gate used to
+      // read that as "too old", show the unsupported modal and deselect the
+      // server the user had just managed to connect to.
+      expect(blocked(''), isFalse);
+      expect(blocked('unknown'), isFalse);
+    });
+
+    test('still blocks a server that really is behind', () {
+      expect(blocked('v0.107.27'), isTrue);
+      expect(blocked('v0.100.0'), isTrue);
+    });
+
+    test('lets the versions this app targets through', () {
+      expect(blocked('v1.0.0-b.2'), isFalse);
+      expect(blocked('v1.0.0-b.1+71c5733'), isFalse);
+      expect(blocked(MinimumServerVersion.stable), isFalse);
+    });
+  });
+
   group('serverVersionNeedsWarning', () {
     test('stays quiet on the beta backend this app ships with', () {
       expect(serverVersionNeedsWarning('v1.0.0-b.1+c7042ec'), isFalse);

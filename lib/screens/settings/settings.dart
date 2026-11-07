@@ -1,16 +1,18 @@
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 import 'package:adguard_home_manager/screens/settings/server_info/server_info.dart';
+import 'package:adguard_home_manager/screens/settings/access_settings/access_settings.dart';
 import 'package:adguard_home_manager/screens/settings/encryption/encryption.dart';
+import 'package:adguard_home_manager/screens/settings/general_settings/top_items_list/top_items_list_settings.dart';
 import 'package:adguard_home_manager/screens/settings/logs_settings/logs_settings.dart';
 import 'package:adguard_home_manager/screens/settings/language/language_settings.dart';
 import 'package:adguard_home_manager/screens/settings/dhcp/dhcp.dart';
+import 'package:adguard_home_manager/screens/settings/safe_search_settings.dart';
 import 'package:adguard_home_manager/screens/settings/statistics_settings/statistics_settings.dart';
 import 'package:adguard_home_manager/screens/settings/update_server/update_screen.dart';
 import 'package:adguard_home_manager/screens/settings/dns/dns.dart';
@@ -19,10 +21,10 @@ import 'package:adguard_home_manager/screens/settings/diagnostics/diagnostics_lo
 import 'package:adguard_home_manager/screens/servers/servers.dart';
 
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
-import 'package:adguard_home_manager/functions/generate_color_translation.dart';
 import 'package:adguard_home_manager/functions/number_format.dart';
+import 'package:adguard_home_manager/functions/retention_label.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
-import 'package:adguard_home_manager/constants/colors.dart';
+import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/constants/languages.dart';
 import 'package:adguard_home_manager/models/dhcp.dart';
 import 'package:adguard_home_manager/models/querylog_config.dart';
@@ -90,10 +92,6 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
   DhcpStatus? _dhcp;
   int? _rewrites;
 
-  /// The licences Flutter registers while the app runs, so the number on the
-  /// last group is the one the page below really lists.
-  int? _licenses;
-
   String? _loadedFor;
   bool _savingQueryLog = false;
   bool _savingDhcp = false;
@@ -102,10 +100,6 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
   void initState() {
     Provider.of<AppConfigProvider>(context, listen: false)
         .setSelectedSettingsScreen(screen: null);
-
-    LicenseRegistry.licenses.toList().then((value) {
-      if (mounted) setState(() => _licenses = value.length);
-    });
 
     super.initState();
   }
@@ -181,7 +175,7 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
         appConfigProvider:
             Provider.of<AppConfigProvider>(context, listen: false),
         label: AppLocalizations.of(context)!.settingsNotSaved,
-        color: Colors.red,
+        color: ApplePalette.of(context).red,
       );
     }
   }
@@ -224,7 +218,7 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
         appConfigProvider:
             Provider.of<AppConfigProvider>(context, listen: false),
         label: AppLocalizations.of(context)!.logsConfigNotUpdated,
-        color: Colors.red,
+        color: ApplePalette.of(context).red,
       );
     }
   }
@@ -238,6 +232,7 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
     final appConfigProvider =
         Provider.of<AppConfigProvider>(context, listen: false);
     final localizations = AppLocalizations.of(context)!;
+    final palette = ApplePalette.of(context);
 
     final api = serversProvider.apiClient2;
     if (api == null) return;
@@ -248,7 +243,7 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
       showSnackbar(
         appConfigProvider: appConfigProvider,
         label: localizations.serverStatusNotRefreshed,
-        color: Colors.red,
+        color: palette.red,
       );
       return;
     }
@@ -349,8 +344,6 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
 
     final updateAvailable = serversProvider.updateAvailable.data != null;
 
-    final appleStyle = appConfigProvider.useAppleStyle == true;
-
     /// The look of the app is kept on the first screen of the settings page,
     /// the way the design layer draws it, so the theme does not hide behind
     /// a sub-screen.
@@ -386,27 +379,9 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
             title: l.accentColor,
             showChevron: false,
             // The Apple theme keeps the system tint, so the swatches behind
-            // this row only apply while the classic theme is on.
-            value: appleStyle
-                ? l.systemBlue
-                : colorTranslation(context, appConfigProvider.staticColor),
-            onTap: appleStyle
-                ? null
-                : () => showAppleActionSheet(
-                      context,
-                      title: l.accentColor,
-                      actions: [
-                        for (var i = 0; i < colors.length; i++)
-                          AppleSheetAction(
-                            label: colorTranslation(context, i),
-                            color: colors[i],
-                            icon: appConfigProvider.staticColor == i
-                                ? CupertinoIcons.checkmark
-                                : null,
-                            onTap: () => appConfigProvider.setStaticColor(i),
-                          ),
-                      ],
-                    ),
+            // this row are gone and there is nothing to pick.
+            value: l.systemBlue,
+            onTap: null,
           ),
           AppleListTile(
             title: l.statusColors,
@@ -450,9 +425,11 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
       : "${server.connectionMethod}://${server.domain}"
             "${server.path ?? ""}${server.port != null ? ':${server.port}' : ""}";
 
+    // The version is what a person reads off this card, so it goes first: the
+    // line cuts its tail when the address makes it too long for one line.
     final details = [
-      if (address != null) address,
       if (serverStatus != null) serverStatus.serverVersion,
+      if (address != null) address,
     ].whereType<String>().where((part) => part.isNotEmpty).join(' · ');
 
     // The name the language list itself shows for the language in use.
@@ -465,8 +442,7 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
       final interval = _queryLog?.interval;
       if (interval == null || interval <= 0) return null;
 
-      final hours = interval ~/ Duration.millisecondsPerHour;
-      return l.retainedFor(hours > 0 ? l.hours(hours) : l.minutes(1));
+      return l.retainedFor(retentionLabel(l, interval));
     }
 
     String? dhcpPool() {
@@ -500,6 +476,14 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
         subtitle: l.statisticsAndDashboardHelper,
         screenToNavigate: const StatisticsSettings(),
       ),
+      row(
+        thisItem: 12,
+        icon: CupertinoIcons.list_bullet_indent,
+        iconColor: palette.purple,
+        title: l.topItemsOrder,
+        subtitle: l.topItemsOrderDescription,
+        screenToNavigate: const TopItemsListSettings(),
+      ),
       AppleListTile(
         icon: CupertinoIcons.doc_text,
         iconColor: palette.orange,
@@ -524,20 +508,22 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
         onChanged: (value) => appConfigProvider.setAutoRefreshLiveLogs(value),
       ),
       AppleSwitchListTile(
-        icon: CupertinoIcons.paintbrush,
-        iconColor: palette.pink,
-        title: l.statusColorUseThemeColor,
-        subtitle: l.statusColorUseThemeColorHelper,
-        value: appConfigProvider.useThemeColorForStatus == true,
-        onChanged: (value) => appConfigProvider.setUseThemeColorForStatus(value),
-      ),
-      AppleSwitchListTile(
         icon: CupertinoIcons.eye_slash,
         iconColor: palette.gray,
         title: l.hideServerAddress,
         subtitle: l.hideServerAddressDescription,
         value: appConfigProvider.hideServerAddress,
         onChanged: (value) => appConfigProvider.setHideServerAddress(value),
+      ),
+      // The one connection setting that cannot be read off the server: a
+      // self-signed chain has to be accepted here before any request lands.
+      AppleSwitchListTile(
+        icon: CupertinoIcons.lock_shield,
+        iconColor: palette.red,
+        title: l.dontCheckCertificate,
+        subtitle: l.dontCheckCertificateDescription,
+        value: appConfigProvider.overrideSslCheck,
+        onChanged: (value) => appConfigProvider.setOverrideSslCheck(value),
       ),
     ];
 
@@ -559,6 +545,22 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
         title: l.encryptionSettings,
         subtitle: l.encryptionSettingsSummary,
         screenToNavigate: const EncryptionSettings(),
+      ),
+      row(
+        thisItem: 13,
+        icon: CupertinoIcons.person_2,
+        iconColor: palette.tint,
+        title: l.accessSettings,
+        subtitle: l.allowedClients,
+        screenToNavigate: const AccessSettings(),
+      ),
+      row(
+        thisItem: 14,
+        icon: CupertinoIcons.checkmark_shield,
+        iconColor: palette.teal,
+        title: l.safeSearchSettings,
+        subtitle: l.safeSearchHelper,
+        screenToNavigate: const SafeSearchSettingsScreen(),
       ),
       AppleListTile(
         icon: CupertinoIcons.wifi,
@@ -616,7 +618,6 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
         selected: widget.twoColumns &&
             appConfigProvider.selectedSettingsScreen == 9,
         showChevron: !widget.twoColumns,
-        trailing: countTrailing(_licenses),
         onTap: () => open(
           thisItem: 9,
           screen: LicensePage(
@@ -640,14 +641,9 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
         key: widget.twoColumns ? _scaffoldMessengerKey : null,
         child: AppleScreen(
           title: l.settings,
-          actions: [
-            if (api != null) IconButton(
-              onPressed: refresh,
-              icon: const Icon(CupertinoIcons.arrow_clockwise),
-              tooltip: l.refresh,
-            ),
-            const SizedBox(width: 8),
-          ],
+          // The shared button, so this screen spins and refuses a second tap
+          // while a reload is in flight like every other one.
+          onRefresh: api == null ? null : refresh,
           subtitle: appInfo == null
             ? null
             : 'AdGuard Home Manager · ${appInfo.version} (${appInfo.buildNumber})',
@@ -660,12 +656,24 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                       child: AppleBigRow(
-                        icon: Icons.dns_outlined,
+                        icon: CupertinoIcons.desktopcomputer,
                         color: palette.green,
-                        colorTo: palette.teal,
                         title: server.name,
                         details: details.isEmpty ? null : details,
-                        status: serverStatus != null ? l.connected : null,
+                        // The pill answers one question: did the server answer
+                        // the last time this app asked it. Old data is not a
+                        // connection, and "Connected" over a server that has
+                        // stopped answering is the app claiming more than it
+                        // knows.
+                        status: serverStatus == null
+                            ? null
+                            : statusProvider.loadStatus == LoadStatus.error
+                                ? l.notConnected
+                                : l.connected,
+                        statusColor:
+                            statusProvider.loadStatus == LoadStatus.error
+                                ? palette.red
+                                : null,
                         actionLabel: l.switchOrManageServers,
                         onAction: () =>
                             open(thisItem: 11, screen: const Servers()),
@@ -673,9 +681,13 @@ class _SettingsWidgetState extends State<_SettingsWidget> {
                     ),
                   appearanceSection(),
                   AppleListSection(title: l.appSettings, children: appRows),
-                  if (server != null &&
-                      serverStatus != null &&
-                      serversProvider.apiClient2 != null)
+                  // A server that has not answered is a reason to show these
+                  // rows, not a reason to hide them: they are how the user
+                  // gets to the screens that read and repair that server, and
+                  // hiding half of Settings whenever a status call fails is
+                  // what makes the app look like it has no features at all.
+                  // Each screen carries its own error card and retry now.
+                  if (server != null && serversProvider.apiClient2 != null)
                     AppleListSection(
                         title: l.serverSettings, children: serverRows),
                   AppleListSection(title: l.aboutApp, children: aboutRows),

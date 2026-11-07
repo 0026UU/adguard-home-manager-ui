@@ -22,16 +22,24 @@ import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
 import 'package:adguard_home_manager/screens/logs/logs_list.dart';
 
+import 'surface.dart';
+
 // The logs page reads two sources: the query log the server keeps and the live
 // stream it polls. Neither test file can reach a server, so both use these
 // doubles, which answer from the fixtures below.
 
-Log logFixture(String domain, {String reason = 'FilteredBlackList', String? client}) => Log(
+Log logFixture(
+  String domain, {
+  String reason = 'FilteredBlackList',
+  String? client,
+  String clientName = 'livingroom-mac',
+  DateTime? time,
+}) => Log(
   cached: false,
   client: client ?? '192.168.1.20',
   clientInfo: ClientInfo(
     whois: Whois(),
-    name: 'livingroom-mac',
+    name: clientName,
     disallowedRule: '',
     disallowed: false,
   ),
@@ -41,7 +49,7 @@ Log logFixture(String domain, {String reason = 'FilteredBlackList', String? clie
   reason: reason,
   rules: const [],
   status: 'NOERROR',
-  time: DateTime.utc(2024, 5, 1, 12),
+  time: time ?? DateTime.utc(2024, 5, 1, 12),
   upstream: '8.8.8.8:53',
   answer: const [],
 );
@@ -54,15 +62,29 @@ List<Log> storedLogs() => [
 
 /// The page asks the server for logs on every filter change.
 class OfflineLogs extends LogsProvider {
+  /// A server that cannot be reached leaves the page on its error screen,
+  /// which still has to offer the way out of it.
+  final bool failing;
+
+  /// A window that holds nothing, so the page can be left on its empty state.
+  final bool empty;
+
   int fetches = 0;
   int filters = 0;
+
+  OfflineLogs({this.failing = false, this.empty = false});
 
   /// A real call answers after the frame, so the page never hears about new
   /// data while it is still building.
   Future<void> _settled() => Future<void>.delayed(Duration.zero);
 
   void _publish(List<Log> logs) {
-    setLogsData(LogsData(data: logs));
+    if (failing) {
+      setLoadStatus(LoadStatus.error);
+      return;
+    }
+
+    setLogsData(LogsData(data: empty ? const [] : logs));
     setLoadStatus(LoadStatus.loaded);
   }
 
@@ -94,6 +116,9 @@ class OfflineLogs extends LogsProvider {
   @override
   Future<bool> requestResetFilters() async {
     await _settled();
+    // The real provider clears what was applied before asking again, and the
+    // live view reads that state to decide which rows it paints.
+    resetFilters();
     _publish(storedLogs());
     return true;
   }
@@ -104,9 +129,16 @@ class ScriptedLive extends LiveLogsProvider {
   final List<Log> _rows = [];
   bool watching = false;
 
+  /// The tests feed rows instead of a timer, so the stream's own anchor moves
+  /// with what they feed.
+  DateTime? _newest;
+
   /// How many times the page asked for the queries up to now, which is what
   /// the pull and the bar button both mean to do.
   int onceReads = 0;
+
+  @override
+  DateTime? get newestTime => _newest;
 
   @override
   Future<void> fetchOnce() async {
@@ -129,11 +161,15 @@ class ScriptedLive extends LiveLogsProvider {
   @override
   void clearLogs() {
     _rows.clear();
+    _newest = null;
     notifyListeners();
   }
 
   void emit(List<Log> logs) {
     _rows.insertAll(0, logs);
+    for (final log in logs) {
+      if (_newest == null || log.time.isAfter(_newest!)) _newest = log.time;
+    }
     notifyListeners();
   }
 }
@@ -159,8 +195,7 @@ Future<void> pumpLogsPage(
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
 
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, surface);
 
   final statusProvider = OfflineStatus()
     ..setServerStatusData(
@@ -242,6 +277,7 @@ Future<void> pumpLogsPage(
         ChangeNotifierProvider(create: (_) => ServersProvider()),
       ],
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         theme: appleLightTheme(),
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,

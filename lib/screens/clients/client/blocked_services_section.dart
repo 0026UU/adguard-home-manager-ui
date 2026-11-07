@@ -47,7 +47,8 @@ class BlockedServicesSection extends StatelessWidget {
                   ? l.blockedServicesCount(blockedServices.length)
                   : l.noBlockedServicesSelected,
           enabled: !useGlobalSettingsServices,
-          showChevron: !useGlobalSettingsServices,
+          // Opens the services sheet, never a screen of its own.
+          showChevron: false,
           onTap: useGlobalSettingsServices
               ? null
               : () => openServicesModal(

@@ -13,6 +13,7 @@ Log _log(
   String name, {
   String client = '192.0.2.1',
   String? clientName,
+  DateTime? time,
 }) => Log(
   cached: false,
   client: client,
@@ -29,7 +30,9 @@ Log _log(
   question: Question(questionClass: 'IN', name: name, type: 'A'),
   reason: 'NotFilteredNotFound',
   rules: [],
-  time: DateTime.utc(2026, 1, 1),
+  // The server has no `since` parameter, so the window is cut here; a fixture
+  // outside it would be dropped before the assertion under test could see it.
+  time: time ?? DateTime.now(),
   upstream: '192.0.2.53',
   answer: [],
 );
@@ -249,6 +252,35 @@ void main() {
     expect(await logs.filterLogs(), isTrue);
     expect(api.calls.single['clients'], ['livingroom-mac']);
     expect(logs.logsData!.data.map((log) => log.question.name), ['one.example']);
+  });
+
+  test('rows outside the window are dropped because the server has no since',
+      () async {
+    logs.setTimeRange(LogTimeRange.sixHours);
+    api.pages.add(LogsData(data: [
+      _log('fresh.example'),
+      _log('stale.example', time: DateTime.now().subtract(const Duration(days: 2))),
+    ]));
+    expect(await logs.filterLogs(), isTrue);
+    expect(logs.logsData!.data.map((log) => log.question.name), ['fresh.example']);
+  });
+
+  test('a narrow filter walks the log until the window is full', () async {
+    logs.setLogsQuantity(2);
+    logs.setSelectedClients(['192.0.2.1']);
+    // Each page is the full request size, so nothing tells the provider the
+    // log has ended; only the rows of the last page match the selection.
+    LogsData page(int n) => LogsData(data: [
+          _log('q$n.a.example', client: n == 3 ? '192.0.2.1' : '192.0.2.9'),
+          _log('q$n.b.example', client: n == 3 ? '192.0.2.1' : '192.0.2.9'),
+        ]);
+    api.pages.addAll([page(0), page(1), page(2), page(3)]);
+
+    expect(await logs.filterLogs(), isTrue);
+    expect(api.calls.map((call) => call['offset']), [0, 2, 4, 6]);
+    expect(logs.logsData!.data.map((log) => log.question.name),
+        ['q3.a.example', 'q3.b.example']);
+    expect(logs.offset, 8);
   });
 
   test('dropping a chip keeps the rest of the applied filter', () async {

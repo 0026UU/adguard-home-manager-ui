@@ -1,6 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import 'package:adguard_home_manager/screens/logs/logs_list.dart';
@@ -14,7 +14,12 @@ import 'package:adguard_home_manager/providers/live_logs_provider.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
 
 class Logs extends StatefulWidget {
-  const Logs({super.key});
+  /// Client ids the query log opens narrowed to, when the screen is pushed
+  /// from elsewhere — the count on a device row, for one. Null leaves the
+  /// filters the provider already holds alone, the way the tab does.
+  final List<String>? initialClients;
+
+  const Logs({super.key, this.initialClients});
 
   @override
   State<Logs> createState() => _LogsState();
@@ -41,7 +46,7 @@ class _LogsState extends State<Logs> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth > 800) {
-            return Material(
+            return ColoredBox(
               color: palette.card,
               child: Row(
                 children: [
@@ -51,6 +56,7 @@ class _LogsState extends State<Logs> {
                       twoColumns: true,
                       selectedLog: _selectedLog,
                       onLogSelected: (log) => setState(() => _selectedLog = log),
+                      initialClients: widget.initialClients,
                     )
                   ),
                   SizedBox(
@@ -75,6 +81,7 @@ class _LogsState extends State<Logs> {
               twoColumns: false,
               selectedLog: _selectedLog,
               onLogSelected: (log) => setState(() => _selectedLog = log),
+              initialClients: widget.initialClients,
             );
           }
         },

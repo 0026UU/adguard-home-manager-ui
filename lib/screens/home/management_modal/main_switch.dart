@@ -191,6 +191,22 @@ class _BottomRowState extends State<_BottomRow> {
 
     final textScale = MediaQuery.of(context).textScaler.scale(1);
 
+    // A duration nobody can pick right now — a pause being written, or a
+    // protection already off — reads dimmed and takes no tap, the way the
+    // design layer disables a control instead of hiding it.
+    final enabled =
+        statusProvider.protectionsManagementProcess.contains('general') == false &&
+        statusProvider.serverStatus!.generalEnabled == true;
+
+    Widget duration(String label, int milliseconds) => Opacity(
+      opacity: enabled ? 1 : 0.35,
+      child: AppleToggleChip(
+        label: label,
+        selected: false,
+        onTap: enabled ? () => widget.disableWithCountdown(milliseconds) : null,
+      ),
+    );
+
     return Container(
       height: Platform.isMacOS || Platform.isLinux || Platform.isWindows 
         ? 50 * textScale
@@ -209,40 +225,15 @@ class _BottomRowState extends State<_BottomRow> {
             controller: _chipsScrollController,
             scrollDirection: Axis.horizontal,
             children: [
-              ActionChip(
-                label: Text(AppLocalizations.of(context)!.seconds(30)),
-                onPressed: statusProvider.protectionsManagementProcess.contains('general') == false && statusProvider.serverStatus!.generalEnabled == true
-                  ? () => widget.disableWithCountdown(29000)
-                  : null,
-              ),
+              duration(AppLocalizations.of(context)!.seconds(30), 29000),
               const SizedBox(width: 8),
-              ActionChip(
-                label: Text(AppLocalizations.of(context)!.minute(1)),
-                onPressed: statusProvider.protectionsManagementProcess.contains('general') == false && statusProvider.serverStatus!.generalEnabled == true
-                  ? () => widget.disableWithCountdown(59000)
-                  : null,
-              ),
+              duration(AppLocalizations.of(context)!.minute(1), 59000),
               const SizedBox(width: 8),
-              ActionChip(
-                label: Text(AppLocalizations.of(context)!.minutes(10)),
-                onPressed: statusProvider.protectionsManagementProcess.contains('general') == false && statusProvider.serverStatus!.generalEnabled == true
-                  ? () => widget.disableWithCountdown(599000)
-                  : null,
-              ),
+              duration(AppLocalizations.of(context)!.minutes(10), 599000),
               const SizedBox(width: 8),
-              ActionChip(
-                label: Text(AppLocalizations.of(context)!.hour(1)),
-                onPressed: statusProvider.protectionsManagementProcess.contains('general') == false && statusProvider.serverStatus!.generalEnabled == true
-                  ? () => widget.disableWithCountdown(3599000)
-                  : null,
-              ),
+              duration(AppLocalizations.of(context)!.hour(1), 3599000),
               const SizedBox(width: 8),
-              ActionChip(
-                label: Text(AppLocalizations.of(context)!.hours(24)),
-                onPressed: statusProvider.protectionsManagementProcess.contains('general') == false && statusProvider.serverStatus!.generalEnabled == true
-                  ? () => widget.disableWithCountdown(86399000)
-                  : null,
-              ),
+              duration(AppLocalizations.of(context)!.hours(24), 86399000),
             ],
           ),
         ),

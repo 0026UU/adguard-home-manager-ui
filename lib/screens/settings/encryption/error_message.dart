@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+/// Reads the error the server answered with, as an iOS alert.
 class ErrorMessageEncryption extends StatelessWidget {
   final String errorMessage;
 
@@ -12,19 +14,13 @@ class ErrorMessageEncryption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(AppLocalizations.of(context)!.error),
-      content: Text(errorMessage),
+    final l = AppLocalizations.of(context)!;
+
+    return AppleAlertDialog(
+      title: l.error,
+      message: errorMessage,
       actions: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(AppLocalizations.of(context)!.close)
-            )
-          ],
-        )
+        AppleSheetAction(label: l.close),
       ],
     );
   }

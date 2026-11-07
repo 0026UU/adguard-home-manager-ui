@@ -1,13 +1,15 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
-import 'package:adguard_home_manager/widgets/section_label.dart';
 import 'package:adguard_home_manager/screens/settings/dns/comment_modal.dart';
-import 'package:adguard_home_manager/widgets/custom_radio_list_tile.dart';
 
 import 'package:adguard_home_manager/classes/process_modal.dart';
 import 'package:adguard_home_manager/functions/desktop_mode.dart';
@@ -33,15 +35,15 @@ class _UpstreamDnsScreenState extends State<UpstreamDnsScreen> {
   String? upstreamTimeoutError;
 
   void checkValidValues() {
-    if (
-      dnsServers.isNotEmpty &&
-      dnsServers.every((element) => element['controller'] != null ? element['controller.text'] != '' : true)
-    ) {
-      setState(() => validValues = true);
-    }
-    else {
-      setState(() => validValues = false);
-    }
+    // Reading element['controller.text'] asked the map for a key nobody sets,
+    // so every row looked fine and an empty server could be saved.
+    final rowsOk = dnsServers.isNotEmpty && dnsServers.every(
+      (element) => element['controller'] == null
+        ? true
+        : element['controller'].text.trim().isNotEmpty,
+    );
+
+    setState(() => validValues = rowsOk && upstreamTimeoutError == null);
   }
 
   @override
@@ -64,7 +66,9 @@ class _UpstreamDnsScreenState extends State<UpstreamDnsScreen> {
     }
     upstreamMode = dnsProvider.dnsInfo!.upstreamMode ?? "";
     upstreamTimeoutController.text = dnsProvider.dnsInfo!.upstreamTimeout != null ? dnsProvider.dnsInfo!.upstreamTimeout.toString() : "";
-    validValues = true;
+    // Nothing has been touched yet, so the page is only as sound as the rows
+    // the server gave us.
+    validValues = dnsServers.isNotEmpty;
     super.initState();
   }
 
@@ -74,22 +78,21 @@ class _UpstreamDnsScreenState extends State<UpstreamDnsScreen> {
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
     
     final width = MediaQuery.of(context).size.width;
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
     void validateTimeout(String value) {
-      if (value != '' && int.tryParse(value) != null && int.parse(value) > 0) {
-        setState(() {
-          upstreamTimeoutError = null;
-          validValues = true;
-        });
-      }
-      else {
-        setState(() {
-          upstreamTimeoutError = value == ''
+      setState(() {
+        upstreamTimeoutError = value != '' && int.tryParse(value) != null && int.parse(value) > 0
+          ? null
+          : value == ''
             ? AppLocalizations.of(context)!.fieldCannotBeEmpty
             : AppLocalizations.of(context)!.invalidValue;
-          validValues = false;
-        });
-      }
+      });
+
+      // A sound timeout does not make an empty server row sound, so the
+      // verdict stays with the one place that looks at all of them.
+      checkValidValues();
     }
 
     void openAddCommentModal() {
@@ -162,7 +165,7 @@ class _UpstreamDnsScreenState extends State<UpstreamDnsScreen> {
 
     void saveData() async {
       ProcessModal processModal = ProcessModal();
-      processModal.open(AppLocalizations.of(context)!.savingConfig);
+      processModal.open(l.savingConfig);
 
       final result = await dnsProvider.saveUpstreamDnsConfig({
         "upstream_dns": dnsServers.map((e) => e['controller'] != null ? e['controller'].text : e['comment']).toList(),
@@ -176,185 +179,171 @@ class _UpstreamDnsScreenState extends State<UpstreamDnsScreen> {
       if (result.successful == true) {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsConfigSaved, 
-          color: Colors.green
+          label: l.dnsConfigSaved, 
+          color: p.green
         );
       }
       else if (result.successful == false && result.statusCode == 400) {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.someValueNotValid, 
-          color: Colors.red
+          label: l.someValueNotValid, 
+          color: p.red
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsConfigNotSaved, 
-          color: Colors.red
+          label: l.dnsConfigNotSaved, 
+          color: p.red
         );
       } 
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.upstreamDns),
-        surfaceTintColor: isDesktop(width) ? Colors.transparent : null,
-        actions: [
-          IconButton(
-            onPressed: validValues == true
-              ? () => saveData()
-              : null, 
-            icon: const Icon(Icons.save_rounded),
-            tooltip: AppLocalizations.of(context)!.save,
+    // A line of the upstream list is either an address or a comment, and the
+    // three modes are one of them in force: the rows carry the mark the design
+    // layer puts on the choice that is active, the way the blocking-mode rows
+    // of the server settings do.
+    AppleListTile modeRow(String value, String title, String description) =>
+        AppleListTile(
+          title: title,
+          subtitle: description,
+          showChevron: false,
+          onTap: () => setState(() => upstreamMode = value),
+          trailing: upstreamMode == value
+            ? Icon(CupertinoIcons.checkmark, color: p.tint)
+            : const SizedBox.shrink(),
+        );
+
+    return AppleScreen(
+      title: l.upstreamDns,
+      subtitle: l.upstreamDnsDescription,
+      leading: isDesktop(width)
+        ? null
+        : AppleBackButton(
+            label: l.back,
+            onPressed: () => Navigator.pop(context),
           ),
-          const SizedBox(width: 8)
-        ],
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.only(top: 10),
-          children: [
-            if (dnsServers.isEmpty) Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Center(
-                    child: Text(
-                      AppLocalizations.of(context)!.noUpstreamDns,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 16
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
-            ),
-            ...dnsServers.map((item) => Padding(
-              padding: const EdgeInsets.only(
-                left: 16, right: 6, bottom: 24
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  if (item['controller'] != null) Expanded(
-                    child: TextFormField(
-                      controller: item['controller'],
-                      onChanged: (_) => checkValidValues(),
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.dns_rounded),
-                        border: const OutlineInputBorder(
-                          borderRadius: BorderRadius.all(
-                            Radius.circular(10)
-                          )
-                        ),
-                        labelText: AppLocalizations.of(context)!.dnsServer,
-                      )
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (item['comment'] != null) Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          item['comment'],
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Theme.of(context).listTileTheme.iconColor
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => openEditCommentModal(item, dnsServers.indexOf(item)), 
-                          icon: const Icon(Icons.edit),
-                          tooltip:  AppLocalizations.of(context)!.edit,
-                        )
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      setState(() => dnsServers = dnsServers.where((i) => i != item).toList());
-                      checkValidValues();
-                    }, 
-                    icon: const Icon(Icons.remove_circle_outline),
-                    tooltip:  AppLocalizations.of(context)!.remove,
-                  ),
-                  const SizedBox(width: 4),
-                ],
-              ),
-            )),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      actions: [
+        IconButton(
+          onPressed: validValues == true
+            ? () => saveData()
+            : null, 
+          icon: const Icon(CupertinoIcons.checkmark),
+          tooltip: l.save,
+        ),
+      ],
+      slivers: [
+        SliverToBoxAdapter(
+          child: AppleListSection(
+            headerTrailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ElevatedButton.icon(
-                  onPressed: openAddCommentModal, 
-                  icon: const Icon(Icons.add), 
-                  label: Text(AppLocalizations.of(context)!.comment)
-                ),
-                ElevatedButton.icon(
+                AppleHeaderAction(label: l.comment, onPressed: openAddCommentModal),
+                const SizedBox(width: 14),
+                AppleHeaderAction(
+                  label: l.address,
                   onPressed: () {
                     setState(() => dnsServers.add({
                       'controller': TextEditingController()
                     }));
                     checkValidValues();
-                  }, 
-                  icon: const Icon(Icons.add), 
-                  label: Text(AppLocalizations.of(context)!.address)
+                  },
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            SectionLabel(label: AppLocalizations.of(context)!.dnsMode),
-            CustomRadioListTile(
-              groupValue: upstreamMode, 
-              value: "", 
-              title: AppLocalizations.of(context)!.loadBalancing,
-              subtitle: AppLocalizations.of(context)!.loadBalancingDescription,
-              onChanged: (value) => setState(() => upstreamMode = value),
-            ),
-            CustomRadioListTile(
-              groupValue: upstreamMode, 
-              value: "parallel", 
-              title: AppLocalizations.of(context)!.parallelRequests,
-              subtitle: AppLocalizations.of(context)!.parallelRequestsDescription,
-              onChanged: (value) => setState(() => upstreamMode = value),
-            ),
-            CustomRadioListTile(
-              groupValue: upstreamMode, 
-              value: "fastest_addr", 
-              title: AppLocalizations.of(context)!.fastestIpAddress,
-              subtitle: AppLocalizations.of(context)!.fastestIpAddressDescription,
-              onChanged: (value) => setState(() => upstreamMode = value),
-            ),
-            const SizedBox(height: 16),
-            SectionLabel(label: AppLocalizations.of(context)!.others),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: TextFormField(
-                controller: upstreamTimeoutController,
-                onChanged: validateTimeout,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.timer_rounded),
-                  border: const OutlineInputBorder(
-                    borderRadius: BorderRadius.all(
-                      Radius.circular(10)
-                    )
+            margin: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+            children: [
+              if (dnsServers.isEmpty)
+                AppleEmptyState(
+                  icon: CupertinoIcons.lock,
+                  title: l.noUpstreamDns,
+                  color: p.label3,
+                ),
+              for (final item in dnsServers)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+                  child: Row(
+                    children: [
+                      if (item['controller'] != null) Expanded(
+                        child: AppleTextField(
+                          label: l.dnsServer,
+                          icon: CupertinoIcons.lock,
+                          controller: item['controller'],
+                          onChanged: (_) => checkValidValues(),
+                          padding: EdgeInsets.zero,
+                        ),
+                      ),
+                      if (item['comment'] != null) Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                item['comment'],
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 16, color: p.label2),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => openEditCommentModal(item, dnsServers.indexOf(item)), 
+                              icon: Icon(
+                                CupertinoIcons.pencil,
+                                size: 19,
+                                color: p.tint,
+                              ),
+                              tooltip: l.edit,
+                            )
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          setState(() => dnsServers = dnsServers.where((i) => i != item).toList());
+                          checkValidValues();
+                        }, 
+                        icon: Icon(
+                          CupertinoIcons.minus_circle,
+                          size: 19,
+                          color: p.red,
+                        ),
+                        tooltip: l.remove,
+                      )
+                    ],
                   ),
-                  labelText: AppLocalizations.of(context)!.upstreamTimeout,
-                  helperText: AppLocalizations.of(context)!.upstreamTimeoutHelper,
-                  helperMaxLines: 2,
-                  errorText: upstreamTimeoutError
-                )
-              ),
-            ),
-          ],
+                ),
+            ],
+          ),
         ),
-      ),
+        SliverToBoxAdapter(
+          child: AppleListSection(
+            title: l.dnsMode,
+            margin: const EdgeInsets.fromLTRB(16, 22, 16, 0),
+            children: [
+              modeRow("", l.loadBalancing, l.loadBalancingDescription),
+              modeRow("parallel", l.parallelRequests, l.parallelRequestsDescription),
+              modeRow("fastest_addr", l.fastestIpAddress, l.fastestIpAddressDescription),
+            ],
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: AppleFormGroupLabel(
+            l.others,
+            padding: const EdgeInsets.fromLTRB(16, 22, 16, 7),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: AppleTextField(
+            label: l.upstreamTimeout,
+            icon: CupertinoIcons.timer,
+            controller: upstreamTimeoutController,
+            onChanged: validateTimeout,
+            helper: l.upstreamTimeoutHelper,
+            helperMaxLines: 2,
+            error: upstreamTimeoutError,
+          ),
+        ),
+      ],
     );
   }
 }

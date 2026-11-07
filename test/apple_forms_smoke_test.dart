@@ -10,19 +10,20 @@ import 'package:adguard_home_manager/models/filtering.dart';
 import 'package:adguard_home_manager/models/rewrite_rules.dart';
 import 'package:adguard_home_manager/providers/clients_provider.dart';
 import 'package:adguard_home_manager/screens/filters/details/add_list_modal.dart';
-import 'package:adguard_home_manager/screens/filters/modals/update_interval_lists_modal.dart';
 import 'package:adguard_home_manager/screens/settings/access_settings/add_client_modal.dart';
 import 'package:adguard_home_manager/screens/settings/dhcp/add_static_lease_modal.dart';
 import 'package:adguard_home_manager/screens/settings/dns/comment_modal.dart';
 import 'package:adguard_home_manager/screens/settings/dns_rewrites/dns_rewrite_modal.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
-import 'package:adguard_home_manager/widgets/option_box.dart';
+
+import 'surface.dart';
 
 Future<void> _pump(WidgetTester tester, Widget home) async {
   SharedPreferences.setMockInitialValues({});
 
   await tester.pumpWidget(
     MaterialApp(
+      debugShowCheckedModeBanner: false,
       theme: appleLightTheme(),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
@@ -43,8 +44,7 @@ late BuildContext _hostContext;
 /// Shows [modal] the way the screens do: a dialog on wide layouts, a bottom
 /// sheet on phones.
 Future<void> _showModal(WidgetTester tester, Size surface, Widget modal) async {
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, surface);
 
   await _pump(
     tester,
@@ -212,31 +212,6 @@ void main() {
 
     expect(value, '192.168.1.10');
     expect(kind, AccessSettingsList.allowed);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('the interval sheet writes the picked value back', (tester) async {
-    int? changed;
-
-    await _showModal(
-      tester,
-      const Size(900, 900),
-      UpdateIntervalListsModal(
-        dialog: true,
-        interval: 1,
-        onChange: (value) => changed = value,
-      ),
-    );
-
-    expect(find.text(l.updateFrequency), findsOneWidget);
-    expect(find.byType(OptionBox), findsNWidgets(6));
-
-    await tester.tap(find.text(l.hours12));
-    await tester.pump();
-    await tester.tap(find.text(l.confirm));
-    await tester.pumpAndSettle();
-
-    expect(changed, 12);
     expect(tester.takeException(), isNull);
   });
 

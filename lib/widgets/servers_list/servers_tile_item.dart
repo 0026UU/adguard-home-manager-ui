@@ -3,6 +3,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
@@ -17,14 +18,12 @@ import 'package:adguard_home_manager/providers/servers_provider.dart';
 class ServersTileItem extends StatelessWidget {
   final Server server;
   final int index;
-  final void Function(int) onChange;
   final double breakingWidth;
 
   const ServersTileItem({
     super.key,
     required this.server,
     required this.index,
-    required this.onChange,
     required this.breakingWidth,
   });
 
@@ -39,7 +38,11 @@ class ServersTileItem extends StatelessWidget {
     final wide = width > breakingWidth;
 
     final selected = serversProvider.selectedServer?.id == server.id;
-    final connected = selected && statusProvider.serverStatus != null;
+    // Answering once is not answering now: the tile says which of the two the
+    // app knows, so a server that has gone quiet is not offered as connected.
+    final connected = selected &&
+        statusProvider.serverStatus != null &&
+        statusProvider.loadStatus != LoadStatus.error;
     final status = connected ? p.green : (selected ? p.orange : p.label3);
 
     final address =
@@ -132,18 +135,29 @@ class ServersTileItem extends StatelessWidget {
                       server: server,
                     ),
                   ),
-                  const Spacer(),
                   if (selected)
-                    ApplePill(
-                      label: connected ? l.connected : l.selectedDisconnected,
-                      color: status,
-                      fontSize: 13,
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: ApplePill(
+                          label: connected ? l.connected : l.selectedDisconnected,
+                          color: status,
+                          fontSize: 13,
+                        ),
+                      ),
                     )
                   else
+                    const Spacer(),
+                  // A quiet server still has to be reachable. Before this the
+                  // Connect button only existed on the tiles that were not
+                  // selected, so the one card reporting "disconnected" was the
+                  // only card offering no way back in: the user had to open the
+                  // editor and re-save the server to get a normal tile.
+                  if (!connected)
                     AppleFormButton(
                       label: l.connect,
                       background: p.tint,
-                      foreground: Colors.white,
+                      foreground: onTint(p.tint),
                       width: 96,
                       onPressed: () =>
                           connectToServer(context: context, server: server),

@@ -145,6 +145,7 @@ class _Chart extends StatelessWidget {
 
 Widget _tree(double width) {
   return MaterialApp(
+    debugShowCheckedModeBanner: false,
     theme: appleLightTheme(),
     home: Scaffold(
       body: SizedBox.expand(

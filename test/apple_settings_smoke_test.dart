@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -5,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:adguard_home_manager/classes/http_override.dart';
 import 'package:adguard_home_manager/config/apple_theme.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
@@ -14,8 +17,8 @@ import 'package:adguard_home_manager/screens/settings/settings.dart';
 import 'package:adguard_home_manager/screens/settings/diagnostics/diagnostics_log_screen.dart';
 import 'package:adguard_home_manager/models/app_log.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
-import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
-import 'package:adguard_home_manager/widgets/custom_switch_list_tile.dart';
+
+import 'surface.dart';
 
 Future<void> _pump(WidgetTester tester, Widget home) async {
   SharedPreferences.setMockInitialValues({});
@@ -29,6 +32,7 @@ Future<void> _pump(WidgetTester tester, Widget home) async {
         ChangeNotifierProvider(create: (_) => StatusProvider()),
       ],
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         theme: appleLightTheme(),
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
@@ -55,8 +59,7 @@ void main() {
   testWidgets('settings groups its rows into inset sections', (tester) async {
     // Tall enough that every group is laid out and on the page at once: the
     // list disposes what a short screen pushes past its cache.
-    await tester.binding.setSurfaceSize(const Size(420, 1300));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    setTestSurface(tester, const Size(420, 1300));
 
     await _pump(tester, const Settings());
 
@@ -72,9 +75,13 @@ void main() {
     // nothing else.
     expect(find.text(l.language), findsOneWidget);
     expect(find.text(l.statisticsAndDashboard), findsOneWidget);
+    expect(find.text(l.topItemsOrder), findsOneWidget);
     expect(find.text(l.queryLogSettings), findsOneWidget);
     expect(find.text(l.autoRefreshLiveLogs), findsOneWidget);
-    expect(find.text(l.statusColorUseThemeColor), findsOneWidget);
+    expect(find.text(l.dontCheckCertificate), findsOneWidget);
+    // One control per setting: the appearance sheet owns the status colours,
+    // so a second switch for the same preference would read as a different one.
+    expect(find.text(l.statusColorUseThemeColor), findsNothing);
     expect(find.text(l.hideServerAddress), findsOneWidget);
     expect(find.text(l.openSourceLicenses), findsOneWidget);
     expect(find.text(l.diagnosticsLog), findsOneWidget);
@@ -83,7 +90,7 @@ void main() {
     expect(find.text(l.advancedSettings), findsNothing);
     // App settings and about rows carry the tinted glyphs; the appearance
     // rows do not.
-    expect(find.byType(AppleIconBadge), findsNWidgets(8));
+    expect(find.byType(AppleIconBadge), findsNWidgets(9));
     // The page signs itself with the app and the version it runs; the note
     // sits under the last group, out of the phone's first screen.
     expect(
@@ -94,8 +101,7 @@ void main() {
 
   testWidgets('the appearance group switches the theme from inside its card',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(420, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    setTestSurface(tester, const Size(420, 900));
 
     await _pump(tester, const Settings());
 
@@ -125,8 +131,7 @@ void main() {
 
   testWidgets('the status colours follow the server until the theme is asked for',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(420, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    setTestSurface(tester, const Size(420, 900));
 
     await _pump(tester, const Settings());
 
@@ -156,21 +161,17 @@ void main() {
 
   testWidgets('the accent row names the tint the theme actually uses',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(420, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    setTestSurface(tester, const Size(420, 900));
 
     await _pump(tester, const Settings());
-
-    final context = tester.element(find.byType(Settings));
-    final appConfigProvider =
-        Provider.of<AppConfigProvider>(context, listen: false);
 
     AppleListTile accentRow() => tester.widget<AppleListTile>(find.ancestor(
           of: find.text(l.accentColor),
           matching: find.byType(AppleListTile),
         ));
 
-    // The Apple theme keeps the system tint, so there is nothing to pick.
+    // The theme keeps the system tint, so there is nothing to pick: the
+    // swatch sheet belonged to the Material skin and is gone with it.
     expect(accentRow().value, l.systemBlue);
     expect(accentRow().onTap, isNull);
 
@@ -180,30 +181,12 @@ void main() {
     // A row with nothing to pick does not open the sheet, so its title is
     // still the only one on screen.
     expect(find.text(l.accentColor), findsOneWidget);
+    expect(find.text(l.indigo), findsNothing);
     expect(tester.takeException(), isNull);
-
-    // With the classic theme back on, the same row opens the swatches.
-    await appConfigProvider.setUseAppleStyle(false);
-    await tester.pumpAndSettle();
-
-    expect(accentRow().onTap, isNotNull);
-
-    await tester.tap(find.text(l.accentColor));
-    await tester.pumpAndSettle();
-
-    // The sheet puts the same title above its own list.
-    expect(find.text(l.accentColor), findsNWidgets(2));
-
-    await tester.tap(find.text(l.indigo));
-    await tester.pumpAndSettle();
-
-    expect(appConfigProvider.staticColor, 11);
-    expect(accentRow().value, l.indigo);
   });
 
   testWidgets('the master pane marks the selected section', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    setTestSurface(tester, const Size(1200, 800));
 
     await _pump(tester, const Settings());
 
@@ -221,8 +204,7 @@ void main() {
   });
 
   testWidgets('the app group keeps the switches the app owns', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(420, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    setTestSurface(tester, const Size(420, 900));
 
     await _pump(tester, const Settings());
 
@@ -245,25 +227,67 @@ void main() {
     await tester.pumpAndSettle();
     expect(appConfigProvider.autoRefreshLiveLogs, isFalse);
 
-    await tester.tap(switchFor(l.statusColorUseThemeColor));
-    await tester.pumpAndSettle();
-    expect(appConfigProvider.useThemeColorForStatus, isTrue);
-
-    // The two rows read the one pref the appearance sheet writes as well.
+    // The status colours are written by the appearance sheet alone; this row
+    // only reads the preference back.
     final statusRow = tester.widget<AppleListTile>(find.ancestor(
       of: find.text(l.statusColors),
       matching: find.byType(AppleListTile),
     ));
-    expect(statusRow.value, l.themeColorForStatus);
+    expect(statusRow.value, l.semanticColors);
 
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getBool('autoRefreshLiveLogs'), isFalse);
-    expect(prefs.getBool('useThemeColorForStatus'), isTrue);
+  });
+
+  testWidgets('the certificate override applies to the next request',
+      (tester) async {
+    // Tall enough to keep the whole app group on the page: the switch this
+    // test taps sits below the fold at phone height.
+    setTestSurface(tester, const Size(420, 1300));
+    addTearDown(() => HttpOverrides.global = null);
+
+    await _pump(tester, const Settings());
+
+    final context = tester.element(find.byType(Settings));
+    final appConfigProvider =
+        Provider.of<AppConfigProvider>(context, listen: false);
+
+    // [main] installs the override once at startup, so a session that began
+    // without it has to be able to gain it without a restart. Under the test
+    // binding dart:io answers with its own mock client instead of nothing, so
+    // "began without it" is read as "not the app's override yet".
+    expect(HttpOverrides.current, isNot(isA<MyHttpOverrides>()));
+
+    await tester.tap(find.descendant(
+      of: find.ancestor(
+        of: find.text(l.dontCheckCertificate),
+        matching: find.byType(AppleSwitchListTile),
+      ),
+      matching: find.byType(CupertinoSwitch),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(appConfigProvider.overrideSslCheck, isTrue);
+    expect(HttpOverrides.current, isA<MyHttpOverrides>());
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('overrideSslCheck'), isTrue);
+
+    await tester.tap(find.descendant(
+      of: find.ancestor(
+        of: find.text(l.dontCheckCertificate),
+        matching: find.byType(AppleSwitchListTile),
+      ),
+      matching: find.byType(CupertinoSwitch),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(appConfigProvider.overrideSslCheck, isFalse);
+    expect(HttpOverrides.current, isNull);
   });
 
   testWidgets('the rows that read the server wait for one', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(420, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    setTestSurface(tester, const Size(420, 900));
 
     await _pump(tester, const Settings());
 
@@ -279,7 +303,8 @@ void main() {
     expect(control.onChanged, isNull);
 
     expect(find.text(l.dhcpSettings), findsNothing);
-    // The three that were here plus the one that hides the address.
+    // Live logs, the query log page's own switch, hiding the address, and the
+    // certificate override.
     expect(find.byType(CupertinoSwitch), findsNWidgets(4));
     // There is nothing to read again until a server is connected.
     expect(find.byIcon(CupertinoIcons.arrow_clockwise), findsNothing);
@@ -288,8 +313,7 @@ void main() {
 
   testWidgets('the diagnostics page shows what the app wrote down',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(420, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    setTestSurface(tester, const Size(420, 900));
 
     await _pump(tester, const DiagnosticsLogScreen());
 
@@ -322,8 +346,13 @@ void main() {
 
     await _pump(
       tester,
-      Material(
-        child: CustomSwitchListTile(
+      // The live idiom (logs filters, client detail): an opaque gesture
+      // detector wraps the row, so the whole row toggles and the switch
+      // itself still wins the arena where it is hit.
+      GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => value = !value,
+        child: AppleSwitchListTile(
           value: value,
           title: 'Blocking status',
           subtitle: 'Write blocked queries in the log file',
@@ -347,10 +376,11 @@ void main() {
     await _pump(
       tester,
       Material(
-        child: CustomListTile(
+        child: AppleListTile(
           title: 'Query logs',
           subtitle: 'Saved on the server',
-          disabled: true,
+          enabled: false,
+          showChevron: false,
           onTap: () => tapped = true,
         ),
       ),

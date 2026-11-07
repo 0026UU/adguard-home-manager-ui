@@ -571,7 +571,7 @@ class AppleDonut extends StatelessWidget {
                 '${clamped.toStringAsFixed(0)}%',
                 style: TextStyle(
                   fontSize: size * 0.22,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                   letterSpacing: -0.3,
                   color: tint,
                 ),

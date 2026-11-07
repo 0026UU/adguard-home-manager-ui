@@ -1,19 +1,19 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:expandable/expandable.dart';
-import 'package:flutter/rendering.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
-import 'package:provider/provider.dart';
-
-import 'package:adguard_home_manager/widgets/add_server/add_server_functions.dart';
+import 'package:adguard_home_manager/functions/desktop_mode.dart';
+import 'package:adguard_home_manager/screens/connect/fab.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 import 'package:adguard_home_manager/widgets/servers_list/servers_list.dart';
 
-import 'package:adguard_home_manager/providers/servers_provider.dart';
-import 'package:adguard_home_manager/providers/app_config_provider.dart';
-
-class Servers extends StatefulWidget {
+/// The saved connections, reached from the settings hub.
+///
+/// It is the same list the first-run screen shows, so it is drawn the same
+/// way: the design layer's large title, the back capsule the hub pushed it
+/// from, and the floating plus that adds one more server. The plus used to
+/// slide away as soon as the list scrolled, which on a long list was the only
+/// way to add a server and the first thing to disappear.
+class Servers extends StatelessWidget {
   final double? breakingWidth;
 
   const Servers({
@@ -22,88 +22,23 @@ class Servers extends StatefulWidget {
   });
 
   @override
-  State<Servers> createState() => _ServersState();
-}
-
-class _ServersState extends State<Servers> {
-  List<ExpandableController> expandableControllerList = [];
-
-  late bool isVisible;
-  final ScrollController scrollController = ScrollController();
-
-  void expandOrContract(int index) async {
-    expandableControllerList[index].expanded = !expandableControllerList[index].expanded;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    isVisible = true;
-    scrollController.addListener(() {
-      if (scrollController.position.userScrollDirection == ScrollDirection.reverse) {
-        if (mounted && isVisible == true) {
-          setState(() => isVisible = false);
-        }
-      } 
-      else {
-        if (scrollController.position.userScrollDirection == ScrollDirection.forward) {
-          if (mounted && isVisible == false) {
-            setState(() => isVisible = true);
-          }
-        }
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final serversProvider = Provider.of<ServersProvider>(context);
-    final appConfigProvider = Provider.of<AppConfigProvider>(context);
+    final l = AppLocalizations.of(context)!;
 
-    final width = MediaQuery.of(context).size.width;
+    final width = MediaQuery.sizeOf(context).width;
 
-    for (var i = 0; i < serversProvider.serversList.length; i++) {
-      expandableControllerList.add(ExpandableController());
-    }
-
-    void openAddServerModal() async {
-      await Future.delayed(const Duration(seconds: 0), (() => {
-        openServerFormModal(context: context, width: width)
-      }));
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.servers),
-        centerTitle: false,
+    return AppleScreen(
+      title: l.servers,
+      leading: isDesktop(width)
+        ? null
+        : AppleBackButton(
+            label: l.back,
+            onPressed: () => Navigator.pop(context),
+          ),
+      body: ServersList(
+        breakingWidth: breakingWidth ?? 700,
       ),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            ServersList(
-              context: context, 
-              controllers: expandableControllerList, 
-              onChange: expandOrContract,
-              scrollController: scrollController,
-              breakingWidth: widget.breakingWidth ?? 700,
-            ),
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 100),
-              curve: Curves.easeInOut,
-              bottom: isVisible ?
-                appConfigProvider.showingSnackbar
-                  ? 70 : (Platform.isIOS ? 40 : 20)
-                : -70,
-              right: 20,
-              child: FloatingActionButton(
-                onPressed: openAddServerModal,
-                child: const Icon(Icons.add),
-              ),
-            ),
-          ],
-        ),
-      ),
+      floatingActionButton: const FabConnect(),
     );
   }
 }

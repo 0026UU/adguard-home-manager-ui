@@ -52,7 +52,7 @@ class _ClientRulesModalState extends State<ClientRulesModal> {
       context: context,
       barrierColor: !(width > 700 || !(Platform.isAndroid || Platform.isIOS))
         ? Colors.transparent
-        : Colors.black54,
+        : const Color(0x66000000),
       transitionBuilder: (context, anim1, anim2, child) {
         return SlideTransition(
           position: Tween(

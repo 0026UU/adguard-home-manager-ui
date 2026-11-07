@@ -93,6 +93,28 @@ bool serverVersionIsAhead({
   return current.compareTo(reference) >= 0;
 }
 
+/// Whether the app should refuse to manage a server because of its version.
+///
+/// This is not the same question as [serverVersionIsAhead].  A server that
+/// answers without a readable version — one built from source, or an install
+/// whose build metadata was stripped — is unknown, not old, and refusing it
+/// would throw away the connection: every gate that shows the unsupported
+/// modal also deselects the server, so the user loses a server that answers
+/// every request fine.  The requests themselves decide.
+bool serverVersionIsTooOld({
+  required String currentVersion,
+  required String referenceVersion,
+  String? referenceVersionBeta,
+}) {
+  if (AghVersion.tryParse(currentVersion) == null) return false;
+
+  return !serverVersionIsAhead(
+    currentVersion: currentVersion,
+    referenceVersion: referenceVersion,
+    referenceVersionBeta: referenceVersionBeta,
+  );
+}
+
 /// Whether the server answering [version] deserves a warning although it
 /// clears the gate.
 ///

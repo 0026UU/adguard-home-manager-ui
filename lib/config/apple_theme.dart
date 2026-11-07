@@ -26,9 +26,9 @@ TextTheme appleTextTheme(Brightness b) {
       );
 
   return TextTheme(
-    displayLarge: s(34, 1.15, FontWeight.w800, primary, tracking: -0.8),
-    displayMedium: s(28, 1.15, FontWeight.w700, primary, tracking: -0.6),
-    headlineMedium: s(22, 1.2, FontWeight.w700, primary, tracking: -0.4),
+    displayLarge: s(34, 1.15, FontWeight.w600, primary, tracking: -0.8),
+    displayMedium: s(28, 1.15, FontWeight.w600, primary, tracking: -0.6),
+    headlineMedium: s(22, 1.2, FontWeight.w600, primary, tracking: -0.4),
     headlineSmall: s(17, 1.2, FontWeight.w600, primary, tracking: -0.4),
     titleLarge: s(17, 1.2, FontWeight.w600, primary, tracking: -0.4),
     titleMedium: s(16, 1.25, FontWeight.w600, primary, tracking: -0.2),
@@ -255,33 +255,9 @@ ThemeData appleTheme(Brightness brightness) {
       primaryColor: AppleColors.tint(brightness),
       applyThemeToAll: true,
     ),
-    extensions: const <ThemeExtension<dynamic>>[AppleStyleMarker()],
   );
 }
 
 ThemeData appleLightTheme() => appleTheme(Brightness.light);
 
 ThemeData appleDarkTheme() => appleTheme(Brightness.dark);
-
-/// Tags a [ThemeData] as belonging to the Apple shell.
-///
-/// Chrome shared with the not-yet-converted Material screens (snack bars, copy
-/// confirmations) asks the theme which shell it is in instead of threading
-/// [AppConfigProvider] through every call site.
-@immutable
-class AppleStyleMarker extends ThemeExtension<AppleStyleMarker> {
-  const AppleStyleMarker();
-
-  @override
-  AppleStyleMarker copyWith() => const AppleStyleMarker();
-
-  @override
-  AppleStyleMarker lerp(
-    covariant ThemeExtension<AppleStyleMarker>? other,
-    double t,
-  ) =>
-      this;
-}
-
-bool appleStyleOf(BuildContext context) =>
-    Theme.of(context).extension<AppleStyleMarker>() != null;

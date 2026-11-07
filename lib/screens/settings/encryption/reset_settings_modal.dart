@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+/// Asks before the encryption configuration is reset, as an iOS alert.
 class ResetSettingsModal extends StatelessWidget {
   final void Function() onConfirm;
 
@@ -12,40 +14,17 @@ class ResetSettingsModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Column(
-        children: [
-          Icon(
-            Icons.restore_rounded,
-            size: 24,
-            color: Theme.of(context).colorScheme.onSurfaceVariant
-          ),
-          const SizedBox(height: 16),
-          Text(
-            AppLocalizations.of(context)!.resetSettings,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface
-            ),
-          )
-        ],
-      ),
-      content: Text(
-        AppLocalizations.of(context)!.resetEncryptionSettingsDescription,
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurfaceVariant
-        ),
-      ),
+    final l = AppLocalizations.of(context)!;
+
+    return AppleAlertDialog(
+      title: l.resetSettings,
+      message: l.resetEncryptionSettingsDescription,
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context), 
-          child: Text(AppLocalizations.of(context)!.cancel)
-        ),
-        TextButton(
-          onPressed: () {
-            onConfirm();
-            Navigator.pop(context);
-          }, 
-          child: Text(AppLocalizations.of(context)!.confirm)
+        AppleSheetAction(label: l.cancel),
+        AppleSheetAction(
+          label: l.confirm,
+          destructive: true,
+          onTap: onConfirm,
         ),
       ],
     );

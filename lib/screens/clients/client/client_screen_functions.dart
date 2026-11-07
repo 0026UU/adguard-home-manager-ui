@@ -92,7 +92,10 @@ void openDeleteClientScreen({
     context: context, 
     builder: (ctx) => RemoveClientModal(
       onConfirm: () {
-        Navigator.pop(context);
+        // The alert's own button has already dismissed this dialog. Popping
+        // again here would destroy the page that asked for the deletion before
+        // the server had been touched, so the caller keeps the only pop it
+        // needs: the one it makes once the entry really is gone.
         onDelete();
       }
     )
@@ -146,7 +149,7 @@ void openClientFormModal({
     context: context, 
     barrierColor: !(width > 900 || !(Platform.isAndroid | Platform.isIOS))
       ?Colors.transparent 
-      : Colors.black54,
+      : const Color(0x66000000),
     transitionBuilder: (context, anim1, anim2, child) {
       return SlideTransition(
         position: Tween(

@@ -6,9 +6,11 @@ import 'package:adguard_home_manager/functions/base64.dart';
 import 'package:adguard_home_manager/models/blocked_services.dart';
 import 'package:adguard_home_manager/models/clients.dart';
 import 'package:adguard_home_manager/models/encryption.dart';
+import 'package:adguard_home_manager/models/filtering_status.dart';
 import 'package:adguard_home_manager/models/safe_search.dart';
 import 'package:adguard_home_manager/models/server.dart';
 import 'package:adguard_home_manager/models/server_info.dart';
+import 'package:adguard_home_manager/models/server_status.dart';
 import 'package:adguard_home_manager/services/api_client.dart';
 
 /// Drives the app's own API layer against a real AdGuard Home.
@@ -313,10 +315,16 @@ void main() {
 
         final data = result.content as ServerInfoData;
 
-        // A stock server leaves these three null and the page drops their
-        // rows, so a null here means the fork's answers never reached the UI.
-        expect(data.arch, isNotNull, reason: 'the server reported no architecture');
-        expect(data.goos, isNotNull, reason: 'the server reported no platform');
+        // `arch` and `goos` are the fork's additions: stock AdGuard Home
+        // answers neither and the page drops the row that would print them.
+        // What has to hold on every server is that they arrive together or not
+        // at all, so a half-read answer cannot leave the row showing
+        // "windows/" or "/amd64".
+        expect(
+          data.arch == null,
+          data.goos == null,
+          reason: 'the platform row would print half an answer',
+        );
         expect(data.startTime, isNotNull, reason: 'the server reported no start time');
         expect(data.startTime!.isBefore(DateTime.now()), isTrue);
 
@@ -325,6 +333,42 @@ void main() {
       },
       skip: skip,
     );
+  });
+
+  group('what /safesearch/settings keeps', () {
+    test('a toggle that only carries the switch leaves the engines alone', () async {
+      // The Overview switch used to PUT {"enabled":false} and nothing else.
+      // The server replaces the whole object, so that single click silently
+      // switched every search engine off.
+      final seeded = await api.updateSafeSearchSettings(
+        body: {
+          'enabled': true,
+          'bing': false,
+          'duckduckgo': true,
+          'ecosia': false,
+          'google': true,
+          'pixabay': false,
+          'yandex': false,
+          'youtube': true,
+        },
+      );
+      expect(seeded.successful, isTrue, reason: 'the server refused the mix');
+
+      final toggled = await api.updateSafeSearchSettings(
+        body: {'enabled': false},
+      );
+      expect(toggled.successful, isTrue, reason: 'the server refused the toggle');
+
+      final result = await api.getServerStatus();
+      expect(result.successful, isTrue);
+
+      final status = result.content as ServerStatus;
+      expect(status.safeSearchEnabled, isFalse, reason: 'the switch did not move');
+      expect(status.safeSearchGoogle, isTrue, reason: 'the toggle cleared google');
+      expect(status.safeSearchDuckduckgo, isTrue, reason: 'the toggle cleared duckduckgo');
+      expect(status.safeSearchYoutube, isTrue, reason: 'the toggle cleared youtube');
+      expect(status.safeSeachBing, isFalse, reason: 'the toggle set bing');
+    }, skip: skip);
   });
 
   group('what /tls/status answers', () {
@@ -345,6 +389,239 @@ void main() {
         // The fork hashes the first certificate of the chain; a stock server
         // never sends the field at all.
         expect(data.fingerprintSha256, matches(RegExp(r'^[0-9a-f]{64}$')));
+      },
+      skip: skip,
+    );
+  });
+
+  group('what POST /filtering/refresh answers', () {
+    test(
+      'the refresh is allowed to take the minutes the server needs',
+      () async {
+        // v1.0.0-b.2 answers this endpoint with the openapi
+        // FilterRefreshResponse — one integer, {"updated": N} — and nothing per
+        // list, and re-downloading a single 190k-rule list was measured at
+        // 92-126 seconds. The wrapper sent it with the same ten second cap as
+        // an ordinary GET, so it was cut off before the answer arrived and the
+        // page reported "Couldn't update lists" every single time.
+        final before = await api.getFilteringRules();
+        expect(
+          before.successful,
+          isTrue,
+          reason: 'the server did not answer /filtering/status',
+        );
+
+        final status = before.content as FilteringStatus;
+        final enabled = [...status.filters, ...status.whitelistFilters]
+            .where((filter) => filter.enabled)
+            .toList();
+        if (enabled.isEmpty) {
+          markTestSkipped('the server has no enabled list to refresh');
+          return;
+        }
+
+        // A server that has just started is still refreshing the lists it was
+        // handed at boot, and refuses with "already running" until that
+        // finishes. Wait for it to be free first, or the timed call below
+        // measures a refusal instead of a refresh.
+        for (var attempt = 0; attempt < 12; attempt++) {
+          final probe = await api.updateLists();
+          final busy = !probe.successful &&
+              (probe.message ?? '').contains('already running');
+          if (!busy) break;
+          await Future<void>.delayed(const Duration(seconds: 10));
+        }
+
+        final watch = Stopwatch()..start();
+        final result = await api.updateLists();
+        watch.stop();
+
+        expect(
+          result.successful,
+          isTrue,
+          reason: 'the refresh did not complete: ${result.message}',
+        );
+        // Longer than the cap the call used to be given means the server was
+        // really asked to re-download and the answer was waited for.
+        expect(
+          watch.elapsed,
+          greaterThan(const Duration(seconds: 10)),
+          reason: 'the refresh came back inside the old ten second cap, so the '
+              'server was never given the time to do the work',
+        );
+
+        final data = result.content as Map<String, dynamic>;
+        final List<String> failed = data['failed'] as List<String>;
+        final List<String> updatedLists = data['updated_lists'] as List<String>;
+        final List<String> enabledNames = enabled.map((f) => f.name).toList();
+
+        expect(
+          data['updated'],
+          isA<int>(),
+          reason: 'the count of updated lists is what the page has always '
+              'read: $data',
+        );
+        expect(data['total'], enabled.length);
+
+        // A list the server has no rules for is the one the UI has to name:
+        // b.2 stamps last_updated even on a failed download and counts only
+        // the lists whose data changed, so the rules count is the signal left.
+        expect(
+          failed,
+          containsAll(
+            enabled
+                .where((filter) => filter.rulesCount == 0)
+                .map((filter) => filter.name)
+                .toList(),
+          ),
+          reason: 'the lists that load no rules must be the ones reported',
+        );
+        expect(
+          failed.toSet().intersection(updatedLists.toSet()),
+          isEmpty,
+          reason: 'a list cannot both fail and update',
+        );
+        for (final name in [...failed, ...updatedLists]) {
+          expect(
+            enabledNames,
+            contains(name),
+            reason: '$name is not an enabled list of this server',
+          );
+        }
+      },
+      timeout: const Timeout(Duration(minutes: 12)),
+      skip: skip,
+    );
+  });
+
+  group('what a refused write says', () {
+    test(
+      'the MAC already held by another client reaches the caller',
+      () async {
+        const holder = 'agh-ui-mac-holder';
+        const intruder = 'agh-ui-mac-intruder';
+        // A MAC from the range the other cases of this suite use would make
+        // those entries the conflicting client, and the message would name an
+        // entry this test did not create.
+        const mac = 'f4:1d:f2:0a:1b:2c';
+
+        await api.postDeleteClient(name: holder);
+        await api.postDeleteClient(name: intruder);
+
+        final first = await api.postAddClient(
+          data: entry(entryName: holder, ids: const ['192.0.2.221', mac]).toJson(),
+        );
+        expect(first.successful, isTrue, reason: 'the server refused the holder: ${first.message}');
+
+        final refused = await api.postAddClient(
+          data: entry(entryName: intruder, ids: const ['192.0.2.222', mac]).toJson(),
+        );
+        expect(refused.successful, isFalse, reason: 'the server took the duplicate MAC');
+
+        // The 400 body is the whole diagnosis — the server says who holds the
+        // address — and the wrapper used to throw it away, leaving the page
+        // with "Client could not be updated".
+        expect(
+          refused.message,
+          allOf(contains(holder), contains('MAC'), contains(mac)),
+          reason: 'the reason the server gave did not reach the caller: '
+              '${refused.message}',
+        );
+        expect(refused.statusCode, isNull, reason: 'the wrappers that did not '
+            'report a status code before must not start now');
+
+        final listed = await api.getClients();
+        expect(
+          (listed.content as Clients).clients.where((c) => c.name == intruder),
+          isEmpty,
+        );
+
+        await api.postDeleteClient(name: holder);
+      },
+      skip: skip,
+    );
+
+    test(
+      'a client edit that names nothing reaches the caller',
+      () async {
+        final refused = await api.postUpdateClient(
+          data: {
+            'name': 'agh-ui-not-a-client',
+            'data': entry(entryName: 'agh-ui-not-a-client').toJson(),
+          },
+        );
+        expect(refused.successful, isFalse);
+        expect(
+          refused.message,
+          allOf(contains('agh-ui-not-a-client'), contains('not found')),
+          reason: 'the reason the server gave did not reach the caller: '
+              '${refused.message}',
+        );
+      },
+      skip: skip,
+    );
+
+    test(
+      'a rewrite rule with no answer reaches the caller',
+      () async {
+        final refused = await api.addDnsRewriteRule(
+          data: const {'domain': 'agh-ui-probe.test', 'answer': ''},
+        );
+        expect(refused.successful, isFalse);
+        expect(
+          refused.message,
+          contains('empty'),
+          reason: 'the reason the server gave did not reach the caller: '
+              '${refused.message}',
+        );
+      },
+      skip: skip,
+    );
+
+    test(
+      'a filter list that is not on the server reaches the caller',
+      () async {
+        final refused = await api.updateFilterList(
+          data: const {
+            'data': {
+              'url': 'https://agh-ui-probe.invalid/list.txt',
+              'name': 'agh-ui-probe',
+              'whitelist': false,
+            },
+          },
+        );
+        expect(refused.successful, isFalse);
+        expect(
+          refused.message,
+          contains("doesn't exist"),
+          reason: 'the reason the server gave did not reach the caller: '
+              '${refused.message}',
+        );
+      },
+      skip: skip,
+    );
+
+    test(
+      'a write that succeeded carries no reason',
+      () async {
+        const written = 'agh-ui-was-written';
+        await api.postDeleteClient(name: written);
+
+        final added = await api.postAddClient(
+          data: entry(entryName: written, ids: const ['192.0.2.223']).toJson(),
+        );
+        expect(added.successful, isTrue, reason: added.message);
+        expect(added.message, isNull, reason: 'a 200 has nothing to explain');
+
+        await api.postDeleteClient(name: written);
+
+        final removed = await api.postDeleteClient(name: written);
+        expect(removed.successful, isFalse);
+        expect(
+          removed.message,
+          isNotNull,
+          reason: 'the second delete is refused, and the refusal has a body',
+        );
       },
       skip: skip,
     );

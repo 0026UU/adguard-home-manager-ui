@@ -165,8 +165,8 @@ void main() {
       final cancel = tester.getSize(buttons.at(0));
       final save = tester.getSize(buttons.at(1));
 
-      expect(cancel.height, 44);
-      expect(save.height, 44);
+      expect(cancel.height, 48);
+      expect(save.height, 48);
       expect(cancel.width, save.width);
     });
   });

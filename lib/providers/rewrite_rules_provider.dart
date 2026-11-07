@@ -2,10 +2,11 @@ import 'package:adguard_home_manager/models/rewrite_status.dart';
 import 'package:flutter/material.dart';
 
 import 'package:adguard_home_manager/constants/enums.dart';
+import 'package:adguard_home_manager/providers/error_reason.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/models/rewrite_rules.dart';
 
-class RewriteRulesProvider with ChangeNotifier {
+class RewriteRulesProvider with ChangeNotifier, ErrorReason {
   ServersProvider? _serversProvider;
 
   void update(ServersProvider? provider) {
@@ -52,10 +53,13 @@ class RewriteRulesProvider with ChangeNotifier {
         "answer": rule.answer
       }
     );
+    captureErrorReason(result);
 
     if (result.successful == true) {
       if (rewriteRules == null) {
-        return false;
+        return setFailureReason(
+          'the rule was written but the list it belongs to was never loaded',
+        );
       }
 
       List<RewriteRules> data = rewriteRules!;
@@ -84,6 +88,7 @@ class RewriteRulesProvider with ChangeNotifier {
         }
       }
     );
+    captureErrorReason(result);
 
     if (result.successful == true) {
       List<RewriteRules> data = rewriteRules!;
@@ -105,10 +110,15 @@ class RewriteRulesProvider with ChangeNotifier {
         "answer": rule.answer
       }
     );
+    captureErrorReason(result);
 
     if (result.successful == true) {
       List<RewriteRules> data = rewriteRules!;
-      data = data.where((item) => item.domain != rule.domain).toList();
+      // One domain may carry several answers and the server deletes only the
+      // pair that was posted, so the list loses that single entry as well.
+      data.removeWhere(
+        (item) => item.domain == rule.domain && item.answer == rule.answer
+      );
       setRewriteRulesData(data);
       return true;
     }
@@ -121,14 +131,31 @@ class RewriteRulesProvider with ChangeNotifier {
   Future<bool> fetchData({
     bool? showLoading
   }) async {
-    if (showLoading == true) {
+    // Only worth announcing when it is a change: a retry fired from initState
+    // would otherwise notify listeners while the page is still being built.
+    if (showLoading == true && _loadStatus != LoadStatus.loading) {
       _loadStatus = LoadStatus.loading;
+      notifyListeners();
     }
 
     final result = await Future.wait([
       _serversProvider!.apiClient2!.getDnsRewriteRules(),
       _serversProvider!.apiClient2!.getDnsRewriteSettings(),
     ]);
+
+    // The two answers arrive together, so the page is told which of them the
+    // server actually refused.
+    const List<String> paths = ['/rewrite', '/rewrite/settings'];
+    final int failed = result.indexWhere((element) => element.successful != true);
+    if (failed == -1) {
+      captureErrorReason(result.first);
+    }
+    else {
+      captureErrorReason(
+        result[failed],
+        fallback: 'the server gave nothing back for ${paths[failed]}',
+      );
+    }
 
     if (result.every((element) => element.successful == true)) {
       _rewriteRules = result[0].content as List<RewriteRules>;
@@ -138,10 +165,12 @@ class RewriteRulesProvider with ChangeNotifier {
       return true;
     }
     else {
-      if (showLoading == true) {
-        _loadStatus = LoadStatus.error;
-        notifyListeners();
-      }
+      // The error is recorded whether or not a spinner was promised. The toast
+      // that goes with a failed refresh is easy to miss, and a rewrite table
+      // left on screen after the server stopped answering reads as a list the
+      // server still agrees with.
+      _loadStatus = LoadStatus.error;
+      notifyListeners();
       return false;
     }
   }
@@ -152,6 +181,7 @@ class RewriteRulesProvider with ChangeNotifier {
         "enabled": enabled
       }
     );
+    captureErrorReason(result);
 
     if (result.successful == true) {
       _rewriteStatus = RewriteStatus(

@@ -11,6 +11,8 @@ import 'package:adguard_home_manager/providers/app_config_provider.dart';
 import 'package:adguard_home_manager/screens/clients/client/device_tile.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+import 'surface.dart';
+
 // The log entry, the device row and the settings header card are all defined
 // by where their parts sit relative to each other, which a widget test cannot
 // see. These goldens pin the painted result.
@@ -18,8 +20,7 @@ import 'package:adguard_home_manager/widgets/apple/apple.dart';
 // Regenerate with: flutter test --update-goldens test/apple_rows_golden_test.dart
 
 Future<void> _pump(WidgetTester tester, Widget body, {double inset = 16}) async {
-  await tester.binding.setSurfaceSize(const Size(390, 700));
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, const Size(390, 700));
 
   final palette = ApplePalette(Brightness.light);
 
@@ -104,8 +105,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
 
-    await tester.binding.setSurfaceSize(const Size(390, 700));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    setTestSurface(tester, const Size(390, 700));
 
     final palette = ApplePalette(Brightness.light);
 
@@ -210,7 +210,6 @@ void main() {
       AppleBigRow(
         icon: Icons.dns_outlined,
         color: ApplePalette(Brightness.light).green,
-        colorTo: ApplePalette(Brightness.light).teal,
         title: 'Home server',
         details: 'https://192.168.1.10:3000 · v0.107.58',
         status: 'Connected',

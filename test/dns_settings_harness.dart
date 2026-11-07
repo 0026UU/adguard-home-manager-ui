@@ -20,6 +20,8 @@ import 'package:adguard_home_manager/screens/settings/dns/dns.dart';
 import 'package:adguard_home_manager/services/api_client.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+import 'surface.dart';
+
 // The DNS page reads `/dns_info` and writes `/dns_config`. No test here can
 // reach a server, so the API client below answers from the fixture and keeps
 // every payload the taps produced, which is how the tests check that a switch
@@ -183,8 +185,7 @@ Future<DnsHarness> pumpDns(
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
 
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, surface);
 
   final server = serverFixture();
   final api = DnsApiStub(server: server, info: info ?? dnsInfoFixture())
@@ -243,9 +244,8 @@ Future<DnsHarness> pumpDns(
   await tester.tap(find.text('open'));
   // A gated load keeps its spinner turning, so settling would never finish.
   if (fails) {
-    // A read the server refused leaves the provider on its loading status, so
-    // the page is still spinning. The error the page draws is handed to it
-    // through the setter the provider exposes for that state.
+    // The page is opened already in its error state, with the API left able to
+    // answer so a retry from the error card has something to land on.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     dns.setDnsInfoLoadStatus(LoadStatus.error, true);

@@ -90,39 +90,41 @@ class _ManagementModalState extends State<ManagementModal> with SingleTickerProv
     }
 
     if (widget.dialog == true) {
-      return Dialog(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: 400
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: SingleChildScrollView(
-                  child: _Modal(
-                    expandableController: expandableController,
-                    updateBlocking: updateBlocking,
-                    disableWithCountdown: disableWithCountdown,
-                    animation: animation,
-                  )
+      final l = AppLocalizations.of(context)!;
+
+      // The wide layouts read the same content in a centred card of the
+      // design layer: the title row and the 14pt radius come from the shell,
+      // and the only button the sheet ever had closes it.
+      return AppleFormModal(
+        title: l.manageProtection,
+        icon: CupertinoIcons.shield,
+        dialog: true,
+        maxWidth: 400,
+        body: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: SingleChildScrollView(
+                child: _Modal(
+                  expandableController: expandableController,
+                  updateBlocking: updateBlocking,
+                  disableWithCountdown: disableWithCountdown,
+                  animation: animation,
+                )
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: SizedBox(
+                height: 48,
+                child: AppleButton.secondary(
+                  label: l.close,
+                  onPressed: () => Navigator.pop(context),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context), 
-                      child: Text(AppLocalizations.of(context)!.close),
-                    ),
-                  ],
-                ),
-              ),
-              if (Platform.isIOS) const SizedBox(height: 16)
-            ],
-          ),
+            ),
+            if (Platform.isIOS) const SizedBox(height: 16)
+          ],
         ),
       );
     }

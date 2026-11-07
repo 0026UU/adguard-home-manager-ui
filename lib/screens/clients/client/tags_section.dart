@@ -28,6 +28,9 @@ class TagsSection extends StatelessWidget {
       subtitle: selectedTags.isNotEmpty
           ? "${selectedTags.length} ${l.tagsSelected}"
           : l.noTagsSelected,
+      // The tap opens a sheet over this page, not a page of its own, so no
+      // disclosure: only a row that pushes a screen owns one.
+      showChevron: false,
       onTap: () => openTagsModal(
         context: context,
         selectedTags: selectedTags,

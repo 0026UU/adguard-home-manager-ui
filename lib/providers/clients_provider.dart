@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:adguard_home_manager/services/api_client.dart';
+import 'package:adguard_home_manager/providers/error_reason.dart';
 import 'package:adguard_home_manager/models/clients.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
@@ -9,7 +10,7 @@ import 'package:adguard_home_manager/constants/enums.dart';
 
 enum AccessSettingsList { allowed, disallowed, domains }
 
-class ClientsProvider with ChangeNotifier {
+class ClientsProvider with ChangeNotifier, ErrorReason {
   ServersProvider? _serversProvider;
 
   void update(ServersProvider? servers, StatusProvider? status) {
@@ -49,18 +50,29 @@ class ClientsProvider with ChangeNotifier {
     }
   }
 
+  /// Whether a device answers to [needle] by address, name or any of its
+  /// identifiers.  Both sides are lower-cased: AdGuard Home stores MAC
+  /// addresses upper-case and the search box is the field for a name, an
+  /// address or a MAC.
+  static bool _clientMatches(dynamic client, String needle) {
+    final String? name = client.name;
+    final String ip = client.ip as String? ?? '';
+
+    if (ip.toLowerCase().contains(needle)) return true;
+    if (name != null && name.toLowerCase().contains(needle)) return true;
+
+    final List ids = client.ids as List? ?? const [];
+    return ids.any((id) => '$id'.toLowerCase().contains(needle));
+  }
+
   void setClientsData(Clients data, bool notify) {
     _clients = data;
     if (_searchTermClients != null && _searchTermClients != '') {
-      _filteredActiveClients = _clients!.autoClients.where(
-        (client) => client.ip.contains(_searchTermClients!.toLowerCase()) || (client.name != null ? client.name!.contains(_searchTermClients!.toLowerCase()) : false)
-      ).toList();
-      _filteredAddedClients = _clients!.clients.where(
-        (client) {
-          isContained(String value) => value.contains(value.toLowerCase());
-          return client.ids.any(isContained);
-        }
-      ).toList();
+      final needle = _searchTermClients!.toLowerCase();
+      _filteredActiveClients =
+          _clients!.autoClients.where((c) => _clientMatches(c, needle)).toList();
+      _filteredAddedClients =
+          _clients!.clients.where((c) => _clientMatches(c, needle)).toList();
     }
     else {
       _filteredActiveClients = data.autoClients;
@@ -73,15 +85,11 @@ class ClientsProvider with ChangeNotifier {
     _searchTermClients = value;
     if (value != null && value != '') {
       if (_clients != null) {
-        _filteredActiveClients = _clients!.autoClients.where(
-          (client) => client.ip.contains(value.toLowerCase()) || (client.name != null ? client.name!.contains(value.toLowerCase()) : false)
-        ).toList();
-        _filteredAddedClients = _clients!.clients.where(
-          (client) {
-            isContained(String value) => value.contains(value.toLowerCase());
-            return client.ids.any(isContained);
-          }
-        ).toList();
+        final needle = value.toLowerCase();
+        _filteredActiveClients =
+            _clients!.autoClients.where((c) => _clientMatches(c, needle)).toList();
+        _filteredAddedClients =
+            _clients!.clients.where((c) => _clientMatches(c, needle)).toList();
       }
     }
     else {
@@ -103,6 +111,10 @@ class ClientsProvider with ChangeNotifier {
       _loadStatus = LoadStatus.loading;
     }
     final result = await _serversProvider!.apiClient2!.getClients();
+    captureErrorReason(
+      result,
+      fallback: 'the server gave nothing back for the devices',
+    );
     if (result.successful == true) {
       setClientsData(result.content as Clients, false);
       _loadStatus = LoadStatus.loaded;
@@ -110,16 +122,21 @@ class ClientsProvider with ChangeNotifier {
       return true;
     }
     else {
-      if (updateLoading == true) {
-        _loadStatus = LoadStatus.error;
-        notifyListeners();
-      }
+      // The error is recorded whether or not a spinner was promised: a pull to
+      // refresh that found no server must not leave the previous device list
+      // standing there looking current.
+      _loadStatus = LoadStatus.error;
+      notifyListeners();
       return false;
     }
   }
 
   Future<bool> deleteClient(Client client) async {
     final result = await _serversProvider!.apiClient2!.postDeleteClient(name: client.name);
+    captureErrorReason(
+      result,
+      fallback: 'the server gave no reason for refusing to remove it',
+    );
 
     if (result.successful == true) {
       Clients clientsData = clients!;
@@ -134,7 +151,13 @@ class ClientsProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> editClient(Client client) async {      
+  /// The server's own answer, not only whether it took the change.
+  ///
+  /// A device the server refuses carries the reason in the response body —
+  /// `adding client: another client "x" uses the same MAC "y"` — and until it
+  /// was handed through the page could say only "could not be updated", which
+  /// is a different sentence for the same three causes.
+  Future<ApiResponse> editClient(Client client) async {
     final result = await _serversProvider!.apiClient2!.postUpdateClient(
       data: {
         'name': client.name,
@@ -155,15 +178,15 @@ class ClientsProvider with ChangeNotifier {
       setClientsData(clientsData, false);
 
       notifyListeners();
-      return true;
     }
     else {
       notifyListeners();
-      return false;
     }
+
+    return result;
   }
 
-  Future<bool> addClient(Client client) async {
+  Future<ApiResponse> addClient(Client client) async {
     final result = await _serversProvider!.apiClient2!.postAddClient(
       data: client.toJson()
     );
@@ -174,12 +197,12 @@ class ClientsProvider with ChangeNotifier {
       setClientsData(clientsData, false);
 
       notifyListeners();
-      return true;
     }
     else {
       notifyListeners();
-      return false;
     }
+
+    return result;
   }
 
   Future<ApiResponse> addClientList(String item, AccessSettingsList type) async {

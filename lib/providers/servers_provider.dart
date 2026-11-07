@@ -10,9 +10,10 @@ import 'package:adguard_home_manager/models/server.dart';
 import 'package:adguard_home_manager/models/update_available.dart';
 import 'package:adguard_home_manager/functions/conversions.dart';
 import 'package:adguard_home_manager/services/db/queries.dart';
+import 'package:adguard_home_manager/providers/error_reason.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
 
-class ServersProvider with ChangeNotifier {
+class ServersProvider with ChangeNotifier, ErrorReason {
   Database? _dbInstance;
 
   List<Server> _serversList = [];
@@ -168,10 +169,33 @@ class ServersProvider with ChangeNotifier {
   Future<bool> removeServer(Server server) async {
     final result = await removeServerQuery(_dbInstance!, server.id);
     if (result == true) {
-      _selectedServer = null;
-      // _apiClient = null;
-      List<Server> newServers = _serversList.where((s) => s.id != server.id).toList();
-      _serversList = newServers;
+      // Only the server that is on screen loses its client; dropping the
+      // selection wholesale would log the user out of a different server, and
+      // keeping the client would let every screen go on reading and writing a
+      // row that no longer exists.
+      final wasSelected = _selectedServer?.id == server.id;
+      if (wasSelected) {
+        _apiClient2 = null;
+        _selectedServer = null;
+      }
+      _serversList = _serversList.where((s) => s.id != server.id).toList();
+
+      // Deleting the connection in use must not strand the app on the
+      // two-tab bar while saved connections still work, so the next row takes
+      // over — and takes the default flag with it, or the next launch is
+      // stranded again with nothing the user can do about it.
+      if (wasSelected && _serversList.isNotEmpty) {
+        final next = _serversList.firstWhere(
+          (s) => s.defaultServer == true,
+          orElse: () => _serversList.first,
+        );
+        _selectedServer = next;
+        _apiClient2 = ApiClientV2(server: next);
+        if (next.defaultServer != true) {
+          unawaited(setDefaultServer(next));
+        }
+      }
+
       notifyListeners();
       return true;
     }
@@ -189,9 +213,13 @@ class ServersProvider with ChangeNotifier {
     final result = await client!.checkServerUpdates();
     if (result.successful == true) {
       UpdateAvailableData data = UpdateAvailableData.fromJson(result.content);
-      final gitHubResult = await ExternalRequests.getReleaseData(releaseTag: data.newVersion ?? data.currentVersion);
-      if (gitHubResult.successful == true) {
-        data.changelog = (gitHubResult.content as GitHubRelease).body;
+      // A server that answers {"disabled": true} names no release, so asking
+      // GitHub for one would only delay the answer the page is waiting for.
+      if (data.disabled != true) {
+        final gitHubResult = await ExternalRequests.getReleaseData(releaseTag: data.newVersion ?? data.currentVersion);
+        if (gitHubResult.successful == true) {
+          data.changelog = (gitHubResult.content as GitHubRelease).body;
+        }
       }
       setUpdateAvailableData(data);
       setUpdateAvailableLoadStatus(LoadStatus.loaded, true);
@@ -252,27 +280,38 @@ class ServersProvider with ChangeNotifier {
   }
 
   void recheckPeriodServerUpdated() {
-    if (_selectedServer != null) {
-      setUpdatingServer(true);
-      Server server = _selectedServer!;
-      Timer.periodic(
-        const Duration(seconds: 2), 
-        (timer) async {
-          if (_selectedServer != null && _selectedServer == server) {
-            final result = await _apiClient2!.checkServerUpdates();
-            if (result.successful == true) {
-              UpdateAvailableData data = UpdateAvailableData.fromJsonUpdate(result.content);
-              if (data.currentVersion == data.newVersion) {
-                final gitHubResult = await ExternalRequests.getReleaseData(releaseTag: data.newVersion ?? data.currentVersion);
-                if (gitHubResult.successful == true) {
-                  data.changelog = (gitHubResult.content as GitHubRelease).body;
-                }
-                setUpdateAvailableData(data);
-                timer.cancel();
-                setUpdatingServer(false);
-              }
+    if (_selectedServer == null) return;
+
+    // A server with the update check switched off answers /control/version.json
+    // with {"disabled": true} and no new version at all, so the comparison in
+    // the timer below can never be satisfied: the poll would keep firing every
+    // two seconds for as long as the app is open, over a screen that has
+    // nothing to show. There is nothing to watch, so nothing is started.
+    if (_updateAvailable.data?.disabled == true) return;
+
+    setUpdatingServer(true);
+    Server server = _selectedServer!;
+    Timer.periodic(
+      const Duration(seconds: 2), 
+      (timer) async {
+        if (_selectedServer != null && _selectedServer == server) {
+          final result = await _apiClient2!.checkServerUpdates();
+          if (result.successful == true) {
+            UpdateAvailableData data = UpdateAvailableData.fromJsonUpdate(result.content);
+            // The same answer can arrive while the poll is running: the server
+            // reports the update as finished by switching the check off, and
+            // then it never reports a new version either.
+            if (data.disabled == true) {
+              timer.cancel();
+              setUpdatingServer(false);
+              return;
             }
-            else {
+            if (data.currentVersion == data.newVersion) {
+              final gitHubResult = await ExternalRequests.getReleaseData(releaseTag: data.newVersion ?? data.currentVersion);
+              if (gitHubResult.successful == true) {
+                data.changelog = (gitHubResult.content as GitHubRelease).body;
+              }
+              setUpdateAvailableData(data);
               timer.cancel();
               setUpdatingServer(false);
             }
@@ -282,7 +321,11 @@ class ServersProvider with ChangeNotifier {
             setUpdatingServer(false);
           }
         }
-      );
-    }
+        else {
+          timer.cancel();
+          setUpdatingServer(false);
+        }
+      }
+    );
   }
 }

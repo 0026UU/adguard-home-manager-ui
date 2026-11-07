@@ -1,11 +1,12 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
-import 'package:adguard_home_manager/widgets/custom_switch_list_tile.dart';
 import 'package:adguard_home_manager/screens/settings/dns/clear_dns_cache_dialog.dart';
 
 import 'package:adguard_home_manager/functions/desktop_mode.dart';
@@ -72,10 +73,12 @@ class _CacheConfigDnsScreenState extends State<CacheConfigDnsScreen> {
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
 
     final width = MediaQuery.of(context).size.width;
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
     void saveData() async {
       ProcessModal processModal = ProcessModal();
-      processModal.open(AppLocalizations.of(context)!.savingConfig);
+      processModal.open(l.savingConfig);
 
       final result = await dnsProvider.saveCacheCacheConfig({
         "cache_size": int.parse(cacheSizeController.text),
@@ -89,49 +92,42 @@ class _CacheConfigDnsScreenState extends State<CacheConfigDnsScreen> {
       if (result.successful == true) {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsConfigSaved, 
-          color: Colors.green
+          label: l.dnsConfigSaved, 
+          color: p.green
         );
       }
       else if (result.successful== false && result.statusCode == 400) {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.someValueNotValid, 
-          color: Colors.red
+          label: l.someValueNotValid, 
+          color: p.red
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsConfigNotSaved, 
-          color: Colors.red
+          label: l.dnsConfigNotSaved, 
+          color: p.red
         );
       } 
     }
     Widget numericField({
       required TextEditingController controller,
       required String label,
+      required IconData icon,
       String? helper,
       String? error,
       required void Function(String) onChanged,
     }) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: TextFormField(
+      return SliverToBoxAdapter(
+        child: AppleTextField(
           controller: controller,
           onChanged: onChanged,
-          decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.storage_rounded),
-            border: const OutlineInputBorder(
-              borderRadius: BorderRadius.all(
-                Radius.circular(10)
-              )
-            ),
-            errorText: error,
-            helperText: helper,
-            helperMaxLines: 10,
-            labelText: label,
-          ),
+          icon: icon,
+          helper: helper,
+          helperMaxLines: 10,
+          label: label,
+          error: error,
           keyboardType: TextInputType.number,
         ),
       );
@@ -142,112 +138,122 @@ class _CacheConfigDnsScreenState extends State<CacheConfigDnsScreen> {
       if (result.successful == true) {
         showSnackbar(
           appConfigProvider: appConfigProvider, 
-          label: AppLocalizations.of(context)!.dnsCacheCleared, 
-          color: Colors.green
+          label: l.dnsCacheCleared, 
+          color: p.green
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider, 
-          label: AppLocalizations.of(context)!.dnsCacheNotCleared, 
-          color: Colors.red
+          label: l.dnsCacheNotCleared, 
+          color: p.red
         );
       }
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.dnsCacheConfig),
-        surfaceTintColor: isDesktop(width) ? Colors.transparent : null,
-        actions: [
-          IconButton(
-            onPressed: validData == true
-              ? () => saveData()
-              : null, 
-            icon: const Icon(Icons.save_rounded),
-            tooltip: AppLocalizations.of(context)!.save,
+    return AppleScreen(
+      title: l.dnsCacheConfig,
+      subtitle: l.dnsCacheConfigDescription,
+      leading: isDesktop(width)
+        ? null
+        : AppleBackButton(
+            label: l.back,
+            onPressed: () => Navigator.pop(context),
           ),
-          const SizedBox(width: 10)
-        ],
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.only(top: 10),
-          children: [
-            numericField(
-              controller: cacheSizeController, 
-              label: AppLocalizations.of(context)!.cacheSize, 
-              helper: AppLocalizations.of(context)!.inBytes, 
-              error: cacheSizeError, 
-              onChanged: (value) {
-                if (int.tryParse(value) != null) {
-                  setState(() => cacheSizeError = null);
-                }
-                else {
-                  setState(() => cacheSizeError = AppLocalizations.of(context)!.valueNotNumber);
-                }
-                checkValidData();
-              }
-            ),
-            const SizedBox(height: 30),
-            numericField(
-              controller: overrideMinTtlController, 
-              label: AppLocalizations.of(context)!.overrideMinimumTtl, 
-              helper: AppLocalizations.of(context)!.overrideMinimumTtlDescription, 
-              error: overrideMinTtlError, 
-              onChanged: (value) {
-                if (int.tryParse(value) != null) {
-                  setState(() => overrideMinTtlError = null);
-                }
-                else {
-                  setState(() => overrideMinTtlError = AppLocalizations.of(context)!.valueNotNumber);
-                }
-                checkValidData();
-              }
-            ),
-            const SizedBox(height: 30),
-            numericField(
-              controller: overrideMaxTtlController, 
-              label: AppLocalizations.of(context)!.overrideMaximumTtl, 
-              helper: AppLocalizations.of(context)!.overrideMaximumTtlDescription, 
-              error: overrideMaxTtlError, 
-              onChanged: (value) {
-                if (int.tryParse(value) != null) {
-                  setState(() => overrideMaxTtlError = null);
-                }
-                else {
-                  setState(() => overrideMaxTtlError = AppLocalizations.of(context)!.valueNotNumber);
-                }
-                checkValidData();
-              }
-            ),
-            const SizedBox(height: 10),
-            CustomSwitchListTile(
-              value: optimisticCache, 
-              onChanged: (value) => setState(() => optimisticCache = value), 
-              title: AppLocalizations.of(context)!.optimisticCaching,
-              subtitle: AppLocalizations.of(context)!.optimisticCachingDescription,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () => showDialog(
-                    context: context, 
-                    builder: (context) => ClearDnsCacheDialog(
-                      onConfirm: clearCache
-                    )
-                  ), 
-                  icon: const Icon(Icons.delete_rounded),
-                  label: Text(AppLocalizations.of(context)!.clearDnsCache),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16)
-          ],
+      actions: [
+        IconButton(
+          onPressed: validData == true
+            ? () => saveData()
+            : null, 
+          icon: const Icon(CupertinoIcons.checkmark),
+          tooltip: l.save,
         ),
-      ),
+      ],
+      slivers: [
+        numericField(
+          controller: cacheSizeController, 
+          label: l.cacheSize, 
+          icon: CupertinoIcons.number,
+          helper: l.inBytes, 
+          error: cacheSizeError, 
+          onChanged: (value) {
+            if (int.tryParse(value) != null) {
+              setState(() => cacheSizeError = null);
+            }
+            else {
+              setState(() => cacheSizeError = l.valueNotNumber);
+            }
+            checkValidData();
+          }
+        ),
+        numericField(
+          controller: overrideMinTtlController, 
+          label: l.overrideMinimumTtl, 
+          icon: CupertinoIcons.timer,
+          helper: l.overrideMinimumTtlDescription, 
+          error: overrideMinTtlError, 
+          onChanged: (value) {
+            if (int.tryParse(value) != null) {
+              setState(() => overrideMinTtlError = null);
+            }
+            else {
+              setState(() => overrideMinTtlError = l.valueNotNumber);
+            }
+            checkValidData();
+          }
+        ),
+        numericField(
+          controller: overrideMaxTtlController, 
+          label: l.overrideMaximumTtl, 
+          icon: CupertinoIcons.timer,
+          helper: l.overrideMaximumTtlDescription, 
+          error: overrideMaxTtlError, 
+          onChanged: (value) {
+            if (int.tryParse(value) != null) {
+              setState(() => overrideMaxTtlError = null);
+            }
+            else {
+              setState(() => overrideMaxTtlError = l.valueNotNumber);
+            }
+            checkValidData();
+          }
+        ),
+        SliverToBoxAdapter(
+          child: AppleListSection(
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            children: [
+              AppleSwitchListTile(
+                icon: CupertinoIcons.arrow_2_circlepath,
+                iconColor: p.orange,
+                value: optimisticCache, 
+                onChanged: (value) => setState(() => optimisticCache = value), 
+                title: l.optimisticCaching,
+                subtitle: l.optimisticCachingDescription,
+              ),
+            ],
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 24),
+            child: Center(
+              // Emptied the way everything else here is emptied: a button in
+              // the colour of what it gives up, opening the same question.
+              child: AppleFormButton(
+                label: l.clearDnsCache,
+                background: p.red,
+                foreground: Colors.white,
+                onPressed: () => showDialog(
+                  context: context, 
+                  builder: (context) => ClearDnsCacheDialog(
+                    onConfirm: clearCache
+                  )
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

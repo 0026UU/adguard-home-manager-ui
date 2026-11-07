@@ -130,6 +130,12 @@ class _ServerInformationState extends State<ServerInformation> {
             child: AppleEmptyState(
               icon: CupertinoIcons.exclamationmark_triangle,
               title: l.serverInfoNotLoaded,
+              action: AppleFormButton(
+                label: l.refresh,
+                background: p.tint,
+                foreground: Colors.white,
+                onPressed: fetchServerInfo,
+              ),
               color: p.red,
             ),
           ),
@@ -192,8 +198,12 @@ class _ServerInformationState extends State<ServerInformation> {
                   ),
                 if (registered != null)
                   AppleListTile(
+                    // A bare "9" under "Clients" reads as a second, smaller
+                    // count of the devices the overview already told: these
+                    // are the entries written in the configuration, which is
+                    // the set the devices list calls custom settings.
                     title: l.clients,
-                    value: registered.toString(),
+                    value: l.customSettingsCount(registered),
                     showChevron: false,
                   ),
               ],

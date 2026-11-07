@@ -8,10 +8,18 @@ import 'package:adguard_home_manager/screens/logs/filters/added_client_id_select
 import 'package:adguard_home_manager/screens/logs/filters/clients_modal.dart';
 import 'package:adguard_home_manager/screens/logs/filters/logs_filters_modal.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
-import 'package:adguard_home_manager/widgets/custom_checkbox_list_tile.dart';
-import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
 
 import 'logs_sheets_harness.dart';
+
+/// Whether the clients sheet draws this row as chosen: the design layer ticks
+/// it on the trailing edge instead of filling a box.
+bool ticked(String title) => find
+    .descendant(
+      of: find.widgetWithText(AppleListTile, title),
+      matching: find.byIcon(CupertinoIcons.checkmark),
+    )
+    .evaluate()
+    .isNotEmpty;
 
 void main() {
   late AppLocalizations l;
@@ -70,7 +78,7 @@ void main() {
 
     final applied = harness.logs.appliedFilters;
     expect(applied.statuses, [LogStatus.blocked]);
-    expect(applied.clients, ['192.168.1.2']);
+    expect(applied.clients, ['device-2']);
     expect(applied.timeRange, LogTimeRange.sevenDays);
     expect(applied.reasons, ['FilteredBlackList', 'FilteredBlockedService']);
     expect(tester.takeException(), isNull);
@@ -111,7 +119,7 @@ void main() {
     harness.logs.setAppliedFilters(AppliedFiters(
       statuses: const [LogStatus.blocked, LogStatus.allowed],
       searchText: 'example.com',
-      clients: const ['192.168.1.2'],
+      clients: const ['device-2'],
       timeRange: LogTimeRange.sevenDays,
     ));
 
@@ -182,23 +190,23 @@ void main() {
     expect(find.byType(AppleSegmented), findsOneWidget);
     expect(find.text(l.selectClientsFiltersInfo), findsOneWidget);
     // Two auto clients, each with its address as the title.
-    expect(find.byType(CustomCheckboxListTile), findsNWidgets(2));
+    expect(find.byType(AppleListTile), findsNWidgets(2));
     expect(find.text('192.168.1.1'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('192.168.1.2'));
     await tester.tap(find.text('192.168.1.2'));
     await tester.pumpAndSettle();
 
-    expect(harness.logs.selectedClients, ['192.168.1.2']);
-    expect(
-        tester
-            .widget<CupertinoCheckbox>(find.byType(CupertinoCheckbox).at(1))
-            .value,
-        true);
+    expect(harness.logs.selectedClients, ['device-2']);
+    expect(ticked('192.168.1.2'), isTrue);
+    expect(ticked('192.168.1.1'), isFalse);
 
+    await tester.ensureVisible(find.text('192.168.1.2'));
     await tester.tap(find.text('192.168.1.2'));
     await tester.pumpAndSettle();
 
     expect(harness.logs.selectedClients, isEmpty);
+    expect(ticked('192.168.1.2'), isFalse);
     expect(tester.takeException(), isNull);
   });
 
@@ -215,9 +223,9 @@ void main() {
     await tester.tap(find.text(l.added));
     await tester.pumpAndSettle();
 
-    // The added tab has no checkboxes; it asks which id to filter by.
-    expect(find.byType(CustomCheckboxListTile), findsNothing);
-    expect(find.byType(CustomListTile), findsNWidgets(1));
+    // The added tab has no ticks; it asks which id to filter by.
+    expect(find.byIcon(CupertinoIcons.checkmark), findsNothing);
+    expect(find.byType(AppleListTile), findsNWidgets(1));
     expect(find.text('10.0.0.0, aa:bb:cc:dd:ee:ff'), findsOneWidget);
 
     await tester.tap(find.text(l.select));

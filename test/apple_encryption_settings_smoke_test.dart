@@ -6,16 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:adguard_home_manager/functions/base64.dart';
 import 'package:adguard_home_manager/functions/format_time.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
-import 'package:adguard_home_manager/screens/settings/encryption/custom_text_field.dart';
 import 'package:adguard_home_manager/screens/settings/encryption/encryption.dart';
-import 'package:adguard_home_manager/screens/settings/encryption/master_switch.dart';
 import 'package:adguard_home_manager/screens/settings/encryption/reset_settings_modal.dart';
-import 'package:adguard_home_manager/screens/settings/encryption/status.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
-import 'package:adguard_home_manager/widgets/custom_checkbox_list_tile.dart';
-import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
-import 'package:adguard_home_manager/widgets/custom_switch_list_tile.dart';
-import 'package:adguard_home_manager/widgets/section_label.dart';
 
 import 'encryption_settings_harness.dart';
 
@@ -91,13 +84,6 @@ void main() {
     expect(find.byType(CheckboxListTile), findsNothing);
     expect(find.byType(Switch), findsNothing);
     expect(find.byType(Card), findsNothing);
-    expect(find.byType(CustomListTile), findsNothing);
-    expect(find.byType(CustomSwitchListTile), findsNothing);
-    expect(find.byType(CustomCheckboxListTile), findsNothing);
-    expect(find.byType(SectionLabel), findsNothing);
-    expect(find.byType(EncryptionMasterSwitch), findsNothing);
-    expect(find.byType(EncryptionTextField), findsNothing);
-    expect(find.byType(Status), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.byIcon(Icons.save), findsNothing);
     expect(find.byIcon(Icons.restore_rounded), findsNothing);

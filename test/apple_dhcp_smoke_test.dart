@@ -24,6 +24,8 @@ import 'package:adguard_home_manager/screens/settings/dhcp/dhcp_leases.dart';
 import 'package:adguard_home_manager/screens/settings/dhcp/dhcp_not_available.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+import 'surface.dart';
+
 /// DHCP data served to the screen without touching the API client.
 class _StubDhcp extends DhcpProvider {
   _StubDhcp(this.data, {this.succeeds = true, this.blocks = false});
@@ -162,8 +164,7 @@ Future<void> _pump(
 }) async {
   SharedPreferences.setMockInitialValues({});
   // A tall surface keeps every field of the form inside the viewport.
-  await tester.binding.setSurfaceSize(const Size(800, 1400));
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, const Size(800, 1400));
   final prefs = await SharedPreferences.getInstance();
   final statusProvider = StatusProvider();
   statusProvider.setServerStatusData(
@@ -180,6 +181,7 @@ Future<void> _pump(
         ChangeNotifierProvider<DhcpProvider>(create: (_) => dhcp),
       ],
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         navigatorKey: globalNavigatorKey,
         theme: appleLightTheme(),
         localizationsDelegates: const [
@@ -254,6 +256,37 @@ void main() {
     await tester.pump();
 
     expect(find.text(l.ipNotValid), findsNothing);
+    expect(_saveAction(tester).onPressed, isNotNull);
+  });
+
+  testWidgets('a lease time the server cannot read is refused before the save',
+      (tester) async {
+    await _pump(tester, dhcp: _StubDhcp(_dhcp()));
+
+    final v4Lease = find.widgetWithText(AppleTextField, l.leaseTime).first;
+
+    // The number keyboard lets a user type "3600.5" and the config wants a
+    // whole number of seconds. Saving it anyway threw the exception between
+    // the "Saving settings" sheet opening and the line that closes it, which
+    // left a sheet with no way out.
+    await tester.enterText(v4Lease, '3600.5');
+    await tester.pump();
+
+    expect(find.text(l.leaseTimeNotValid), findsOneWidget);
+    expect(_saveAction(tester).onPressed, isNull);
+
+    await tester.enterText(v4Lease, '7200');
+    await tester.pump();
+
+    expect(find.text(l.leaseTimeNotValid), findsNothing);
+    expect(_saveAction(tester).onPressed, isNotNull);
+
+    // Empty is the one value that is not a number and still legal: the server
+    // keeps its own default for a lease the user did not set.
+    await tester.enterText(v4Lease, '');
+    await tester.pump();
+
+    expect(find.text(l.leaseTimeNotValid), findsNothing);
     expect(_saveAction(tester).onPressed, isNotNull);
   });
 
@@ -366,6 +399,53 @@ void main() {
     expect(find.byType(SliverAppBar), findsOneWidget);
     expect(find.text(l.dhcpNotAvailable), findsOneWidget);
     expect(find.text(l.osServerInstalledIncompatible), findsOneWidget);
+  });
+
+  testWidgets('an IPv6 mistake is kept on the IPv6 fields', (tester) async {
+    await _pump(tester, dhcp: _StubDhcp(_dhcp()));
+
+    // The five IPv4 fields come first, so index five is the IPv6 range start.
+    final ipv6Start = find.byType(TextFormField).at(5);
+    List<String?> errors() => tester
+        .widgetList<AppleTextField>(find.byType(AppleTextField))
+        .map((field) => field.error)
+        .toList();
+
+    await tester.ensureVisible(ipv6Start);
+    await tester.enterText(ipv6Start, 'fe80:1');
+    await tester.pump();
+
+    expect(errors()[5], l.ipNotValid);
+    // An IPv6 typo has no business poisoning the IPv4 row it sits under.
+    expect(errors().sublist(0, 4), [null, null, null, null]);
+    expect(find.text(l.ipNotValid), findsOneWidget);
+    expect(_saveAction(tester).onPressed, isNull);
+
+    await tester.enterText(ipv6Start, 'fe80::1');
+    await tester.pump();
+
+    expect(find.text(l.ipNotValid), findsNothing);
+    expect(errors().every((error) => error == null), isTrue);
+    expect(_saveAction(tester).onPressed, isNotNull);
+  });
+
+  testWidgets('an interface missing from the report still fills the form',
+      (tester) async {
+    // The server runs DHCP on br0 yet leaves that bridge out of the interface
+    // list, which used to blank the form and hide the save action.
+    await _pump(tester, dhcp: _StubDhcp(_dhcp(interfaceName: 'br0')));
+
+    expect(tester.takeException(), isNull);
+    expect(find.text(l.neededSelectInterface), findsNothing);
+    expect(find.text('br0'), findsOneWidget);
+
+    final fields =
+        tester.widgetList<TextFormField>(find.byType(TextFormField)).toList();
+    expect(fields, hasLength(8));
+    expect(fields[0].controller!.text, '192.168.1.50');
+    expect(fields[1].controller!.text, '192.168.1.60');
+    expect(fields[3].controller!.text, '192.168.1.1');
+    expect(_saveAction(tester).onPressed, isNotNull);
   });
 
   testWidgets('static leases open their own Apple list', (tester) async {

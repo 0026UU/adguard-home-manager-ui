@@ -10,14 +10,16 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
 import 'package:adguard_home_manager/screens/logs/details/log_details_screen.dart';
+import 'package:adguard_home_manager/screens/logs/filters/logs_filters_modal.dart';
 import 'package:adguard_home_manager/screens/logs/log_tile.dart';
-import 'package:adguard_home_manager/screens/logs/logs_list_appbar.dart';
 
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/functions/number_format.dart';
+import 'package:adguard_home_manager/functions/retention_label.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
+import 'package:adguard_home_manager/models/applied_filters.dart';
 import 'package:adguard_home_manager/models/logs.dart';
 import 'package:adguard_home_manager/models/querylog_config.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
@@ -32,11 +34,18 @@ class LogsListWidget extends StatefulWidget {
   final bool twoColumns;
   final void Function(Log) onLogSelected;
 
+  /// Client ids to narrow the query log to before the first fetch, when the
+  /// screen was pushed with a device already picked (the count on a device
+  /// row). They go through the same applied filters the sheet edits, so the
+  /// sheet opens showing them and can clear them.
+  final List<String>? initialClients;
+
   const LogsListWidget({
     super.key,
     required this.twoColumns,
     required this.selectedLog,
     required this.onLogSelected,
+    this.initialClients,
   });
 
   @override
@@ -87,10 +96,9 @@ class _LogsListWidgetState extends State<LogsListWidget> {
     if (interval <= 0) return;
 
     final localizations = AppLocalizations.of(context)!;
-    final hours = interval ~/ Duration.millisecondsPerHour;
     setState(() {
       retention = localizations.retainedFor(
-        hours > 0 ? localizations.hours(hours) : localizations.minutes(1),
+        retentionLabel(localizations, interval),
       );
     });
   }
@@ -104,7 +112,7 @@ class _LogsListWidgetState extends State<LogsListWidget> {
       showSnackbar(
         appConfigProvider: appConfigProvider, 
         label: AppLocalizations.of(context)!.couldntGetFilteringStatus, 
-        color: Colors.red
+        color: ApplePalette.of(context).red
       );
     }
   }
@@ -117,8 +125,8 @@ class _LogsListWidgetState extends State<LogsListWidget> {
     if (mounted && result == false) {
       showSnackbar(
         appConfigProvider: appConfigProvider, 
-        label: AppLocalizations.of(context)!.couldntGetFilteringStatus, 
-        color: Colors.red
+        label: AppLocalizations.of(context)!.clientsNotLoaded, 
+        color: ApplePalette.of(context).red
       );
     }
   }
@@ -180,12 +188,58 @@ class _LogsListWidgetState extends State<LogsListWidget> {
       || (log.clientInfo?.name ?? "").toLowerCase().contains(needle);
   }
 
+  /// The chips and the field above the live rows are a promise the rows have
+  /// to keep, so the stream is narrowed with the same rules the query log is:
+  /// the reason the server gave, the device the query came from — by address
+  /// or by the name it is known under — and the window.
+  bool _streamMatches(Log log, AppliedFiters applied, String? query, DateTime? since) {
+    if (applied.reasons.isNotEmpty && !applied.reasons.contains(log.reason)) {
+      return false;
+    }
+
+    if (since != null && !log.time.isAfter(since)) return false;
+
+    if (applied.clients.isNotEmpty
+      && !applied.clients.contains(log.client)
+      && !applied.clients.contains(log.clientInfo?.name)) {
+      return false;
+    }
+
+    return _matches(log, query);
+  }
+
+  /// The stream narrows its own rows, so getting them back means clearing the
+  /// field along with the chips.
+  void _clearStreamFilters() {
+    _searchDebounce?.cancel();
+    _searchController.clear();
+
+    final logsProvider = Provider.of<LogsProvider>(context, listen: false);
+    logsProvider.setSearchText(null);
+    logsProvider.requestResetFilters();
+  }
+
   @override
   void initState() {
     final logsProvider = Provider.of<LogsProvider>(context, listen: false);
 
     _liveLogsProvider = Provider.of<LiveLogsProvider>(context, listen: false);
 
+    // The tab is rebuilt whenever it comes back but the provider keeps the
+    // term, so the box has to start from it: otherwise the list stays
+    // narrowed by a filter the user can neither see nor clear.
+    final term = logsProvider.searchText;
+    if (term != null && term.isNotEmpty) _searchController.text = term;
+
+    // Pushed from a device row with a client already picked: prime the applied
+    // filters before the first fetch, so the list narrows at once, the chip
+    // under the title shows it, and the sheet opens with it selected. Priming
+    // does not notify — this widget is mid-build — and the fetch below reads
+    // what was primed.
+    final initialClients = widget.initialClients;
+    if (initialClients != null && initialClients.isNotEmpty) {
+      logsProvider.primeClientFilter(initialClients);
+    }
     logsProvider.fetchLogs(inOffset: 0);
     fetchFilteringRules();
     fetchClients();
@@ -209,10 +263,26 @@ class _LogsListWidgetState extends State<LogsListWidget> {
     final palette = ApplePalette.of(context);
 
     final logs = logsProvider.logsData?.data ?? [];
+    final applied = logsProvider.appliedFilters;
     final query = logsProvider.searchText;
+
+    // The window is counted from the newest query the stream has read instead
+    // of from the phone's clock, for the same reason the stream's anchor is:
+    // the two clocks do not agree.
+    final newest = liveLogsProvider.newestTime;
+    final since = newest == null ? null : applied.since(newest);
+
     final shown = _live
-      ? liveLogsProvider.logs.where((log) => _matches(log, query)).toList()
+      ? liveLogsProvider.logs
+          .where((log) => _streamMatches(log, applied, query, since))
+          .toList()
       : logs;
+
+    // Something on screen is throwing rows away, which the empty state has to
+    // admit instead of pretending nothing asked the server.
+    final narrowed = applied.statuses.isNotEmpty
+      || applied.clients.isNotEmpty
+      || (query != null && query.isNotEmpty);
 
     Widget fill(Widget child) => SliverFillRemaining(
       hasScrollBody: false,
@@ -264,18 +334,49 @@ class _LogsListWidgetState extends State<LogsListWidget> {
       ),
     );
 
+    // The stream is quiet for two different reasons and the copy has to say
+    // which: nothing has asked the server since the view opened, or the rows
+    // it saw were thrown away by what is on screen.
+    Widget liveEmpty() {
+      if (narrowed) {
+        return AppleEmptyState(
+          icon: CupertinoIcons.line_horizontal_3_decrease,
+          title: localizations.noLogsDisplay,
+          message: localizations.noLiveLogsMatchingFilters,
+          action: SizedBox(
+            width: 180,
+            child: AppleButton.secondary(
+              label: localizations.resetFilters,
+              onPressed: _clearStreamFilters,
+            ),
+          ),
+          color: palette.label3,
+        );
+      }
+
+      final statusProvider = Provider.of<StatusProvider>(context);
+      // An answer the server never gave is not an answer of "paused": reading
+      // a missing status as switched-off sends the user off to turn on a
+      // protection the app has no evidence was ever turned off.
+      final statusKnown = statusProvider.serverStatus != null &&
+          statusProvider.loadStatus != LoadStatus.error;
+
+      return AppleEmptyState(
+        icon: CupertinoIcons.bolt,
+        title: localizations.hereWillAppearRealtimeLogs,
+        message: !statusKnown
+          ? localizations.protectionUnknown
+          : statusProvider.serverStatus!.generalEnabled
+            ? localizations.protectionRunning
+            : localizations.protectionPaused,
+        color: palette.label3,
+      );
+    }
+
     List<Widget> rows(BuildContext context) {
       if (_live) {
         if (shown.isEmpty) {
-          return [
-            fill(
-              AppleEmptyState(
-                icon: CupertinoIcons.bolt,
-                title: localizations.hereWillAppearRealtimeLogs,
-                color: palette.label3,
-              ),
-            )
-          ];
+          return [fill(liveEmpty())];
         }
 
         return [
@@ -298,6 +399,14 @@ class _LogsListWidgetState extends State<LogsListWidget> {
             AppleEmptyState(
               icon: CupertinoIcons.exclamationmark_triangle,
               title: localizations.logsNotLoaded,
+              // A page that shows nothing else hides the pull gesture, so the
+              // failure has to offer the way out on its own.
+              action: AppleFormButton(
+                label: localizations.refresh,
+                background: palette.tint,
+                foreground: onTint(palette.tint),
+                onPressed: refreshLogs,
+              ),
               color: palette.orange,
             ),
           )
@@ -310,9 +419,13 @@ class _LogsListWidgetState extends State<LogsListWidget> {
             AppleEmptyState(
               icon: CupertinoIcons.doc_text,
               title: localizations.noLogsDisplay,
-              message: logsProvider.logsOlderThan != null
-                ? localizations.noLogsThatOld
-                : null,
+              // Same rule as the stream: say which of the two reasons left the
+              // list empty, rather than making the user guess.
+              message: narrowed
+                ? localizations.noLogsMatchingFilters
+                : logsProvider.logsOlderThan != null
+                  ? localizations.noLogsThatOld
+                  : null,
               color: palette.label3,
             ),
           )
@@ -346,53 +459,111 @@ class _LogsListWidgetState extends State<LogsListWidget> {
       ];
     }
 
-    Widget scroll = Builder(
-      builder: (context) => CustomScrollView(
-        slivers: [
-          SliverOverlapInjector(
-            handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+    final width = MediaQuery.of(context).size.width;
+
+    // The filter sheet is how a failed load is fixed, so the way in stays open
+    // even when the query log could not be read.
+    void openFilersModal() {
+      if (width > 700 || !(Platform.isAndroid || Platform.isIOS)) {
+        showDialog(
+          context: context,
+          builder: (context) => const LogsFiltersModal(
+            dialog: true,
           ),
-          controls(),
-          ...rows(context),
-        ],
-      ),
-    );
+          barrierDismissible: false,
+        );
+      } else {
+        showModalBottomSheet(
+          context: context,
+          useRootNavigator: true,
+          builder: (context) => const LogsFiltersModal(
+            dialog: false,
+          ),
+          backgroundColor: Colors.transparent,
+          isScrollControlled: true,
+        );
+      }
+    }
+
+    // The search lives in the field under the title now, so only the filters
+    // that have no home of their own get a chip.
+    final hasFilters = applied.statuses.isNotEmpty || applied.clients.isNotEmpty;
 
     // Only the stored log is paginated, and the stream needs a pull only when
     // it is not refreshing on its own.
-    if (!_live ||
+    final pullEnabled = !_live ||
         !Provider.of<AppConfigProvider>(context, listen: false)
-            .autoRefreshLiveLogs) {
-      scroll = RefreshIndicator(
-        onRefresh: refreshLogs,
-        displacement: 110,
-        child: NotificationListener(
-          onNotification: scrollListener,
-          child: scroll,
-        ),
-      );
-    }
+            .autoRefreshLiveLogs;
 
+    // One scroll view for the whole page: the collapsing large title comes from
+    // [AppleScreen], and the segment, field and rows below keep their place
+    // while only the rows change as the data arrives.
     return ScaffoldMessenger(
       key: widget.twoColumns ? _scaffoldMessengerKey : null,
-      child: Scaffold(
-        backgroundColor: palette.window,
-        body: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) => [
-            SliverOverlapAbsorber(
-              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-              sliver: LogsListAppBar(
-                innerBoxIsScrolled: innerBoxIsScrolled, 
-                subtitle: _live ? localizations.trackingQueries : retention,
-                subtitleDot: _live ? palette.green : palette.tint,
-                onRefresh: refreshLogs,
+      child: AppleScreen(
+        // Pushed from a device row or the overview the page leaves the tab bar
+        // behind, so the capsule is the only way home; as a tab it can't pop.
+        leading: Navigator.canPop(context)
+            ? AppleBackButton(
+                label: localizations.back,
+                onPressed: () => Navigator.pop(context),
               )
+            : null,
+        title: localizations.logs,
+        subtitle: _live ? localizations.trackingQueries : retention,
+        subtitleDot: _live ? palette.green : palette.tint,
+        // The bar button always asks the server again, whatever half of the
+        // page is showing; the pull gesture is added below only when the rows
+        // are not already refreshing on their own.
+        onRefresh: refreshLogs,
+        actions: [
+          IconButton(
+            onPressed: openFilersModal,
+            icon: const Icon(CupertinoIcons.slider_horizontal_3),
+            tooltip: localizations.filters,
+          ),
+        ],
+        header: hasFilters
+          ? ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final status in applied.statuses)
+                  AppleFilterChip(
+                    color: logStatusColor(palette, status),
+                    label: localizations.onlyStatus(
+                      logStatusLabel(localizations, status),
+                    ),
+                    onDeleted: () => logsProvider.removeAppliedStatus(status),
+                  ),
+                if (applied.clients.isNotEmpty)
+                  AppleFilterChip(
+                    icon: CupertinoIcons.person_2,
+                    label: applied.clients.length == 1
+                      ? applied.clients[0]
+                      : "${applied.clients.length} ${localizations.clients}",
+                    onDeleted: () => logsProvider.removeAppliedClients(),
+                  ),
+              ],
             )
-          ],
-          body: SafeArea(
-            top: false,
-            bottom: false,
-            child: scroll,
+          : null,
+        body: SafeArea(
+          top: false,
+          bottom: false,
+          child: NotificationListener(
+            onNotification: scrollListener,
+            child: Builder(
+              builder: (context) => CustomScrollView(
+                slivers: [
+                  SliverOverlapInjector(
+                    handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+                  ),
+                  if (pullEnabled)
+                    CupertinoSliverRefreshControl(onRefresh: refreshLogs),
+                  controls(),
+                  ...rows(context),
+                ],
+              ),
+            ),
           ),
         ),
       ),

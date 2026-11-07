@@ -1,16 +1,17 @@
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import 'package:adguard_home_manager/classes/http_override.dart';
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/constants/languages.dart';
 import 'package:adguard_home_manager/services/platform_locale.dart';
 import 'package:adguard_home_manager/config/home_top_items_default_order.dart';
-import 'package:adguard_home_manager/models/github_release.dart';
 import 'package:adguard_home_manager/models/app_log.dart';
 
 class AppConfigProvider with ChangeNotifier {
@@ -21,8 +22,6 @@ class AppConfigProvider with ChangeNotifier {
   });
 
   PackageInfo? _appInfo;
-  AndroidDeviceInfo? _androidDeviceInfo;
-  IosDeviceInfo? _iosDeviceInfo;
 
   int _selectedScreen = 0;
 
@@ -30,17 +29,10 @@ class AppConfigProvider with ChangeNotifier {
 
   bool _showingSnackbar = false;
 
-  bool _supportsDynamicTheme = true;
   int _selectedTheme = 0;
-  bool _useDynamicColor = true;
-
-  /// Apple (iOS) design language. On by default; turning it off restores the
-  /// previous Material 3 theme and navigation chrome.
-  bool _useAppleStyle = true;
 
   /// BCP 47 tag, or null to follow the system language.
   String? _selectedLanguage;
-  int _staticColor = 0;
   bool _useThemeColorForStatus = false;
 
   int _selectedClientsTab = 0;
@@ -55,31 +47,17 @@ class AppConfigProvider with ChangeNotifier {
 
   bool _hideZeroValues = false;
 
-  bool _combinedChartHome = false;
-
   /// Whether the live view keeps pulling the query log on its own.
   bool _autoRefreshLiveLogs = true;
-
-  String? _doNotRememberVersion;
-
-  GitHubRelease? _appUpdatesAvailable;
 
   PackageInfo? get getAppInfo {
     return _appInfo;
   }
 
-  AndroidDeviceInfo? get androidDeviceInfo {
-    return _androidDeviceInfo;
-  }
-
-  IosDeviceInfo? get iosDeviceInfo {
-    return _iosDeviceInfo;
-  }
-
   ThemeMode get selectedTheme {
     switch (_selectedTheme) {
       case 0:
-        return SchedulerBinding.instance.window.platformBrightness == Brightness.light 
+        return SchedulerBinding.instance.platformDispatcher.platformBrightness == Brightness.light 
           ? ThemeMode.light 
           : ThemeMode.dark;
 
@@ -92,10 +70,6 @@ class AppConfigProvider with ChangeNotifier {
       default:
         return ThemeMode.light;
     }
-  }
-
-  bool get supportsDynamicTheme {
-    return _supportsDynamicTheme;
   }
 
   int get selectedThemeNumber {
@@ -135,40 +109,16 @@ class AppConfigProvider with ChangeNotifier {
     return _showingSnackbar;
   }
 
-  bool get useDynamicColor {
-    return _useDynamicColor;
-  }
-
-  bool get useAppleStyle {
-    return _useAppleStyle;
-  }
-
-  int get staticColor {
-    return _staticColor;
-  }
-
   bool get useThemeColorForStatus {
     return _useThemeColorForStatus;
-  }
-
-  bool get combinedChartHome {
-    return _combinedChartHome;
   }
 
   bool get autoRefreshLiveLogs {
     return _autoRefreshLiveLogs;
   }
 
-  String? get doNotRememberVersion {
-    return _doNotRememberVersion;
-  }
-
   int? get selectedSettingsScreen {
     return _selectedSettingsScreen;
-  }
-
-  GitHubRelease? get appUpdatesAvailable {
-    return _appUpdatesAvailable;
   }
 
   List<HomeTopItems> get homeTopItemsOrder {
@@ -179,20 +129,8 @@ class AppConfigProvider with ChangeNotifier {
     return _hideServerAddress;
   }
 
-  void setSupportsDynamicTheme(bool value) {
-    _supportsDynamicTheme = value;
-  }
-
   void setAppInfo(PackageInfo appInfo) {
     _appInfo = appInfo;
-  }
-
-  void setAndroidInfo(AndroidDeviceInfo deviceInfo) {
-    _androidDeviceInfo = deviceInfo;
-  }
-
-  void setIosInfo(IosDeviceInfo deviceInfo) {
-    _iosDeviceInfo = deviceInfo;
   }
 
   void setSelectedClientsTab(int tab) {
@@ -222,15 +160,15 @@ class AppConfigProvider with ChangeNotifier {
     }
   }
 
-  void setAppUpdatesAvailable(GitHubRelease? value) {
-    _appUpdatesAvailable = value;
-    notifyListeners();
-  }
-
   Future<bool> setOverrideSslCheck(bool status) async {
     try {
       sharedPreferencesInstance.setBool('overrideSslCheck', status);
       _overrideSslCheck = status;
+      // [main] installs this override once, at startup. Reassigning it here is
+      // what makes the switch bite on the next request instead of only after
+      // the app has been restarted, which is the case a self-signed server
+      // needs it for.
+      HttpOverrides.global = status ? MyHttpOverrides() : null;
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
@@ -304,58 +242,10 @@ class AppConfigProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> setUseAppleStyle(bool value) async {
-    try {
-      sharedPreferencesInstance.setBool('useAppleStyle', value);
-      _useAppleStyle = value;
-      notifyListeners();
-      return true;
-    } catch (e, stackTrace) {
-      Sentry.captureException(e, stackTrace: stackTrace);
-      return false;
-    }
-  }
-
-  Future<bool> setUseDynamicColor(bool value) async {
-    try {
-      sharedPreferencesInstance.setBool('useDynamicColor', value);
-      _useDynamicColor = value;
-      notifyListeners();
-      return true;
-    } catch (e, stackTrace) {
-      Sentry.captureException(e, stackTrace: stackTrace);
-      return false;
-    }
-  }
-
-  Future<bool> setCombinedChartHome(bool value) async {
-    try {
-      sharedPreferencesInstance.setBool('combinedChart', value);
-      _combinedChartHome = value;
-      notifyListeners();
-      return true;
-    } catch (e, stackTrace) {
-      Sentry.captureException(e, stackTrace: stackTrace);
-      return false;
-    }
-  }
-
   Future<bool> setAutoRefreshLiveLogs(bool value) async {
     try {
       sharedPreferencesInstance.setBool('autoRefreshLiveLogs', value);
       _autoRefreshLiveLogs = value;
-      notifyListeners();
-      return true;
-    } catch (e, stackTrace) {
-      Sentry.captureException(e, stackTrace: stackTrace);
-      return false;
-    }
-  }
-
-  Future<bool> setStaticColor(int value) async {
-    try {
-      sharedPreferencesInstance.setInt('staticColor', value);
-      _staticColor = value;
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
@@ -400,23 +290,13 @@ class AppConfigProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> setDoNotRememberVersion(String value) async {
-    final updated = await sharedPreferencesInstance.setString('doNotRememberVersion', value);
-    return updated;
-  }
-  
   void saveFromSharedPreferences() {
     _selectedTheme = sharedPreferencesInstance.getInt('selectedTheme') ?? 0;
     _selectedLanguage = sharedPreferencesInstance.getString('selectedLanguage');
     _overrideSslCheck = sharedPreferencesInstance.getBool('overrideSslCheck') ?? false;
     _hideZeroValues = sharedPreferencesInstance.getBool('hideZeroValues') ?? false;
-    _useDynamicColor = sharedPreferencesInstance.getBool('useDynamicColor') ?? true;
-    _useAppleStyle = sharedPreferencesInstance.getBool('useAppleStyle') ?? true;
-    _staticColor = sharedPreferencesInstance.getInt('staticColor') ?? 0;
     _useThemeColorForStatus =
         sharedPreferencesInstance.getBool('useThemeColorForStatus') ?? false;
-    _doNotRememberVersion = sharedPreferencesInstance.getString('doNotRememberVersion');
-    _combinedChartHome = sharedPreferencesInstance.getBool('combinedChart') ?? false;
     _autoRefreshLiveLogs =
         sharedPreferencesInstance.getBool('autoRefreshLiveLogs') ?? true;
     _hideServerAddress = sharedPreferencesInstance.getBool('hideServerAddress') ?? false;
@@ -434,12 +314,9 @@ class AppConfigProvider with ChangeNotifier {
               case 'recurrentClients':
                 return HomeTopItems.recurrentClients;
 
-              case 'topUpstreams':
-                return HomeTopItems.topUpstreams;
-
-              case 'avgUpstreamResponseTime':
-                return HomeTopItems.avgUpstreamResponseTime;
-
+              // A stored order can still carry the names of rankings an older
+              // build put on the dashboard. They have no segment to show now,
+              // so they drop out here rather than reaching the card.
               default:
                 return null;
             }

@@ -11,6 +11,8 @@ import 'package:adguard_home_manager/screens/clients/client/client_screen.dart';
 import 'package:adguard_home_manager/screens/clients/client/safe_search_modal.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+import 'surface.dart';
+
 // The add/edit form of one device. Nothing here reaches a server: the entry
 // handed to "save" is recorded, and the delete path is only opened as far as
 // its confirmation.
@@ -22,8 +24,7 @@ Future<void> _pump(
   required void Function(Client) onConfirm,
   Size surface = const Size(390, 844),
 }) async {
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, surface);
 
   final clients = ClientsProvider();
   addTearDown(clients.dispose);
@@ -32,6 +33,7 @@ Future<void> _pump(
     ChangeNotifierProvider<ClientsProvider>.value(
       value: clients,
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         theme: appleLightTheme(),
         locale: const Locale('en'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -114,6 +116,39 @@ void main() {
     expect(saved.single.useGlobalSettings, isTrue);
     expect(saved.single.filteringEnabled, isFalse);
     expect(find.text(l.errors), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the form starts under the bar, and a refused save goes back there',
+      (tester) async {
+    await _pump(tester, onConfirm: (_) {});
+
+    // The full screen form scrolls inside the nested body of [AppleScreen],
+    // which paints the pinned bar over the content unless the body gives the
+    // overlap back: the name field used to be hidden by the large title.
+    final bar = tester.getRect(find.byType(AppleLargeTitle));
+    expect(tester.getRect(find.byType(AppleTextField).first).top,
+        greaterThanOrEqualTo(bar.bottom));
+
+    // Scroll the top of the form away and ask to save an empty one. Both
+    // halves of the nested scroll view have to come back for the reasons to
+    // be read: growing the bar alone leaves them off screen.
+    final name = find.byType(AppleTextField).first;
+    await tester.drag(name, const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(find.text(l.errors), findsNothing);
+    expect(tester.getRect(name).top, lessThan(bar.bottom),
+        reason: 'the drag should have scrolled the form under the bar');
+
+    await tester.tap(find.text(l.save));
+    await tester.pumpAndSettle();
+
+    expect(find.text(l.errors), findsOneWidget);
+    final collapsed = tester.getRect(find.byType(AppleLargeTitle));
+    expect(tester.getRect(find.text(l.errors)).top,
+        greaterThanOrEqualTo(collapsed.bottom));
+    expect(tester.getRect(name).top, greaterThanOrEqualTo(collapsed.bottom),
+        reason: 'the name field is the one the save was refused for');
     expect(tester.takeException(), isNull);
   });
 

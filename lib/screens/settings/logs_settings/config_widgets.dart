@@ -1,14 +1,19 @@
-import 'package:adguard_home_manager/constants/regexps.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 
+import 'package:adguard_home_manager/constants/regexps.dart';
 import 'package:adguard_home_manager/screens/settings/logs_settings/logs_settings.dart';
-import 'package:adguard_home_manager/widgets/section_label.dart';
-import 'package:adguard_home_manager/widgets/master_switch.dart';
-import 'package:adguard_home_manager/widgets/custom_checkbox_list_tile.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+/// The draftable sections of the query-log page.
+///
+/// Returned as slivers, because the page is one [AppleScreen] scroll rather
+/// than a list of its own: the host owns the pull handle, the side margins and
+/// the bottom spacer, and these sections have to fall into the same rhythm as
+/// the rest of the settings hub.
 class LogsConfigOptions extends StatelessWidget {
   final bool generalSwitch;
   final void Function(bool) updateGeneralSwitch;
@@ -46,14 +51,16 @@ class LogsConfigOptions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const Uuid uuid = Uuid();
-    
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
+
     final List<String> dropdownItemTranslation = [
-      AppLocalizations.of(context)!.custom,
-      AppLocalizations.of(context)!.hours6,
-      AppLocalizations.of(context)!.hours24,
-      AppLocalizations.of(context)!.days7,
-      AppLocalizations.of(context)!.days30,
-      AppLocalizations.of(context)!.days90,
+      l.custom,
+      l.hours6,
+      l.hours24,
+      l.days7,
+      l.days30,
+      l.days90,
     ];
 
     void validateDomain(String value, String id) {
@@ -75,137 +82,102 @@ class LogsConfigOptions extends StatelessWidget {
         }).toList()
       );
     }
-print(retentionTime);
-    return ListView(
+
+    return SliverList.list(
       children: [
-        const SizedBox(height: 16),
-        MasterSwitch(
-          label: AppLocalizations.of(context)!.enableLog, 
-          value: generalSwitch, 
-          onChange: updateGeneralSwitch
+        AppleListSection(
+          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          children: [
+            AppleSwitchListTile(
+              title: l.enableLog,
+              value: generalSwitch,
+              onChanged: updateGeneralSwitch,
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-        CustomCheckboxListTile(
-          value: anonymizeClientIp, 
-          onChanged: (_) => updateAnonymizeClientIp(!anonymizeClientIp),
-          title: AppLocalizations.of(context)!.anonymizeClientIp,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        AppleListSection(
+          margin: const EdgeInsets.fromLTRB(16, 22, 16, 0),
+          children: [
+            AppleSwitchListTile(
+              title: l.anonymizeClientIp,
+              value: anonymizeClientIp,
+              onChanged: updateAnonymizeClientIp,
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: DropdownButtonFormField(
+          padding: const EdgeInsets.fromLTRB(16, 22, 16, 0),
+          child: DropdownButtonFormField<String>(
             items: retentionItems.asMap().entries.map((item) => DropdownMenuItem(
               value: item.value,
               child: Text(dropdownItemTranslation[item.key]),
             )).toList(),
             initialValue: retentionTime,
+            isExpanded: true,
+            style: AppleInput.style(context),
             onChanged: (value) => updateRetentionTime(value.toString()),
-            decoration: InputDecoration(
-              border: const OutlineInputBorder(
-                borderRadius: BorderRadius.all(
-                  Radius.circular(10)
-                )
-              ),
-              label: Text(AppLocalizations.of(context)!.retentionTime)
-            ),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: const BorderRadius.all(Radius.circular(14)),
+            decoration: AppleInput.decoration(context, label: l.retentionTime),
           ),
         ),
         if (retentionTime == "custom") Padding(
-          padding: const EdgeInsets.only(top: 24, left: 16, right: 16),
-          child: TextFormField(
+          padding: const EdgeInsets.fromLTRB(16, 22, 16, 0),
+          child: AppleTextField(
             controller: customTimeController,
             onChanged: validateCustomTime,
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.schedule_rounded),
-              border: const OutlineInputBorder(
-                borderRadius: BorderRadius.all(
-                  Radius.circular(10)
-                )
-              ),
-              labelText: AppLocalizations.of(context)!.customTimeInHours,
-              errorText: customTimeError
-            ),
+            label: l.customTimeInHours,
+            error: customTimeError,
+            icon: CupertinoIcons.clock,
             keyboardType: TextInputType.number,
+            padding: EdgeInsets.zero,
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.only(top: 24, bottom: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              SectionLabel(
-                label: AppLocalizations.of(context)!.ignoredDomains,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+        AppleListSection(
+          title: l.ignoredDomains,
+          // The page keeps its big empty state for "could not be read", so an
+          // empty list gets the quieter caption under the card.
+          footer:
+              ignoredDomainsControllers.isEmpty ? l.noIgnoredDomainsAdded : null,
+          headerTrailing: AppleHeaderAction(
+            label: l.addItem,
+            onPressed: () => updateIgnoredDomainsControllers([
+              ...ignoredDomainsControllers,
+              DomainListItemController(
+                id: uuid.v4(),
+                controller: TextEditingController(),
+                error: false
               ),
+            ]),
+          ),
+          margin: const EdgeInsets.fromLTRB(16, 22, 16, 0),
+          children: [
+            for (final controller in ignoredDomainsControllers)
               Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: IconButton(
-                  onPressed: () => updateIgnoredDomainsControllers([
-                    ...ignoredDomainsControllers,
-                    DomainListItemController(
-                      id: uuid.v4(), 
-                      controller: TextEditingController(),
-                      error: false
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: AppleTextField(
+                        controller: controller.controller,
+                        onChanged: (v) => validateDomain(v, controller.id),
+                        label: l.domain,
+                        icon: CupertinoIcons.link,
+                        error: controller.error ? l.invalidDomain : null,
+                        padding: EdgeInsets.zero,
+                      ),
                     ),
-                  ]),
-                  icon: const Icon(Icons.add)
-                ),
-              )
-            ],
-          ),
-        ),
-        if (ignoredDomainsControllers.isNotEmpty) ...ignoredDomainsControllers.map((controller) => Padding(
-          padding: const EdgeInsets.only(
-            top: 12, bottom: 12, left: 16, right: 6
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: controller.controller,
-                  onChanged: (v) => validateDomain(v, controller.id),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.link_rounded),
-                    border: const OutlineInputBorder(
-                      borderRadius: BorderRadius.all(
-                        Radius.circular(10)
-                      )
-                    ),
-                    labelText: AppLocalizations.of(context)!.domain,
-                    errorText: controller.error 
-                      ? AppLocalizations.of(context)!.invalidDomain
-                      : null
-                  ),
+                    IconButton(
+                      onPressed: () => updateIgnoredDomainsControllers(
+                        ignoredDomainsControllers.where((e) => e.id != controller.id).toList()
+                      ),
+                      tooltip: l.removeDomain,
+                      icon: Icon(CupertinoIcons.minus_circle, size: 19, color: p.red),
+                    )
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Padding(
-                padding: controller.error
-                  ? const EdgeInsets.only(bottom: 24)
-                  : const EdgeInsets.all(0),
-                child: IconButton(
-                  onPressed: () => updateIgnoredDomainsControllers(
-                    ignoredDomainsControllers.where((e) => e.id != controller.id).toList()
-                  ),
-                  icon: const Icon(Icons.remove_circle_outline_outlined)
-                ),
-              )
-            ],
-          ),
-        )),
-        if (ignoredDomainsControllers.isEmpty) Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Text(
-            AppLocalizations.of(context)!.noIgnoredDomainsAdded,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 18,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
+          ],
         ),
       ],
     );

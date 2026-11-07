@@ -17,6 +17,8 @@ import 'package:adguard_home_manager/providers/status_provider.dart';
 import 'package:adguard_home_manager/screens/logs/details/log_details_screen.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+import 'surface.dart';
+
 Log _log({
   String reason = 'NotFilteredNotFound',
   String? domain = 'ads.example.com',
@@ -89,8 +91,7 @@ Future<_Status> _pump(
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
   status ??= _Status();
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, surface);
   await tester.pumpWidget(
     MultiProvider(
       providers: [
@@ -100,6 +101,7 @@ Future<_Status> _pump(
         ),
       ],
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         navigatorKey: globalNavigatorKey,
         scaffoldMessengerKey: scaffoldMessengerKey,
         theme: appleTheme(brightness),
@@ -146,31 +148,35 @@ void main() {
     l = await AppLocalizations.delegate.load(const Locale('en'));
   });
 
-  testWidgets('sheet has the nine prototype rows and two equal footer actions',
+  testWidgets('sheet has the AdGuard Home rows and two equal footer actions',
       (tester) async {
     await _pump(tester);
     expect(find.byType(AppleSheet), findsOneWidget);
-    expect(find.byType(AppleDetailCard), findsOneWidget);
+    expect(find.byType(AppleDetailCard), findsNWidgets(3));
     expect(find.byType(AppleListSection), findsNothing);
     expect(find.byType(ApplePill), findsOneWidget);
     expect(find.byIcon(CupertinoIcons.globe), findsNothing);
     expect(
       tester.widgetList<AppleDetailRow>(find.byType(AppleDetailRow))
           .map((row) => row.label),
-      [l.status, l.logReason, l.client, l.sourceIp, l.elapsedTime,
-        l.type, l.responseSize, l.ttl, l.time],
+      [l.time, l.date, l.domain, l.type, l.logProtocol,
+        l.status, l.logReason, l.logDetailServedFromCache, l.dnsServer,
+        l.elapsedTime, l.responseCode, l.response,
+        l.logDetailAddress, l.deviceName],
     );
-    for (final label in [l.sourceIp, l.elapsedTime, l.type, l.responseSize, l.ttl]) {
+    for (final label in [l.time, l.date, l.type, l.responseCode,
+        l.response, l.dnsServer, l.elapsedTime, l.logDetailAddress]) {
       expect(_row(tester, label).mono, isTrue);
     }
-    expect(_row(tester, l.client).value, 'livingroom-mac');
-    expect(_row(tester, l.responseSize).value, '124 B');
+    expect(_row(tester, l.deviceName).value, 'livingroom-mac');
+    expect(_row(tester, l.logDetailAddress).value, '192.168.1.20');
+    expect(_row(tester, l.response).value, 'A  10.0.0.1  TTL 300');
     expect(_row(tester, l.elapsedTime).value, '1.2 ms');
-    expect(_row(tester, l.ttl).value, '300 s');
+    expect(_row(tester, l.logDetailServedFromCache).value, l.no);
     final buttons = find.descendant(
       of: find.byType(AppleFormFooter), matching: find.byType(AppleFormButton));
     expect(tester.getSize(buttons.first), tester.getSize(buttons.last));
-    expect(tester.getSize(buttons.first).height, 44);
+    expect(tester.getSize(buttons.first).height, 48);
     expect(tester.takeException(), isNull);
   });
 
@@ -225,10 +231,19 @@ void main() {
         'error': l.processedErrorRow,
         'unknown': l.unknownResult,
       }[entry.value];
-      expect(_row(tester, l.status).value, expected);
+      // The header pill keeps the app's vocabulary; the status row has to read
+      // like the AdGuard Home web UI, which knows four statuses.
+      final expectedRow = {
+        'blocked': l.queryBlocked,
+        'allowed': l.queryAllowed,
+        'upstream': l.logStatusProcessed,
+        'rewrite': l.logStatusRewritten,
+        'error': l.logStatusProcessed,
+        'unknown': l.logStatusProcessed,
+      }[entry.value];
+      expect(_row(tester, l.status).value, expectedRow);
       expect(tester.widget<ApplePill>(find.byType(ApplePill)).label, expected);
       expect(find.text(l.addToBlockList), findsOneWidget);
-      if (entry.value == 'blocked') expect(_row(tester, l.ttl).value, '—');
       expect(tester.takeException(), isNull);
     });
   }
@@ -236,26 +251,30 @@ void main() {
   testWidgets('cache is allowed rather than falsely marked as an upstream call',
       (tester) async {
     await _pump(tester, log: _log(cached: true));
-    expect(_row(tester, l.status).value, l.queryAllowed);
+    expect(_row(tester, l.status).value, l.logStatusProcessed);
+    expect(_row(tester, l.logDetailServedFromCache).value, l.yes);
   });
 
-  testWidgets('missing size answers and invalid elapsed values show dashes',
+  testWidgets('missing size answers and invalid elapsed values omit their rows',
       (tester) async {
     await _pump(tester, log: _log(size: null, answers: [], elapsed: 'NaN'));
-    expect(_row(tester, l.responseSize).value, '—');
-    expect(_row(tester, l.ttl).value, '—');
-    expect(_row(tester, l.elapsedTime).value, '—');
+    final labels = tester.widgetList<AppleDetailRow>(find.byType(AppleDetailRow))
+        .map((row) => row.label);
+    expect(labels, isNot(contains(l.responseSize)));
+    expect(labels, isNot(contains(l.response)));
+    expect(labels, isNot(contains(l.elapsedTime)));
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('distinct answer TTLs are retained without duplicate values',
+  testWidgets('every answer renders as its own line with type value and ttl',
       (tester) async {
     await _pump(tester, log: _log(answers: [
       Answer(type: 'A', value: '10.0.0.1', ttl: 60),
       Answer(type: 'A', value: '10.0.0.2', ttl: 60),
-      Answer(type: 'A', value: '10.0.0.3', ttl: 300),
+      Answer(type: 'AAAA', value: '::1', ttl: 300),
     ]));
-    expect(_row(tester, l.ttl).value, '60 s, 300 s');
+    expect(_row(tester, l.response).value,
+        'A  10.0.0.1  TTL 60\nA  10.0.0.2  TTL 60\nAAAA  ::1  TTL 300');
   });
 
   testWidgets('copy writes the domain and keeps the sheet open', (tester) async {
@@ -354,7 +373,7 @@ void main() {
     await _pump(tester, pane: true, surface: const Size(1000, 900));
     expect(find.byType(AppleScreen), findsOneWidget);
     expect(find.byType(AppleSheet), findsNothing);
-    expect(find.byType(AppleDetailRow), findsNWidgets(9));
+    expect(find.byType(AppleDetailRow), findsNWidgets(14));
     expect(find.byIcon(CupertinoIcons.back), findsNothing);
     expect(tester.takeException(), isNull);
   });

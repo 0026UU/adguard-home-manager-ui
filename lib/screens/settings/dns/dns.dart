@@ -1,5 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -20,6 +22,7 @@ import 'package:adguard_home_manager/screens/settings/dns/upstream_dns.dart';
 
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/functions/desktop_mode.dart';
+import 'package:adguard_home_manager/functions/number_format.dart';
 import 'package:adguard_home_manager/providers/dns_provider.dart';
 import 'package:adguard_home_manager/functions/clear_dns_cache.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
@@ -206,7 +209,6 @@ class _DnsSettingsState extends State<DnsSettings> {
           icon: const Icon(CupertinoIcons.trash),
           tooltip: l.clearDnsCache,
         ),
-        const SizedBox(width: 6),
       ],
       onRefresh: () async {
         await dnsProvider.fetchDnsData();
@@ -224,6 +226,15 @@ class _DnsSettingsState extends State<DnsSettings> {
             child: AppleEmptyState(
               icon: CupertinoIcons.exclamationmark_triangle,
               title: l.dnsConfigNotLoaded,
+              // The refresh handle belongs to the config list, and the list
+              // is exactly what did not arrive, so this card has to offer the
+              // retry itself.
+              action: AppleFormButton(
+                label: l.refresh,
+                background: p.tint,
+                foreground: Colors.white,
+                onPressed: () => dnsProvider.fetchDnsData(showLoading: true),
+              ),
               color: p.red,
             ),
           ),
@@ -272,10 +283,30 @@ class _DnsSettingsState extends State<DnsSettings> {
                   ),
                 AppleListTile(
                   title: l.dotDoqUpstreams,
-                  value: (encryptedUpstreams ?? 0).toString(),
                   icon: CupertinoIcons.globe,
                   iconColor: p.tint,
-                  showChevron: false,
+                  // The capsule only earns its place once there is something
+                  // to count: a bare "0" of nothing is not a fact. The row
+                  // then opens the list the number came from, so the
+                  // disclosure and the count travel together.
+                  trailing: encryptedUpstreams == null ||
+                          encryptedUpstreams == 0
+                      ? null
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ApplePill(
+                              label: intFormat(
+                                encryptedUpstreams,
+                                Platform.localeName,
+                              ),
+                              color: p.label2,
+                            ),
+                            const SizedBox(width: 6),
+                            const AppleChevron(),
+                          ],
+                        ),
+                  onTap: () => navigate(const UpstreamDnsScreen()),
                 ),
                 AppleSwitchListTile(
                   icon: CupertinoIcons.arrow_2_circlepath,
@@ -322,7 +353,7 @@ class _DnsSettingsState extends State<DnsSettings> {
                   title: l.dnsCacheSize,
                   value: dnsInfo.cacheSize == null
                     ? null
-                    : l.bytesCount(dnsInfo.cacheSize!),
+                    : bytesFormat(dnsInfo.cacheSize!, Platform.localeName),
                   onTap: () => navigate(const CacheConfigDnsScreen()),
                 ),
                 AppleListTile(

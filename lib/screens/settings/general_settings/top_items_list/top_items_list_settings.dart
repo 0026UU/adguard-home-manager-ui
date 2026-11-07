@@ -1,17 +1,26 @@
+// ignore_for_file: use_build_context_synchronously
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
-import 'package:adguard_home_manager/screens/settings/general_settings/top_items_list/show_hide_top_items_list.dart';
 import 'package:adguard_home_manager/screens/settings/general_settings/top_items_list/reorderable_top_items_home.dart';
+import 'package:adguard_home_manager/screens/settings/general_settings/top_items_list/show_hide_top_items_list.dart';
 
 import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/functions/desktop_mode.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
 
+/// Which of the dashboard's top lists are shown, and in what sequence.
+///
+/// Both halves edit the same stored list, so the page keeps one draft and
+/// hands it to [AppConfigProvider.setHomeTopItemsOrder] once, from the
+/// checkmark. Nothing is written while the user is still moving rows around.
 class TopItemsListSettings extends StatefulWidget {
   const TopItemsListSettings({super.key});
 
@@ -19,19 +28,16 @@ class TopItemsListSettings extends StatefulWidget {
   State<TopItemsListSettings> createState() => _TopItemsListSettingsState();
 }
 
-class _TopItemsListSettingsState extends State<TopItemsListSettings> with TickerProviderStateMixin {
-  late TabController _tabController;
-
-  List<HomeTopItems> persistHomeTopItemsList = [];
+class _TopItemsListSettingsState extends State<TopItemsListSettings> {
+  int _tab = 0;
+  late List<HomeTopItems> _draft;
 
   @override
   void initState() {
-    final appConfigProvider = Provider.of<AppConfigProvider>(context, listen: false);
-    persistHomeTopItemsList = appConfigProvider.homeTopItemsOrder;
-
+    _draft = List<HomeTopItems>.from(
+      Provider.of<AppConfigProvider>(context, listen: false).homeTopItemsOrder,
+    );
     super.initState();
-
-    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -39,94 +45,80 @@ class _TopItemsListSettingsState extends State<TopItemsListSettings> with Ticker
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
 
     final width = MediaQuery.of(context).size.width;
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
-    void saveSettings() async {
-      final result = await appConfigProvider.setHomeTopItemsOrder(persistHomeTopItemsList);
-      if (!context.mounted) return;
-      if (result == true) {
+    final saved = appConfigProvider.homeTopItemsOrder;
+    final hasChanges = !listEquals(saved, _draft);
+
+    Future<void> saveSettings() async {
+      final stored = await appConfigProvider.setHomeTopItemsOrder(
+        List<HomeTopItems>.from(_draft),
+      );
+
+      if (!mounted) return;
+
+      if (stored) {
         showSnackbar(
-          appConfigProvider: appConfigProvider, 
-          label: AppLocalizations.of(context)!.settingsSaved, 
-          color: Colors.green
+          appConfigProvider: appConfigProvider,
+          label: l.settingsSaved,
+          color: p.green,
         );
-      }
-      else {
+      } else {
+        // The preference did not make it to storage, so the draft goes back to
+        // what is actually stored instead of holding a change that was lost.
+        setState(
+          () => _draft = List<HomeTopItems>.from(
+            appConfigProvider.homeTopItemsOrder,
+          ),
+        );
         showSnackbar(
-          appConfigProvider: appConfigProvider, 
-          label: AppLocalizations.of(context)!.settingsNotSaved, 
-          color: Colors.red
+          appConfigProvider: appConfigProvider,
+          label: l.settingsNotSaved,
+          color: p.red,
         );
       }
     }
 
-    return Scaffold(
-      body: DefaultTabController(
-        length: 2,
-        child: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) => [
-            SliverOverlapAbsorber(
-              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-              sliver: SliverAppBar(
-                pinned: true,
-                floating: true,
-                centerTitle: false,
-                forceElevated: innerBoxIsScrolled,
-                surfaceTintColor: isDesktop(width) ? Colors.transparent : null,
-                title: Text(AppLocalizations.of(context)!.topItemsOrder),
-                actions: [
-                  IconButton(
-                    onPressed: !listEquals(appConfigProvider.homeTopItemsOrder, persistHomeTopItemsList)
-                      ? () => saveSettings()
-                      : null, 
-                    icon: const Icon(Icons.save_rounded),
-                    tooltip: AppLocalizations.of(context)!.save,
-                  ),
-                  const SizedBox(width: 8)
-                ],
-                bottom: TabBar(
-                  controller: _tabController,
-                  unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
-                  tabs: [
-                    Tab(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.reorder_rounded),
-                          const SizedBox(width: 8),
-                          Text(AppLocalizations.of(context)!.reorder)
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.remove_red_eye_rounded),
-                          const SizedBox(width: 8),
-                          Text(AppLocalizations.of(context)!.showHide)
-                        ],
-                      ),
-                    ),
-                  ]
-                )
-              ),
-            )
-          ], 
-          body: TabBarView(
-            controller: _tabController,
-            children: [
-              ReorderableTopItemsHome(
-                persistHomeTopItems: persistHomeTopItemsList,
-                setPersistHomeTopItems: (v) => setState(() => persistHomeTopItemsList = v),
-              ),
-              ShowHideTopItemsList(
-                enabledHomeTopItems: persistHomeTopItemsList,
-                setEnabledHomeTopItems: (v) => setState(() => persistHomeTopItemsList = v),
-              )
-            ]
-          )
-        ),
+    return AppleScreen(
+      title: l.topItemsOrder,
+      subtitle: l.topItemsOrderDescription,
+      leading: isDesktop(width)
+          ? null
+          : AppleBackButton(
+              label: l.back,
+              onPressed: () => Navigator.pop(context),
+            ),
+      header: AppleSegmented(
+        labels: [l.reorder, l.showHide],
+        selectedIndex: _tab,
+        onChanged: (index) => setState(() => _tab = index),
       ),
+      actions: [
+        IconButton(
+          onPressed: hasChanges ? saveSettings : null,
+          tooltip: l.save,
+          icon: const Icon(CupertinoIcons.checkmark),
+        ),
+      ],
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: _tab == 0
+                ? ReorderableTopItemsHome(
+                    persistHomeTopItems: _draft,
+                    setPersistHomeTopItems: (value) =>
+                        setState(() => _draft = value),
+                  )
+                : ShowHideTopItemsList(
+                    enabledHomeTopItems: _draft,
+                    setEnabledHomeTopItems: (value) =>
+                        setState(() => _draft = value),
+                  ),
+          ),
+        ),
+      ],
     );
   }
 }

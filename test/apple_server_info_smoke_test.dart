@@ -6,7 +6,6 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/screens/settings/server_info/dns_addresses_modal.dart';
 import 'package:adguard_home_manager/screens/settings/server_info/server_info.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
-import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
 
 import 'server_info_harness.dart';
 
@@ -58,7 +57,6 @@ void main() {
 
     // No Material chrome is left on the page itself.
     expect(find.byType(ListTile), findsNothing);
-    expect(find.byType(CustomListTile), findsNothing);
     expect(find.byType(Switch), findsNothing);
     expect(find.byType(Card), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsNothing);
@@ -101,9 +99,11 @@ void main() {
   testWidgets('the device count comes from the clients the server registered', (tester) async {
     await pumpServerInfo(tester, registeredClients: 5);
 
+    // The row counts the entries the configuration saves, and says so: a bare
+    // "5" read as a smaller count of the devices the overview lists.
     expect(
       tester.widget<AppleListTile>(find.widgetWithText(AppleListTile, l.clients)).value,
-      '5',
+      l.customSettingsCount(5),
     );
   });
 
@@ -178,17 +178,52 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(DnsAddressesModal), findsOneWidget);
-    expect(find.widgetWithText(ListTile, '10.8.0.1'), findsOneWidget);
+    expect(find.widgetWithText(AppleListTile, '10.8.0.1'), findsOneWidget);
+    expect(find.widgetWithText(AppleListTile, '192.168.1.10'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.widgetWithText(AppleButton, l.close));
+    await tester.pumpAndSettle();
+    expect(find.byType(DnsAddressesModal), findsNothing);
+  });
+
+  testWidgets('the same list on a wide screen is a card that closes',
+      (tester) async {
+    await pumpServerInfo(tester, surface: const Size(900, 1400));
+
+    await tester.tap(find.widgetWithText(AppleListTile, l.seeDnsAddresses));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DnsAddressesModal), findsOneWidget);
+    // The design layer's own card, not the Material alert it used to be.
+    expect(find.byType(AppleFormModal), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.widgetWithText(AppleListTile, '10.8.0.1'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(AppleButton, l.close));
+    await tester.pumpAndSettle();
+    expect(find.byType(DnsAddressesModal), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('a failed read reports the Apple way', (tester) async {
-    await pumpServerInfo(tester, succeeds: false);
+    final h = await pumpServerInfo(tester, succeeds: false);
 
     expect(find.byType(AppleEmptyState), findsOneWidget);
     expect(find.text(l.serverInfoNotLoaded), findsOneWidget);
     expect(find.byType(AppleListTile), findsNothing);
     expect(find.byIcon(CupertinoIcons.exclamationmark_triangle), findsOneWidget);
+
+    // Nothing is left on the page to pull or to tap but this card, so the
+    // retry has to be in it.
+    expect(find.widgetWithText(AppleFormButton, l.refresh), findsOneWidget);
+
+    h.api.succeeds = true;
+    await tester.tap(find.widgetWithText(AppleFormButton, l.refresh));
+    await tester.pumpAndSettle();
+
+    expect(h.api.calls, 2);
+    expect(find.byType(AppleListTile), findsWidgets);
   });
 
   testWidgets('the values load behind an Apple spinner', (tester) async {

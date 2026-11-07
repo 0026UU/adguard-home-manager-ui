@@ -12,12 +12,13 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
-import 'package:adguard_home_manager/screens/logs/logs_list.dart';
 import 'package:adguard_home_manager/screens/settings/settings.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'logs_harness.dart';
 import 'overview_harness.dart';
+
+import 'surface.dart';
 
 // Pull-to-refresh is invisible: nothing about a list says it can be pulled, and
 // a page that only shows what it fetched when it opened leaves a user with no
@@ -31,8 +32,7 @@ import 'overview_harness.dart';
 Future<void> _pumpShell(WidgetTester tester, Widget home) async {
   SharedPreferences.setMockInitialValues({});
 
-  await tester.binding.setSurfaceSize(const Size(390, 1200));
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, const Size(390, 1200));
 
   final prefs = await SharedPreferences.getInstance();
 
@@ -251,32 +251,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(line(), contains(overviewServer.domain));
-    });
-
-    testWidgets('remembering a version does not overwrite the address switch',
-        (tester) async {
-      await _pumpShell(tester, const Settings());
-
-      final appConfig = Provider.of<AppConfigProvider>(
-        tester.element(find.byType(Settings)),
-        listen: false,
-      );
-
-      await appConfig.setHideServerAddress(true);
-
-      // The row the update sheet writes when told not to ask about a version
-      // again. It used to write the version over the address switch's own key,
-      // which silently took the switch back off and lost the version too.
-      await appConfig.setDoNotRememberVersion('v1.2.3');
-
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('doNotRememberVersion'), 'v1.2.3');
-      expect(prefs.getBool('hideServerAddress'), isTrue);
-
-      // What the next start of the app reads back.
-      appConfig.saveFromSharedPreferences();
-      expect(appConfig.hideServerAddress, isTrue);
-      expect(appConfig.doNotRememberVersion, 'v1.2.3');
     });
   });
 }

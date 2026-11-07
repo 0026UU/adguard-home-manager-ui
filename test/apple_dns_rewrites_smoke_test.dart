@@ -3,10 +3,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
+import 'package:adguard_home_manager/models/rewrite_rules.dart';
+import 'package:adguard_home_manager/models/server.dart';
+import 'package:adguard_home_manager/providers/rewrite_rules_provider.dart';
+import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/screens/settings/dns_rewrites/dns_rewrite_modal.dart';
+import 'package:adguard_home_manager/services/api_client.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'rewrites_harness.dart';
+
+/// `/rewrite/delete` answered from memory, keeping what the app posts.
+class _DeleteApi extends ApiClientV2 {
+  _DeleteApi()
+      : super(server: Server(
+          id: '1',
+          name: 'Home box',
+          connectionMethod: 'http',
+          domain: 'adguard.example.com',
+          defaultServer: false,
+          runningOnHa: false,
+        ));
+
+  final List<Map<String, dynamic>> deleted = [];
+
+  @override
+  Future<ApiResponse> deleteDnsRewriteRule({
+    required Map<String, dynamic> data,
+  }) async {
+    deleted.add(data);
+    return const ApiResponse(successful: true);
+  }
+}
 
 /// The rewrite page, tapped the way a user taps it: the header action adds a
 /// rule, a row edits one, and the form's delete button asks before removing it.
@@ -213,14 +241,30 @@ void main() {
     expect(find.text(l.noRewriteRules), findsOneWidget);
     expect(find.byType(AppleListTile), findsNothing);
     expect(find.byIcon(Icons.error), findsNothing);
+
+    // The card fills the page, so the bar below it is out of sight: the
+    // empty state has to start the form itself.
+    await tester.tap(find.widgetWithText(AppleButton, l.addDnsRewrite));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DnsRewriteModal), findsOneWidget);
   });
 
   testWidgets('a failed load reports the Apple way', (tester) async {
-    await pumpRewrites(tester, succeeds: false);
+    final h = await pumpRewrites(tester, succeeds: false);
 
     expect(find.byType(AppleEmptyState), findsOneWidget);
     expect(find.text(l.rewriteRulesNotLoaded), findsOneWidget);
     expect(find.byType(AppleListTile), findsNothing);
+
+    expect(find.widgetWithText(AppleFormButton, l.refresh), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(AppleFormButton, l.refresh));
+    await tester.pumpAndSettle();
+
+    // A retry that only redraws the same card would leave the tab a dead
+    // end, so what matters is that the server was asked again.
+    expect(h.stub.fetches, 2);
   });
 
   testWidgets('the rules load behind an Apple spinner', (tester) async {
@@ -234,5 +278,32 @@ void main() {
 
     expect(find.byType(AppleLoading), findsNothing);
     expect(find.byType(AppleListTile), findsNWidgets(6));
+  });
+
+  test('deleting one answer keeps the other answers of the same domain', () async {
+    final api = _DeleteApi();
+    final provider = RewriteRulesProvider()
+      ..update(ServersProvider()..setApiClient2(api));
+
+    // One domain may carry several rules and the server deletes only the pair
+    // it was posted, so the local list has to keep the others: dropping them
+    // here would show them gone and write them off for real on the next save.
+    final ipSwitch = RewriteRules(
+        domain: 'nas.local', answer: '192.168.1.5', enabled: true);
+    final mirror = RewriteRules(
+        domain: 'nas.local', answer: '192.168.1.9', enabled: true);
+    final vault =
+        RewriteRules(domain: 'vault', answer: '10.8.0.2', enabled: true);
+    provider.setRewriteRulesData([ipSwitch, mirror, vault]);
+
+    expect(await provider.deleteDnsRewrite(ipSwitch), isTrue);
+
+    expect(api.deleted, [
+      {'domain': 'nas.local', 'answer': '192.168.1.5'}
+    ]);
+    expect(
+      provider.rewriteRules!.map((rule) => rule.answer).toList(),
+      ['192.168.1.9', '10.8.0.2'],
+    );
   });
 }

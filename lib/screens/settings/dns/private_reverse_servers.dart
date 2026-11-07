@@ -1,11 +1,11 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
-
-import 'package:adguard_home_manager/widgets/custom_switch_list_tile.dart';
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
 import 'package:adguard_home_manager/functions/desktop_mode.dart';
 import 'package:adguard_home_manager/providers/dns_provider.dart';
@@ -93,10 +93,12 @@ class _PrivateReverseDnsServersScreenState extends State<PrivateReverseDnsServer
     final appConfigProvider = Provider.of<AppConfigProvider>(context);
 
     final width = MediaQuery.of(context).size.width;
+    final l = AppLocalizations.of(context)!;
+    final p = ApplePalette.of(context);
 
     void saveData() async {
       ProcessModal processModal = ProcessModal();
-      processModal.open(AppLocalizations.of(context)!.savingConfig);
+      processModal.open(l.savingConfig);
 
       final result = await dnsProvider.savePrivateReverseServersConfig(
         editReverseResolvers == true
@@ -115,187 +117,150 @@ class _PrivateReverseDnsServersScreenState extends State<PrivateReverseDnsServer
       if (result.successful == true) {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsConfigSaved, 
-          color: Colors.green
+          label: l.dnsConfigSaved, 
+          color: p.green
         );
       }
       else if (result.successful == false && result.statusCode == 400) {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.someValueNotValid, 
-          color: Colors.red
+          label: l.someValueNotValid, 
+          color: p.red
         );
       }
       else {
         showSnackbar(
           appConfigProvider: appConfigProvider,
-          label: AppLocalizations.of(context)!.dnsConfigNotSaved, 
-          color: Colors.red
+          label: l.dnsConfigNotSaved, 
+          color: p.red
         );
       } 
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.privateReverseDnsServers),
-        surfaceTintColor: isDesktop(width) ? Colors.transparent : null,
-        actions: [
-          IconButton(
-            onPressed: validValues == true
-              ? () => saveData()
-              : null, 
-            icon: const Icon(Icons.save_rounded),
-            tooltip: AppLocalizations.of(context)!.save,
+    return AppleScreen(
+      title: l.privateReverseDnsServers,
+      subtitle: l.privateReverseDnsDescription,
+      leading: isDesktop(width)
+        ? null
+        : AppleBackButton(
+            label: l.back,
+            onPressed: () => Navigator.pop(context),
           ),
-          const SizedBox(width: 10)
-        ],
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.only(top: 10),
-          children: [
-            Card(
-              margin: const EdgeInsets.only(
-                left: 16, right: 16, bottom: 10
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_rounded,
-                      color: Theme.of(context).listTileTheme.iconColor,
-                    ),
-                    const SizedBox(width: 16),
-                    Flexible(
-                      child: Text(
-                        AppLocalizations.of(context)!.privateReverseDnsServersDescription,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface
-                        ),
-                      )
-                    )
-                  ],
-                ),
-              ),
-            ),
-            if (editReverseResolvers == false) ...[
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Text(
-                  "${AppLocalizations.of(context)!.reverseDnsDefault}:\n\n${defaultReverseResolvers.map((item) => item).join(', ').toString().replaceAll(RegExp(r'\(|\)'), '')}",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontSize: 16
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 10, bottom: 20),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        setState(() => editReverseResolvers = true);
-                        checkDataValid();
-                      }, 
-                      icon: const Icon(Icons.edit), 
-                      label: Text(AppLocalizations.of(context)!.edit)
-                    ),
-                  ],
-                ),
-              )
-            ],
-            if (editReverseResolvers == true) ...[
-              const SizedBox(height: 20),
-              ...reverseResolversControllers.map((c) => Padding(
-                padding: const EdgeInsets.only(
-                  left: 16, right: 6, bottom: 20
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: c['controller'],
-                        onChanged: (value) => validateAddress(c, value),
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.dns_rounded),
-                          border: const OutlineInputBorder(
-                            borderRadius: BorderRadius.all(
-                              Radius.circular(10)
-                            )
-                          ),
-                          errorText: c['error'],
-                          labelText: AppLocalizations.of(context)!.serverAddress,
-                        )
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: () {
-                        setState(() => reverseResolversControllers = reverseResolversControllers.where((con) => con != c).toList());
-                        checkDataValid();
-                      }, 
-                      icon: const Icon(Icons.remove_circle_outline)
-                    )
-                  ],
-                ),
-              )),
-              if (reverseResolversControllers.isEmpty) Padding(
-                padding: const EdgeInsets.only(
-                  left: 20, right: 20, bottom: 20
-                ),
-                child: Center(
-                  child: Text(
-                    AppLocalizations.of(context)!.noServerAddressesAdded,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontSize: 16
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        setState(() => reverseResolversControllers.add({
-                          'controller': TextEditingController(),
-                          'error': null
-                        }));
-                        checkDataValid();
-                      }, 
-                      icon: const Icon(Icons.add), 
-                      label: Text(AppLocalizations.of(context)!.addItem)
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            CustomSwitchListTile(
-              value: usePrivateReverseDnsResolvers,
-              onChanged: (value) => setState(() => usePrivateReverseDnsResolvers = value), 
-              title: AppLocalizations.of(context)!.usePrivateReverseDnsResolvers,
-              subtitle: AppLocalizations.of(context)!.usePrivateReverseDnsResolversDescription
-            ),
-            CustomSwitchListTile(
-              value: enableReverseResolve,
-              onChanged: (value) => setState(() => enableReverseResolve = value), 
-              title: AppLocalizations.of(context)!.enableReverseResolving,
-              subtitle: AppLocalizations.of(context)!.enableReverseResolvingDescription
-            ),
-          ],
+      actions: [
+        IconButton(
+          onPressed: validValues == true
+            ? () => saveData()
+            : null, 
+          icon: const Icon(CupertinoIcons.checkmark),
+          tooltip: l.save,
         ),
-      ),
+      ],
+      slivers: [
+        if (editReverseResolvers == false)
+          SliverToBoxAdapter(
+            child: AppleListSection(
+              title: l.reverseDnsDefault,
+              // The sentence and the button that used to sit under it are the
+              // two halves of the same header now: what the group holds on the
+              // left, the way to write your own on the right.
+              headerTrailing: AppleHeaderAction(
+                label: l.edit,
+                onPressed: () {
+                  setState(() => editReverseResolvers = true);
+                  checkDataValid();
+                },
+              ),
+              footer: l.privateReverseDnsServersDescription,
+              margin: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+              children: [
+                for (final item in defaultReverseResolvers)
+                  AppleListTile(
+                    title: item.replaceAll(RegExp(r'\(|\)'), ''),
+                    mono: true,
+                    showChevron: false,
+                  ),
+              ],
+            ),
+          ),
+        if (editReverseResolvers == true)
+          SliverToBoxAdapter(
+            child: AppleListSection(
+              title: l.serverAddress,
+              headerTrailing: AppleHeaderAction(
+                label: l.addItem,
+                onPressed: () {
+                  setState(() => reverseResolversControllers.add({
+                    'controller': TextEditingController(),
+                    'error': null
+                  }));
+                  checkDataValid();
+                },
+              ),
+              footer: l.privateReverseDnsServersDescription,
+              margin: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+              children: [
+                if (reverseResolversControllers.isEmpty)
+                  AppleEmptyState(
+                    icon: CupertinoIcons.location_fill,
+                    title: l.noServerAddressesAdded,
+                    color: p.label3,
+                  ),
+                for (final c in reverseResolversControllers)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: AppleTextField(
+                            label: l.serverAddress,
+                            icon: CupertinoIcons.location_fill,
+                            controller: c['controller'],
+                            error: c['error'],
+                            onChanged: (value) => validateAddress(c, value),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: l.remove,
+                          onPressed: () {
+                            setState(() => reverseResolversControllers = reverseResolversControllers.where((con) => con != c).toList());
+                            checkDataValid();
+                          }, 
+                          icon: Icon(
+                            CupertinoIcons.minus_circle,
+                            size: 19,
+                            color: p.red,
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        SliverToBoxAdapter(
+          child: AppleListSection(
+            children: [
+              AppleSwitchListTile(
+                icon: CupertinoIcons.location_fill,
+                iconColor: p.indigo,
+                value: usePrivateReverseDnsResolvers,
+                onChanged: (value) => setState(() => usePrivateReverseDnsResolvers = value), 
+                title: l.usePrivateReverseDnsResolvers,
+                subtitle: l.usePrivateReverseDnsResolversDescription,
+              ),
+              AppleSwitchListTile(
+                icon: CupertinoIcons.arrow_2_circlepath,
+                iconColor: p.teal,
+                value: enableReverseResolve,
+                onChanged: (value) => setState(() => enableReverseResolve = value), 
+                title: l.enableReverseResolving,
+                subtitle: l.enableReverseResolvingDescription,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 
 import 'package:adguard_home_manager/screens/clients/clients.dart';
 import 'package:adguard_home_manager/screens/connect/connect.dart';
@@ -13,14 +12,14 @@ import 'package:adguard_home_manager/models/app_screen.dart';
 List<AppScreen> screensSelectServer = [
   const AppScreen(
     name: "connect", 
-    icon: Icons.link_rounded,
+    icon: CupertinoIcons.link,
     appleIcon: CupertinoIcons.link,
     appleSelectedIcon: CupertinoIcons.link, 
     child: Connect()
   ),
   const AppScreen(
     name: "settings", 
-    icon: Icons.settings_rounded,
+    icon: CupertinoIcons.settings,
     appleIcon: CupertinoIcons.settings,
     appleSelectedIcon: CupertinoIcons.settings_solid,
     child: Settings()
@@ -30,35 +29,35 @@ List<AppScreen> screensSelectServer = [
 List<AppScreen> screensServerConnected = [
   const AppScreen(
     name: "home", 
-    icon: Icons.home_rounded,
+    icon: CupertinoIcons.house,
     appleIcon: CupertinoIcons.house,
     appleSelectedIcon: CupertinoIcons.house_fill, 
     child: Home()
   ),
   const AppScreen(
     name: "clients", 
-    icon: Icons.devices,
+    icon: CupertinoIcons.person_2,
     appleIcon: CupertinoIcons.person_2,
     appleSelectedIcon: CupertinoIcons.person_2_fill, 
     child: Clients()
   ),
   const AppScreen(
     name: "logs", 
-    icon: Icons.list_alt_rounded,
+    icon: CupertinoIcons.doc_text,
     appleIcon: CupertinoIcons.doc_text,
     appleSelectedIcon: CupertinoIcons.doc_text_fill, 
     child: Logs()
   ),
   const AppScreen(
     name: "filters", 
-    icon: Icons.shield_rounded,
+    icon: CupertinoIcons.shield,
     appleIcon: CupertinoIcons.shield,
     appleSelectedIcon: CupertinoIcons.shield_fill, 
     child: Filters()
   ),
   const AppScreen(
     name: "settings", 
-    icon: Icons.settings_rounded,
+    icon: CupertinoIcons.settings,
     appleIcon: CupertinoIcons.settings,
     appleSelectedIcon: CupertinoIcons.settings_solid,
     child: Settings()

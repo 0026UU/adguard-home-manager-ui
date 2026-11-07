@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -7,6 +8,8 @@ import 'package:adguard_home_manager/screens/clients/client/client_rules_modal.d
 import 'package:adguard_home_manager/screens/clients/client/client_screen_functions.dart';
 import 'package:adguard_home_manager/screens/filters/modals/custom_rules/add_custom_rule.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
+
+import 'surface.dart';
 
 // The rules of one device are edited in a sheet of their own: the builder the
 // global list uses writes into it, a row is removed by its own button, and
@@ -40,11 +43,11 @@ void main() {
     // full screen page on a phone, so the sheet is driven at the width the
     // dialog is drawn at. A phone width would test a layout this flow never
     // shows.
-    await tester.binding.setSurfaceSize(const Size(600, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    setTestSurface(tester, const Size(600, 900));
 
     await tester.pumpWidget(
       MaterialApp(
+        debugShowCheckedModeBanner: false,
         theme: appleLightTheme(),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -94,7 +97,7 @@ void main() {
       await tester.pump();
     }
 
-    await tester.tap(find.byIcon(Icons.check));
+    await tester.tap(find.byIcon(CupertinoIcons.checkmark));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 

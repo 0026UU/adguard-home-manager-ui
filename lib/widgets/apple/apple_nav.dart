@@ -131,7 +131,7 @@ class _AppleTabButton extends StatelessWidget {
             style: TextStyle(
               fontSize: 10,
               height: 1.1,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               color: color,
             ),
           ),
@@ -251,7 +251,7 @@ class _AppleSidebarRow extends StatelessWidget {
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      Icon(item.icon, size: 21, color: selected ? p.tint : p.label2),
+                      Icon(item.icon, size: 19, color: selected ? p.tint : p.label2),
                       if (item.badge)
                         Positioned(
                           top: -1,
@@ -277,7 +277,7 @@ class _AppleSidebarRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                        fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                         color: p.label,
                       ),
                     ),
@@ -337,7 +337,7 @@ class AppleTopBar extends StatelessWidget implements PreferredSizeWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 17,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                       color: p.label,
                     ),
                   ),

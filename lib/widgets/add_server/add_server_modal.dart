@@ -16,6 +16,7 @@ import 'package:adguard_home_manager/functions/compare_versions.dart';
 import 'package:adguard_home_manager/services/auth.dart';
 import 'package:adguard_home_manager/providers/app_config_provider.dart';
 import 'package:adguard_home_manager/services/api_client.dart';
+import 'package:adguard_home_manager/functions/auth_error_message.dart';
 import 'package:adguard_home_manager/functions/snackbar.dart';
 import 'package:adguard_home_manager/constants/urls.dart';
 import 'package:adguard_home_manager/functions/open_url.dart';
@@ -137,14 +138,8 @@ class _AddServerModalState extends State<AddServerModal> {
       ));
     }
 
-    String getErrorMessage(AuthStatus status) {
-      if (status == AuthStatus.invalidCredentials) return AppLocalizations.of(context)!.invalidUsernamePassword;
-      if (status == AuthStatus.manyAttepts) return AppLocalizations.of(context)!.tooManyAttempts;
-      if (status == AuthStatus.socketException || status == AuthStatus.timeoutException) return AppLocalizations.of(context)!.cantReachServer;
-      if (status == AuthStatus.serverError) return AppLocalizations.of(context)!.serverError;
-      if (status == AuthStatus.handshakeException) return AppLocalizations.of(context)!.sslError;
-      return AppLocalizations.of(context)!.unknownError;
-    }
+    String getErrorMessage(AuthStatus status) =>
+        authErrorMessage(context, status);
 
     void connect() async {
       setState(() => isConnecting = true);
@@ -176,7 +171,7 @@ class _AddServerModalState extends State<AddServerModal> {
           showSnackbar(
             appConfigProvider: appConfigProvider, 
             label: getErrorMessage(result), 
-            color: Colors.red
+            color: p.red
           );
         }
         return;
@@ -192,22 +187,32 @@ class _AddServerModalState extends State<AddServerModal> {
 
       if (!context.mounted) return;
 
-      // If something goes wrong when fetching server status
+      // The credentials worked but the status call did not, so nothing is
+      // saved: the sheet stays open with its fields usable again, and the
+      // half-configured connection is reported instead of dropped silently.
       if (serverStatus.successful == false) {
         statusProvider.setServerStatusLoad(LoadStatus.error);
-        Navigator.pop(context);
+        cancelConnecting();
+        showSnackbar(
+          appConfigProvider: appConfigProvider,
+          label: AppLocalizations.of(context)!.errorLoadServerStatus,
+          color: p.red,
+        );
         return;
       }
 
       final status = serverStatus.content as ServerStatus;
 
       // Check if ths server version is compatible
-      final validVersion = serverVersionIsAhead(
+      final tooOld = serverVersionIsTooOld(
         currentVersion: status.serverVersion, 
         referenceVersion: MinimumServerVersion.stable,
         referenceVersionBeta: MinimumServerVersion.beta
       );
-      if (validVersion == false) {
+      if (tooOld) {
+        // Release the sheet, or every field stays disabled once the user
+        // dismisses the warning and there is nothing left to do but close it.
+        if (mounted) setState(() => isConnecting = false);
         showDialog(
           context: context, 
           builder: (ctx) => UnsupportedVersionModal(
@@ -228,7 +233,7 @@ class _AddServerModalState extends State<AddServerModal> {
         showSnackbar(
           appConfigProvider: appConfigProvider, 
           label: AppLocalizations.of(context)!.connectionNotCreated, 
-          color: Colors.red
+          color: p.red
         );
         return;
       }
@@ -238,6 +243,15 @@ class _AddServerModalState extends State<AddServerModal> {
         data: status
       );
       serversProvider.setApiClient2(apiClient2);
+      // A brand-new connection that nothing else is driving has to become the
+      // one in use, and the default when no row owns that flag: otherwise the
+      // dashboard stays hidden behind the two-tab bar until an app restart.
+      if (serversProvider.selectedServer == null) {
+        serversProvider.setSelectedServer(serverObj);
+        if (!serversProvider.serversList.any((s) => s.defaultServer == true)) {
+          await serversProvider.setDefaultServer(serverObj);
+        }
+      }
       statusProvider.setServerStatusLoad(LoadStatus.loaded);
       if (serverVersionNeedsWarning(status.serverVersion)) {
         Navigator.pop(context);
@@ -259,6 +273,9 @@ class _AddServerModalState extends State<AddServerModal> {
         port: portController.text != '' ? int.parse(portController.text) : null,
         user: userController.text != "" ? userController.text : null, 
         password: passwordController.text != "" ? passwordController.text : null, 
+        // Without this the row loses its prefix on every rename, and a server
+        // behind /adguard starts 404ing with no way back short of re-adding it.
+        path: pathController.text != "" ? pathController.text : null,
         defaultServer: defaultServer,
         authToken: homeAssistant == true 
           ? encodeBase64UserPass(userController.text, passwordController.text)
@@ -277,7 +294,7 @@ class _AddServerModalState extends State<AddServerModal> {
           showSnackbar(
             appConfigProvider: appConfigProvider, 
             label: getErrorMessage(result), 
-            color: Colors.red
+            color: p.red
           );
         }
         return;
@@ -289,18 +306,28 @@ class _AddServerModalState extends State<AddServerModal> {
 
       final ApiClientV2 apiClient2 = ApiClientV2(server: serverObj);
       final version = await apiClient2.getServerVersion();
+      // Editing keeps the stored connection untouched, but the user still has
+      // to hear why the new one was not written.
       if (version.successful == false) {
-        if (mounted) setState(() => isConnecting = false);
+        cancelConnecting();
+        if (mounted) {
+          showSnackbar(
+            appConfigProvider: appConfigProvider,
+            label: AppLocalizations.of(context)!.errorLoadServerStatus,
+            color: p.red,
+          );
+        }
         return;
       }
 
       // Check if ths server version is compatible
-      final validVersion = serverVersionIsAhead(
+      final tooOld = serverVersionIsTooOld(
         currentVersion: version.content, 
         referenceVersion: MinimumServerVersion.stable,
         referenceVersionBeta: MinimumServerVersion.beta
       );
-      if (validVersion == false) {
+      if (tooOld) {
+        if (mounted) setState(() => isConnecting = false);
         showDialog(
           context: context, 
           builder: (ctx) => UnsupportedVersionModal(
@@ -328,7 +355,7 @@ class _AddServerModalState extends State<AddServerModal> {
         showSnackbar(
           appConfigProvider: appConfigProvider, 
           label: AppLocalizations.of(context)!.connectionNotCreated, 
-          color: Colors.red
+          color: p.red
         );
         return;
       }

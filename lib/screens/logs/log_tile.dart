@@ -51,7 +51,10 @@ class LogTile extends StatelessWidget {
     }
 
     Widget statusPill() {
-      final filter = getFilteredStatus(context, appConfigProvider, log.reason, false);
+      // The row pill is a single line, so it has to ask for the single-line
+      // label: the other variant carries a newline and was cut to "Blocked…",
+      // which hid whether a query died on a blacklist or on filtering.
+      final filter = getFilteredStatus(context, appConfigProvider, log.reason, true);
       final filtered = filter['filtered'];
 
       final Color color;

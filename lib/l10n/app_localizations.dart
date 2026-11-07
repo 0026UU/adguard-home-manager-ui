@@ -289,6 +289,12 @@ abstract class AppLocalizations {
   /// **'Connected'**
   String get connected;
 
+  /// No description provided for @notConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected'**
+  String get notConnected;
+
   /// No description provided for @selectedDisconnected.
   ///
   /// In en, this message translates to:
@@ -312,6 +318,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No saved connections'**
   String get noSavedConnections;
+
+  /// No description provided for @noSavedConnectionsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add the AdGuard Home server you want to manage.'**
+  String get noSavedConnectionsHint;
 
   /// No description provided for @cannotConnect.
   ///
@@ -622,8 +634,20 @@ abstract class AppLocalizations {
   /// No description provided for @noClientsList.
   ///
   /// In en, this message translates to:
-  /// **'There are no clients on this list'**
+  /// **'The server has not reported any devices yet'**
   String get noClientsList;
+
+  /// No description provided for @noDevicesInSegment.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is in this part of the list'**
+  String get noDevicesInSegment;
+
+  /// No description provided for @switchDeviceSegment.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch the segment above to see the other devices.'**
+  String get switchDeviceSegment;
 
   /// No description provided for @activeClients.
   ///
@@ -1086,6 +1110,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'It\'s possible that there are no logs saved for that selected time. Try selecting a more recent time.'**
   String get noLogsThatOld;
+
+  /// No description provided for @noLiveLogsMatchingFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'No query has come in since these filters were applied. Widen them to see the rest.'**
+  String get noLiveLogsMatchingFilters;
+
+  /// No description provided for @noLogsMatchingFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing in this time range matches these filters. Widen them to see the rest.'**
+  String get noLogsMatchingFilters;
 
   /// No description provided for @apply.
   ///
@@ -2580,6 +2616,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Clear logs'**
   String get clearLogs;
+
+  /// No description provided for @clearLogsConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes every query the server has recorded. It cannot be undone.'**
+  String get clearLogsConfirm;
 
   /// No description provided for @anonymizeClientIp.
   ///
@@ -4261,18 +4303,6 @@ abstract class AppLocalizations {
   /// **'Minimum required version: {version}'**
   String minimumRequiredVersion(Object version);
 
-  /// No description provided for @topUpstreams.
-  ///
-  /// In en, this message translates to:
-  /// **'Top upstreams'**
-  String get topUpstreams;
-
-  /// No description provided for @averageUpstreamResponseTime.
-  ///
-  /// In en, this message translates to:
-  /// **'Average upstream response time'**
-  String get averageUpstreamResponseTime;
-
   /// No description provided for @dhcpNotAvailable.
   ///
   /// In en, this message translates to:
@@ -4428,6 +4458,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'There\'s no data to display this chart.'**
   String get noDataChart;
+
+  /// No description provided for @trendNotLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'The chart could not be loaded'**
+  String get trendNotLoaded;
 
   /// No description provided for @noData.
   ///
@@ -5038,8 +5074,8 @@ abstract class AppLocalizations {
   /// No description provided for @shownDevices.
   ///
   /// In en, this message translates to:
-  /// **'{count} devices'**
-  String shownDevices(Object count);
+  /// **'{count, plural, =1{{shown} device} other{{shown} devices}}'**
+  String shownDevices(num count, Object shown);
 
   /// No description provided for @identifiedDevicesCount.
   ///
@@ -5065,6 +5101,12 @@ abstract class AppLocalizations {
   /// **'Default settings'**
   String get hasDefaultSettings;
 
+  /// No description provided for @viewDeviceLog.
+  ///
+  /// In en, this message translates to:
+  /// **'View log of {device}'**
+  String viewDeviceLog(Object device);
+
   /// No description provided for @onlyCustom.
   ///
   /// In en, this message translates to:
@@ -5080,8 +5122,8 @@ abstract class AppLocalizations {
   /// No description provided for @protectingDevices.
   ///
   /// In en, this message translates to:
-  /// **'Blocking ads and trackers for {count} devices'**
-  String protectingDevices(Object count);
+  /// **'{count, plural, =1{Blocking ads and trackers for {shown} device} other{Blocking ads and trackers for {shown} devices}}'**
+  String protectingDevices(num count, Object shown);
 
   /// No description provided for @allQueriesAllowedDirectly.
   ///
@@ -5200,8 +5242,8 @@ abstract class AppLocalizations {
   /// No description provided for @rulesCount.
   ///
   /// In en, this message translates to:
-  /// **'{count} rules'**
-  String rulesCount(Object count);
+  /// **'{count, plural, =1{{shown} rule} other{{shown} rules}}'**
+  String rulesCount(num count, Object shown);
 
   /// No description provided for @customRulesPreview.
   ///
@@ -5212,14 +5254,20 @@ abstract class AppLocalizations {
   /// No description provided for @showAllRules.
   ///
   /// In en, this message translates to:
-  /// **'Show all {count} rules'**
-  String showAllRules(Object count);
+  /// **'{count, plural, =1{Show all {shown} rule} other{Show all {shown} rules}}'**
+  String showAllRules(num count, Object shown);
 
   /// No description provided for @blockByService.
   ///
   /// In en, this message translates to:
   /// **'Block by service'**
   String get blockByService;
+
+  /// No description provided for @clearBlockedServicesConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'This stops blocking every service on the list at once.'**
+  String get clearBlockedServicesConfirm;
 
   /// No description provided for @clearAll.
   ///
@@ -5230,8 +5278,8 @@ abstract class AppLocalizations {
   /// No description provided for @listsEnabledWithRules.
   ///
   /// In en, this message translates to:
-  /// **'{lists} lists enabled · {rules} rules'**
-  String listsEnabledWithRules(Object lists, Object rules);
+  /// **'{lists, plural, =0{No lists enabled} =1{1 list enabled} other{{lists} lists enabled}} · {rules, plural, =0{no rules} =1{1 rule} other{{rules} rules}}'**
+  String listsEnabledWithRules(num lists, num rules);
 
   /// No description provided for @editRules.
   ///
@@ -5317,11 +5365,23 @@ abstract class AppLocalizations {
   /// **'Protection running'**
   String get protectionRunning;
 
+  /// No description provided for @protectionNotChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not accept this change'**
+  String get protectionNotChanged;
+
   /// No description provided for @protectionPaused.
   ///
   /// In en, this message translates to:
   /// **'Protection paused'**
   String get protectionPaused;
+
+  /// No description provided for @protectionUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Status unknown'**
+  String get protectionUnknown;
 
   /// No description provided for @protectionOn.
   ///
@@ -5386,8 +5446,8 @@ abstract class AppLocalizations {
   /// No description provided for @filterListsCount.
   ///
   /// In en, this message translates to:
-  /// **'{count} filter lists'**
-  String filterListsCount(Object count);
+  /// **'{count, plural, =0{No filter lists} one{{count} filter list} other{{count} filter lists}}'**
+  String filterListsCount(num count);
 
   /// No description provided for @trafficTrend.
   ///
@@ -5537,8 +5597,8 @@ abstract class AppLocalizations {
   /// No description provided for @blockedServicesCount.
   ///
   /// In en, this message translates to:
-  /// **'{count} services blocked'**
-  String blockedServicesCount(Object count);
+  /// **'{count, plural, =0{No services blocked} one{{count} service blocked} other{{count} services blocked}}'**
+  String blockedServicesCount(num count);
 
   /// No description provided for @servicesSameAsServer.
   ///
@@ -5573,8 +5633,8 @@ abstract class AppLocalizations {
   /// No description provided for @queriesPerSecond.
   ///
   /// In en, this message translates to:
-  /// **'{count} queries per second'**
-  String queriesPerSecond(Object count);
+  /// **'{count, plural, one{{count} query per second} other{{count} queries per second}}'**
+  String queriesPerSecond(num count);
 
   /// No description provided for @bytesCount.
   ///
@@ -5666,17 +5726,11 @@ abstract class AppLocalizations {
   /// **'Sorted by queries'**
   String get sortedByQueries;
 
-  /// No description provided for @devicesQueriedLastDay.
+  /// No description provided for @devicesSeenInStatistics.
   ///
   /// In en, this message translates to:
-  /// **'{count} devices queried in the last 24 hours'**
-  String devicesQueriedLastDay(Object count);
-
-  /// No description provided for @deviceQueries.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} queries'**
-  String deviceQueries(Object count);
+  /// **'{count, plural, one{{count} device seen in the statistics} other{{count} devices seen in the statistics}}'**
+  String devicesSeenInStatistics(num count);
 
   /// No description provided for @searchDevicesHint.
   ///
@@ -6019,6 +6073,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'That rule is already on the list'**
   String get ruleAlreadyOnList;
+
+  /// No description provided for @logQueryDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Query details'**
+  String get logQueryDetails;
+
+  /// No description provided for @logResponseDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Response details'**
+  String get logResponseDetails;
+
+  /// No description provided for @logClientDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Client details'**
+  String get logClientDetails;
+
+  /// No description provided for @logProtocol.
+  ///
+  /// In en, this message translates to:
+  /// **'Protocol'**
+  String get logProtocol;
+
+  /// No description provided for @logProtocolPlain.
+  ///
+  /// In en, this message translates to:
+  /// **'Plain DNS'**
+  String get logProtocolPlain;
+
+  /// No description provided for @logProtocolDoh.
+  ///
+  /// In en, this message translates to:
+  /// **'DNS-over-HTTPS'**
+  String get logProtocolDoh;
+
+  /// No description provided for @logProtocolDot.
+  ///
+  /// In en, this message translates to:
+  /// **'DNS-over-TLS'**
+  String get logProtocolDot;
+
+  /// No description provided for @logProtocolDoq.
+  ///
+  /// In en, this message translates to:
+  /// **'DNS-over-QUIC'**
+  String get logProtocolDoq;
+
+  /// No description provided for @logStatusProcessed.
+  ///
+  /// In en, this message translates to:
+  /// **'Processed'**
+  String get logStatusProcessed;
+
+  /// No description provided for @logStatusRewritten.
+  ///
+  /// In en, this message translates to:
+  /// **'Rewritten'**
+  String get logStatusRewritten;
+
+  /// No description provided for @logReasonBlockedByFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked by filter'**
+  String get logReasonBlockedByFilter;
+
+  /// No description provided for @logReasonBlockedByParental.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked by parental control'**
+  String get logReasonBlockedByParental;
+
+  /// No description provided for @logReasonBlockedThreats.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked threats'**
+  String get logReasonBlockedThreats;
+
+  /// No description provided for @logReasonSafeSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Safe search'**
+  String get logReasonSafeSearch;
+
+  /// No description provided for @logReasonBlockedServices.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked services'**
+  String get logReasonBlockedServices;
+
+  /// No description provided for @logReasonRewrittenByHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'Rewritten by the hosts file rule'**
+  String get logReasonRewrittenByHosts;
+
+  /// No description provided for @logReasonAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Allowed'**
+  String get logReasonAllowed;
+
+  /// No description provided for @logSourceCustomRules.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom filtering rules'**
+  String get logSourceCustomRules;
+
+  /// No description provided for @logSourceParentalControl.
+  ///
+  /// In en, this message translates to:
+  /// **'Parental Control'**
+  String get logSourceParentalControl;
+
+  /// No description provided for @logDetailRules.
+  ///
+  /// In en, this message translates to:
+  /// **'Rule(s)'**
+  String get logDetailRules;
+
+  /// No description provided for @logDetailSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get logDetailSource;
+
+  /// No description provided for @logDetailServedFromCache.
+  ///
+  /// In en, this message translates to:
+  /// **'Served from cache'**
+  String get logDetailServedFromCache;
+
+  /// No description provided for @logDetailOriginalResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Original response'**
+  String get logDetailOriginalResponse;
+
+  /// No description provided for @logDetailServiceName.
+  ///
+  /// In en, this message translates to:
+  /// **'Service name'**
+  String get logDetailServiceName;
+
+  /// No description provided for @logDetailEcs.
+  ///
+  /// In en, this message translates to:
+  /// **'ECS'**
+  String get logDetailEcs;
+
+  /// No description provided for @logDetailDnssec.
+  ///
+  /// In en, this message translates to:
+  /// **'DNSSEC'**
+  String get logDetailDnssec;
+
+  /// No description provided for @logDetailValidatedWithDnssec.
+  ///
+  /// In en, this message translates to:
+  /// **'Validated with DNSSEC'**
+  String get logDetailValidatedWithDnssec;
+
+  /// No description provided for @logDetailClientIp.
+  ///
+  /// In en, this message translates to:
+  /// **'Client IP'**
+  String get logDetailClientIp;
+
+  /// No description provided for @logDetailWhois.
+  ///
+  /// In en, this message translates to:
+  /// **'WHOIS'**
+  String get logDetailWhois;
+
+  /// No description provided for @logDetailAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get logDetailAddress;
+
+  /// No description provided for @logDetailCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get logDetailCountry;
+
+  /// No description provided for @logDetailNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Network'**
+  String get logDetailNetwork;
+
+  /// No description provided for @logDetailCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get logDetailCategory;
 }
 
 class _AppLocalizationsDelegate

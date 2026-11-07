@@ -18,8 +18,10 @@ import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/providers/status_provider.dart';
 import 'package:adguard_home_manager/screens/filters/filters_page.dart';
 
-// The filters page is the one screen that stacks four different shapes - the
-// protection card, the list cards, the rules preview and the service grid -
+import 'surface.dart';
+
+// The filters page is the one screen that stacks five different shapes - the
+// protection card, the two list cards, the rules preview and the service grid -
 // so the golden keeps their relative sizes and paddings pinned.
 //
 // Regenerate with: flutter test --update-goldens test/apple_filters_golden_test.dart
@@ -117,12 +119,11 @@ StatusProvider _status() => StatusProvider()
   ..setServerStatusLoad(LoadStatus.loaded);
 
 void main() {
-  testWidgets('the filters page stacks its four groups', (tester) async {
+  testWidgets('the filters page stacks its five groups', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
 
-    await tester.binding.setSurfaceSize(const Size(390, 2300));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    setTestSurface(tester, const Size(390, 2300));
 
     await tester.pumpWidget(
       MultiProvider(

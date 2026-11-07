@@ -4,11 +4,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:adguard_home_manager/constants/enums.dart';
 import 'package:adguard_home_manager/functions/number_format.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/models/applied_filters.dart';
 import 'package:adguard_home_manager/screens/home/management_modal/management_modal.dart';
-import 'package:adguard_home_manager/screens/home/server_status.dart';
 import 'package:adguard_home_manager/screens/settings/server_info/server_info.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
@@ -52,8 +52,7 @@ void main() {
       // Nothing the design layer does not draw may stay on the page.
       expect(find.byType(PopupMenuButton), findsNothing);
       expect(find.text(l.statistics), findsNothing);
-      expect(find.byType(ServerStatusWidget), findsNothing);
-      expect(find.byType(AppleTrendChart), findsOneWidget);
+        expect(find.byType(AppleTrendChart), findsOneWidget);
     });
 
     testWidgets('the tiles read what the server holds, not what the mock had', (tester) async {
@@ -62,12 +61,12 @@ void main() {
       // The rules that are in force: the 312546 of the two enabled lists plus
       // the server's own user rule. The disabled list, with its 999999 rules,
       // counts for nothing.
-      expect(find.text(compactFormat(312547, locale)), findsOneWidget);
-      expect(find.text(l.filterListsCount('2')), findsOneWidget);
+      expect(find.text(intFormat(312547, locale)), findsOneWidget);
+      expect(find.text(l.filterListsCount(2)), findsOneWidget);
 
-      // 7300 of 20478 queries stopped.
-      expect(find.text(compactFormat(20478, locale)), findsOneWidget);
-      expect(find.text(compactFormat(7300, locale)), findsOneWidget);
+      // 7300 of 20478 queries stopped, told in full digits.
+      expect(find.text(intFormat(20478, locale)), findsOneWidget);
+      expect(find.text(intFormat(7300, locale)), findsOneWidget);
       expect(find.text(l.blockRate('35.6%')), findsOneWidget);
 
       // 0.0246 seconds, shown in the milliseconds the tile names.
@@ -79,7 +78,7 @@ void main() {
 
       // The devices the server knows, the version it reports. The hero keeps
       // both of its lines in one Text, so they are matched by content.
-      expect(find.textContaining(l.protectingDevices(23)), findsOneWidget);
+      expect(find.textContaining(l.protectingDevices(23, '23')), findsOneWidget);
       expect(find.text('v0.107.0'), findsOneWidget);
       expect(find.text('Home Router'), findsWidgets);
       expect(h.status.serverStatus!.generalEnabled, isTrue);
@@ -91,6 +90,38 @@ void main() {
       expect(find.text(l.protectionPaused), findsWidgets);
       expect(find.textContaining(l.allQueriesAllowedDirectly), findsOneWidget);
       expect(find.byIcon(CupertinoIcons.pause_circle), findsOneWidget);
+    });
+
+    testWidgets('a server that never answered is not called paused', (tester) async {
+      final h = await pumpOverview(tester, statusKnown: false);
+
+      // Nothing loaded, so the page has no protection state to report. The
+      // two sentences a user can act on are "turn it back on" and "the server
+      // is unreachable", and only the second one is true here.
+      expect(find.textContaining(l.protectionUnknown), findsWidgets);
+      expect(find.text(l.protectionPaused), findsNothing);
+      expect(find.text(l.protectionRunning), findsNothing);
+      expect(h.status.serverStatus, isNull);
+    });
+
+    testWidgets('a server that stops answering stops being called running', (tester) async {
+      final h = await pumpOverview(tester, failAfterLoad: true);
+
+      // The first read answered, so the page is entitled to say what it says.
+      expect(find.textContaining(l.protectionRunning), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.checkmark_shield), findsOneWidget);
+
+      // The refresh finds nobody on the other end. What the page keeps on
+      // screen is then the last answer rather than this one, and a green
+      // shield over it is the app claiming knowledge it no longer has.
+      await tester.tap(find.byIcon(CupertinoIcons.arrow_clockwise));
+      await tester.pumpAndSettle();
+
+      expect(h.status.serverStatus, isNotNull);
+      expect(find.textContaining(l.protectionUnknown), findsOneWidget);
+      expect(find.textContaining(l.protectionRunning), findsNothing);
+      expect(find.byIcon(CupertinoIcons.checkmark_shield), findsNothing);
+      expect(find.widgetWithText(AppleFormButton, l.refresh), findsOneWidget);
     });
 
     testWidgets('the trend segment asks the server for its own window', (tester) async {
@@ -118,8 +149,19 @@ void main() {
         30,
       );
 
-      // 共 N 条 counts the buckets of the window that is showing.
-      expect(find.text(l.queriesTotal(compactFormat(509032, locale))), findsOneWidget);
+      // The legend counts the buckets of the window that is showing: one
+      // exact total per series, not one combined compact figure. The legend
+      // draws label and count as one rich text.
+      final month = trendFor(2592000000);
+      final monthBlocked = month.blockedFiltering.fold<int>(0, (a, b) => a + b);
+      expect(
+        find.textContaining(intFormat(509032, locale), findRichText: true),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining(intFormat(monthBlocked, locale), findRichText: true),
+        findsOneWidget,
+      );
     });
 
     testWidgets('a window longer than the server keeps asks first', (tester) async {
@@ -252,6 +294,55 @@ void main() {
       expect(find.text('smetrics.adobe.com'), findsNothing);
     });
 
+    testWidgets('the ranking card follows the order the setting stores',
+        (tester) async {
+      // The page reads the same stored list the settings page writes: a
+      // ranking turned off loses its segment, and the sequence the rows were
+      // dragged into is the sequence the segments sit in.
+      await pumpOverview(
+        tester,
+        topItemsOrder: const [
+          HomeTopItems.recurrentClients,
+          HomeTopItems.blockedDomains,
+        ],
+      );
+
+      expect(find.text(l.queriedDomainsShort), findsNothing);
+      expect(find.text(l.activeDevices), findsOneWidget);
+      expect(find.text(l.blockedDomainsShort), findsOneWidget);
+
+      // The first ranking of the stored order is the one showing, on the left.
+      expect(
+        tester.getCenter(find.text(l.activeDevices)).dx,
+        lessThan(tester.getCenter(find.text(l.blockedDomainsShort)).dx),
+      );
+      expect(find.text('iPhone 15 Pro'), findsOneWidget);
+
+      // The sheet behind 全部 offers the same two rankings and no third.
+      await tester.tap(find.text(l.all));
+      await tester.pumpAndSettle();
+      expect(find.text(l.queriedDomainsShort), findsNothing);
+      expect(find.text('smetrics.adobe.com'), findsNothing);
+
+      await tester.tap(find.text(l.close));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the ranking card goes away when every ranking is off',
+        (tester) async {
+      await pumpOverview(tester, topItemsOrder: const []);
+
+      expect(find.text(l.topRanking), findsNothing);
+      expect(find.text(l.blockedDomainsShort), findsNothing);
+      expect(find.text(l.all), findsNothing);
+
+      // The rest of the page is still there: this is one block going, not the
+      // overview giving up.
+      expect(find.text(l.totalQueries), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('the shield turns a paused server back on', (tester) async {
       final h = await pumpOverview(tester, protectionOn: false);
 
@@ -311,37 +402,30 @@ void main() {
     testWidgets('管理防护 opens the protections of the server', (tester) async {
       final h = await pumpOverview(tester);
 
-      await tester.tap(
+      // The card itself carries no buttons any more; the sheet the shield
+      // opens is the way into the protections.
+      expect(
         find.descendant(
           of: find.byType(AppleHero),
-          matching: find.text(l.manageProtection),
+          matching: find.byType(AppleButton),
         ),
+        findsNothing,
       );
+      expect(find.text(l.viewLogs), findsNothing);
+
+      await tester.tap(find.byIcon(CupertinoIcons.checkmark_shield));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l.manageProtection));
       await tester.pumpAndSettle();
 
       expect(find.byType(ManagementModal), findsOneWidget);
       expect(h.status.serverStatus!.generalEnabled, isTrue);
     });
 
-    testWidgets('查看日志 hands the log tab the whole picture', (tester) async {
-      final h = await pumpOverview(tester);
-
-      await tester.tap(
-        find.descendant(
-          of: find.byType(AppleHero),
-          matching: find.text(l.viewLogs),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(h.appConfig.selectedScreen, 2);
-      expect(h.logs.appliedFilters.statuses, isEmpty);
-    });
-
     testWidgets('the blocked tile opens the log tab on the blocked rows', (tester) async {
       final h = await pumpOverview(tester);
 
-      await tester.tap(find.text(compactFormat(7300, locale)));
+      await tester.tap(find.text(intFormat(7300, locale)));
       await tester.pumpAndSettle();
 
       expect(h.appConfig.selectedScreen, 2);

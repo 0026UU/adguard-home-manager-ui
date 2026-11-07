@@ -226,11 +226,15 @@ class _BlockingScheduleModalState extends State<BlockingScheduleModal> {
                       AppleListTile(
                         title: l.from,
                         value: _formatTime(_from),
+                        // Each line raises a time picker over this sheet, so
+                        // neither owns a disclosure.
+                        showChevron: false,
                         onTap: _finished ? null : () => _pickTime(start: true),
                       ),
                       AppleListTile(
                         title: l.to,
                         value: _formatTime(_to),
+                        showChevron: false,
                         onTap: _finished ? null : () => _pickTime(start: false),
                       ),
                     ],
@@ -321,7 +325,7 @@ Future<TimeOfDay?> showAppleTimeSheet(
                             title,
                             style: TextStyle(
                               fontSize: 17,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                               color: p.label,
                             ),
                           ),

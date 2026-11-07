@@ -36,6 +36,11 @@ class DeviceRow {
   });
 
   bool get configured => client != null;
+
+  /// Whether the device answers to a name of its own. When it does not, the
+  /// list shows its address in its place, so the address is already on the
+  /// first line and cannot carry any more information from the second one.
+  bool get named => name != address;
 }
 
 /// The one list the design layer draws: every address the server has seen,
@@ -111,9 +116,10 @@ int? queriesForDevice(DnsStatistics? stats, DeviceRow row) {
   return null;
 }
 
-/// One row of the devices list, as the design layer draws it: an initial on a
-/// seeded gradient, the address and its configuration state, then how many
-/// queries the device brought to the server.
+/// One row of the devices list, as the design layer draws it: the initial of
+/// the device on a seeded gradient, then the address and the configuration
+/// state it is not already showing as its title, then how many queries the
+/// device brought to the server.
 class DeviceTile extends StatelessWidget {
   final DeviceRow row;
   final void Function(DeviceRow) onTap;
@@ -124,6 +130,10 @@ class DeviceTile extends StatelessWidget {
   /// report for this device.
   final int? queries;
 
+  /// Opens the query log narrowed to this device, tapped on the count itself.
+  /// Null leaves the count as plain text, with no dead tap target on it.
+  final void Function(DeviceRow)? onQueriesTap;
+
   /// Trailing hairline; disabled for the last row of a list.
   final bool showSeparator;
 
@@ -132,6 +142,7 @@ class DeviceTile extends StatelessWidget {
     required this.row,
     required this.onTap,
     this.queries,
+    this.onQueriesTap,
     this.selected = false,
     required this.splitView,
     this.showSeparator = true,
@@ -143,27 +154,78 @@ class DeviceTile extends StatelessWidget {
     final palette = ApplePalette.of(context);
 
     final counted = queries != null;
-    final count = counted ? compactFormat(queries!, Platform.localeName) : null;
+    // The exact grouped number, not the compact one: this text is a control
+    // where the server has stats, and a control must not round what it opens.
+    final count = counted ? intFormat(queries!, Platform.localeName) : null;
+
+    // The count is its own way into the query log of this device, so it gets
+    // its own gesture region — tall enough to hit on a phone — instead of
+    // riding along with the row tap, which opens the device itself.
+    Widget? trailing;
+    if (count != null && onQueriesTap != null) {
+      trailing = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Semantics(
+            button: true,
+            excludeSemantics: true,
+            label: localizations.viewDeviceLog(row.name),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => onQueriesTap!(row),
+              child: SizedBox(
+                height: 44,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Center(
+                    child: Text(
+                      count,
+                      style: TextStyle(
+                        fontSize: 16,
+                        height: 1.25,
+                        color: palette.tint,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // A trailing control replaces the tile's own disclosure, and this
+          // row still opens the device when tapped anywhere else.
+          if (!splitView) const AppleChevron(),
+        ],
+      );
+    }
 
     final state = row.configured
       ? localizations.hasCustomSettings
       : localizations.hasDefaultSettings;
 
-    final subtitle = counted
-      ? '${row.address} · $state · ${localizations.deviceQueries(count!)}'
-      : '${row.address} · $state';
+    final subtitle = [
+      // An unnamed device is titled by its address, so the line under it would
+      // only repeat the title.
+      if (row.named) row.address,
+      state,
+      // The count already owns the right of this row; repeating it here ate the
+      // line down to a single ellipsis and hid whether the device is custom.
+    ].join(' · ');
 
     final tile = AppleListTile(
       title: row.name,
+      // The initial of a name the network or the administrator gave; a device
+      // known only by its address has no initial to take, so it wears the
+      // neutral badge instead of a digit of its address.
       leading: AppleAvatar(
         text: row.name,
         size: 40,
-        color: palette.seeded(row.name),
-        gradientTo: palette.seededAlt(row.name),
+        color: row.named ? palette.seeded(row.name) : palette.gray,
+        icon: row.named ? null : CupertinoIcons.circle_fill,
       ),
       subtitle: subtitle,
       subtitleMaxLines: 1,
-      value: count,
+      value: trailing == null ? count : null,
+      trailing: trailing,
       onTap: () => onTap(row),
       showChevron: !splitView,
       selected: splitView && selected,

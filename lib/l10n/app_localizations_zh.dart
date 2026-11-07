@@ -24,7 +24,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get createConnection => '创建连接';
 
   @override
-  String get editConnection => 'Edit connection';
+  String get editConnection => '编辑连接';
 
   @override
   String get name => '名称';
@@ -99,6 +99,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get connected => '已连接';
 
   @override
+  String get notConnected => '未连接';
+
+  @override
   String get selectedDisconnected => '已选择但未连接';
 
   @override
@@ -109,6 +112,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get noSavedConnections => '连接为空';
+
+  @override
+  String get noSavedConnectionsHint => '添加你要管理的 AdGuard Home 服务器。';
 
   @override
   String get cannotConnect => '无法连接到服务器';
@@ -264,7 +270,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get blocked => '拦截';
 
   @override
-  String get noClientsList => '列表中没有客户端';
+  String get noClientsList => '服务器还没有上报任何设备';
+
+  @override
+  String get noDevicesInSegment => '这一类里没有设备';
+
+  @override
+  String get switchDeviceSegment => '切换上方的分段即可查看另一类';
 
   @override
   String get activeClients => '活跃';
@@ -496,6 +508,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get noLogsThatOld => '选择的时间段可能没有日志 请尝试选择近期时间 ';
+
+  @override
+  String get noLiveLogsMatchingFilters => '应用这些筛选条件后还没有新的查询 放宽条件即可查看其余部分 ';
+
+  @override
+  String get noLogsMatchingFilters => '这段时间里没有符合这些筛选条件的查询 放宽条件即可查看其余部分 ';
 
   @override
   String get apply => '应用';
@@ -972,7 +990,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get disablingList => '正在禁用订阅规则...';
 
   @override
-  String get savingList => 'Saving list...';
+  String get savingList => '正在保存订阅规则...';
 
   @override
   String get disableFiltering => '禁用过滤';
@@ -1248,6 +1266,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get clearLogs => '清除日志';
+
+  @override
+  String get clearLogsConfirm => '这将删除服务器记录的全部查询，且无法撤销。';
 
   @override
   String get anonymizeClientIp => '匿名化客户端 IP';
@@ -1652,7 +1673,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get language => '语言';
 
   @override
-  String get languageDescription => 'Change the language of the app';
+  String get languageDescription => '更改应用的语言';
 
   @override
   String get color => '颜色';
@@ -2124,12 +2145,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get topUpstreams => '主要上游';
-
-  @override
-  String get averageUpstreamResponseTime => '平均上游响应时间';
-
-  @override
   String get dhcpNotAvailable => 'DHCP 服务器不可用 ';
 
   @override
@@ -2207,6 +2222,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get noDataChart => '没有数据显示此图表 ';
+
+  @override
+  String get trendNotLoaded => '无法加载图表数据';
 
   @override
   String get noData => '无数据';
@@ -2430,17 +2448,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get disallowingClient => '正在禁止客户端...';
 
   @override
-  String get clientIpCopied => 'Client IP copied to the clipboard';
+  String get clientIpCopied => '客户端 IP 已复制到剪贴板';
 
   @override
-  String get clientNameCopied => 'Client name copied to the clipboard';
+  String get clientNameCopied => '客户端名称已复制到剪贴板';
 
   @override
-  String get dnsServerAddressCopied =>
-      'DNS server address copied to the clipboard';
+  String get dnsServerAddressCopied => 'DNS 服务器地址已复制到剪贴板';
 
   @override
-  String get select => 'Select';
+  String get select => '选择';
 
   @override
   String get liveLogs => '实时日志';
@@ -2449,71 +2466,64 @@ class AppLocalizationsZh extends AppLocalizations {
   String get hereWillAppearRealtimeLogs => '这里会显示实时日志';
 
   @override
-  String get applicationDetails => 'Application details';
+  String get applicationDetails => '应用详情';
 
   @override
-  String get applicationDetailsDescription =>
-      'App repository, stores where it\'s available, and more';
+  String get applicationDetailsDescription => '应用仓库、可用的应用商店等信息';
 
   @override
-  String get myOtherApps => 'My other apps';
+  String get myOtherApps => '我的其他应用';
 
   @override
-  String get myOtherAppsDescription =>
-      'Check my other apps, make a donation, contact support, and more';
+  String get myOtherAppsDescription => '查看我的其他应用、捐赠、联系支持等';
 
   @override
-  String get topToBottom => 'From top to bottom';
+  String get topToBottom => '从上到下';
 
   @override
-  String get bottomToTop => 'From bottom to top';
+  String get bottomToTop => '从下到上';
 
   @override
-  String get upstreamTimeout => 'Upstream timeout';
+  String get upstreamTimeout => '上游超时';
 
   @override
-  String get upstreamTimeoutHelper =>
-      'Specifies the number of seconds to wait for a response from the upstream server';
+  String get upstreamTimeoutHelper => '指定等待上游服务器响应的秒数';
 
   @override
-  String get fieldCannotBeEmpty => 'This field cannot be empty';
+  String get fieldCannotBeEmpty => '此字段不能为空';
 
   @override
-  String get enableDnsRewriteRules => 'Enable DNS rewrite rules';
+  String get enableDnsRewriteRules => '启用 DNS 重写规则';
 
   @override
-  String get dnsRewriteRuleEnabled => 'DNS rewrite rule enabled successfully';
+  String get dnsRewriteRuleEnabled => 'DNS 重写规则启用成功';
 
   @override
-  String get dnsRewriteRuleDisabled => 'DNS rewrite rule disabled successfully';
+  String get dnsRewriteRuleDisabled => 'DNS 重写规则禁用成功';
 
   @override
-  String get allDnsRewriteRulesEnabled =>
-      'All DNS rewrite rules enabled successfully';
+  String get allDnsRewriteRulesEnabled => 'DNS 重写规则全部启用成功';
 
   @override
-  String get allDnsRewriteRulesDisabled =>
-      'All DNS rewrite rules disabled successfully';
+  String get allDnsRewriteRulesDisabled => 'DNS 重写规则全部禁用成功';
 
   @override
-  String get errorEnablingAllDnsRewriteRules =>
-      'Error enabling all DNS rewrite rules';
+  String get errorEnablingAllDnsRewriteRules => '启用全部 DNS 重写规则时出错';
 
   @override
-  String get errorDisablingAllDnsRewriteRules =>
-      'Error disabling all DNS rewrite rules';
+  String get errorDisablingAllDnsRewriteRules => '禁用全部 DNS 重写规则时出错';
 
   @override
-  String get enablingDnsRewriteRule => 'Enabling DNS rewrite rules...';
+  String get enablingDnsRewriteRule => '正在启用 DNS 重写规则...';
 
   @override
-  String get disablingDnsRewriteRule => 'Disabling DNS rewrite rules...';
+  String get disablingDnsRewriteRule => '正在禁用 DNS 重写规则...';
 
   @override
-  String get selectIdToFilter => 'Select an ID to filter';
+  String get selectIdToFilter => '选择要筛选的 ID';
 
   @override
-  String get clientIds => 'Client IDs';
+  String get clientIds => '客户端 ID';
 
   @override
   String get devices => '设备';
@@ -2522,8 +2532,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get identifiedDevices => '已识别设备';
 
   @override
-  String shownDevices(Object count) {
-    return '$count 台设备';
+  String shownDevices(num count, Object shown) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$shown 台设备',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -2543,14 +2558,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get hasDefaultSettings => '默认配置';
 
   @override
+  String viewDeviceLog(Object device) {
+    return '查看 $device 的日志';
+  }
+
+  @override
   String get onlyCustom => '已单独配置';
 
   @override
   String get onlyDefault => '未配置';
 
   @override
-  String protectingDevices(Object count) {
-    return '正在为 $count 台设备拦截广告与跟踪';
+  String protectingDevices(num count, Object shown) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '正在为 $shown 台设备拦截广告与跟踪',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -2617,26 +2642,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String get customRulesSyntaxHelper => '改写 / 例外 / 本地规则';
 
   @override
-  String rulesCount(Object count) {
-    return '$count 条规则';
+  String rulesCount(num count, Object shown) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$shown 条规则',
+    );
+    return '$_temp0';
   }
 
   @override
   String get customRulesPreview => '自定义规则预览';
 
   @override
-  String showAllRules(Object count) {
-    return '查看全部 $count 条规则';
+  String showAllRules(num count, Object shown) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '查看全部 $shown 条规则',
+    );
+    return '$_temp0';
   }
 
   @override
   String get blockByService => '按服务拦截';
 
   @override
+  String get clearBlockedServicesConfirm => '这将一次性停止拦截列表中的全部服务。';
+
+  @override
   String get clearAll => '清空';
 
   @override
-  String listsEnabledWithRules(Object lists, Object rules) {
+  String listsEnabledWithRules(num lists, num rules) {
     return '$lists 个列表已启用 · $rules 条规则';
   }
 
@@ -2685,7 +2723,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get protectionRunning => '防护运行中';
 
   @override
+  String get protectionNotChanged => '服务器未接受此更改';
+
+  @override
   String get protectionPaused => '防护已暂停';
+
+  @override
+  String get protectionUnknown => '状态未知';
 
   @override
   String get protectionOn => '防护已开启';
@@ -2726,8 +2770,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get activeRules => '生效规则';
 
   @override
-  String filterListsCount(Object count) {
-    return '$count 个过滤列表';
+  String filterListsCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个过滤列表',
+      zero: '没有过滤列表',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -2810,8 +2860,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get identity => '标识';
 
   @override
-  String blockedServicesCount(Object count) {
-    return '已拦截 $count 个服务';
+  String blockedServicesCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已拦截 $count 个服务',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -2830,8 +2885,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get parallelRequestsSubtitle => '同时向所有上游查询';
 
   @override
-  String queriesPerSecond(Object count) {
-    return '每秒 $count 次查询';
+  String queriesPerSecond(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '每秒 $count 次查询',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -2884,13 +2944,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sortedByQueries => '按查询量排序';
 
   @override
-  String devicesQueriedLastDay(Object count) {
-    return '$count 台在最近 24 小时发起查询';
-  }
-
-  @override
-  String deviceQueries(Object count) {
-    return '$count 查询';
+  String devicesSeenInStatistics(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '统计中可见 $count 台设备',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -3081,6 +3141,105 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get ruleAlreadyOnList => '该规则已在列表中';
+
+  @override
+  String get logQueryDetails => '查询详情';
+
+  @override
+  String get logResponseDetails => '响应细节';
+
+  @override
+  String get logClientDetails => '客户端详情';
+
+  @override
+  String get logProtocol => '协议';
+
+  @override
+  String get logProtocolPlain => '无加密 DNS';
+
+  @override
+  String get logProtocolDoh => 'DNS-over-HTTPS';
+
+  @override
+  String get logProtocolDot => 'DNS-over-TLS';
+
+  @override
+  String get logProtocolDoq => 'DNS-over-QUIC';
+
+  @override
+  String get logStatusProcessed => '已处理';
+
+  @override
+  String get logStatusRewritten => '重写项';
+
+  @override
+  String get logReasonBlockedByFilter => '被过滤器拦截';
+
+  @override
+  String get logReasonBlockedByParental => '被家长控制拦截';
+
+  @override
+  String get logReasonBlockedThreats => '已拦截的威胁';
+
+  @override
+  String get logReasonSafeSearch => '安全搜索';
+
+  @override
+  String get logReasonBlockedServices => '已阻止的服务';
+
+  @override
+  String get logReasonRewrittenByHosts => '根据 hosts 文件规则已被重写';
+
+  @override
+  String get logReasonAllowed => '白名单';
+
+  @override
+  String get logSourceCustomRules => '自定义过滤器规则';
+
+  @override
+  String get logSourceParentalControl => '家长控制';
+
+  @override
+  String get logDetailRules => '规则';
+
+  @override
+  String get logDetailSource => '来源';
+
+  @override
+  String get logDetailServedFromCache => '来自缓存';
+
+  @override
+  String get logDetailOriginalResponse => '原始响应';
+
+  @override
+  String get logDetailServiceName => '服务名称';
+
+  @override
+  String get logDetailEcs => 'ECS';
+
+  @override
+  String get logDetailDnssec => 'DNSSEC';
+
+  @override
+  String get logDetailValidatedWithDnssec => '通过 DNSSEC 验证';
+
+  @override
+  String get logDetailClientIp => '客户端 IP';
+
+  @override
+  String get logDetailWhois => 'WHOIS';
+
+  @override
+  String get logDetailAddress => '地址';
+
+  @override
+  String get logDetailCountry => '国家/地区';
+
+  @override
+  String get logDetailNetwork => '网络';
+
+  @override
+  String get logDetailCategory => '类别';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -3103,6 +3262,9 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get createConnection => '创建连接';
 
   @override
+  String get editConnection => '编辑连接';
+
+  @override
   String get name => '名称';
 
   @override
@@ -3175,6 +3337,9 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get connected => '已连接';
 
   @override
+  String get notConnected => '未连接';
+
+  @override
   String get selectedDisconnected => '已选择但未连接';
 
   @override
@@ -3185,6 +3350,9 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get noSavedConnections => '连接为空';
+
+  @override
+  String get noSavedConnectionsHint => '添加你要管理的 AdGuard Home 服务器。';
 
   @override
   String get cannotConnect => '无法连接到服务器';
@@ -3340,7 +3508,13 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get blocked => '拦截';
 
   @override
-  String get noClientsList => '列表中没有客户端';
+  String get noClientsList => '服务器还没有上报任何设备';
+
+  @override
+  String get noDevicesInSegment => '这一类里没有设备';
+
+  @override
+  String get switchDeviceSegment => '切换上方的分段即可查看另一类';
 
   @override
   String get activeClients => '活跃';
@@ -3572,6 +3746,12 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get noLogsThatOld => '选择的时间段可能没有日志 请尝试选择近期时间 ';
+
+  @override
+  String get noLiveLogsMatchingFilters => '应用这些筛选条件后还没有新的查询 放宽条件即可查看其余部分 ';
+
+  @override
+  String get noLogsMatchingFilters => '这段时间里没有符合这些筛选条件的查询 放宽条件即可查看其余部分 ';
 
   @override
   String get apply => '应用';
@@ -4048,6 +4228,9 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get disablingList => '正在禁用订阅规则...';
 
   @override
+  String get savingList => '正在保存订阅规则...';
+
+  @override
   String get disableFiltering => '禁用过滤';
 
   @override
@@ -4321,6 +4504,9 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get clearLogs => '清除日志';
+
+  @override
+  String get clearLogsConfirm => '这将删除服务器记录的全部查询，且无法撤销。';
 
   @override
   String get anonymizeClientIp => '匿名化客户端 IP';
@@ -4723,6 +4909,9 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get language => '语言';
+
+  @override
+  String get languageDescription => '更改应用的语言';
 
   @override
   String get color => '颜色';
@@ -5194,12 +5383,6 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   }
 
   @override
-  String get topUpstreams => '主要上游';
-
-  @override
-  String get averageUpstreamResponseTime => '平均上游响应时间';
-
-  @override
   String get dhcpNotAvailable => 'DHCP 服务器不可用 ';
 
   @override
@@ -5277,6 +5460,9 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get noDataChart => '没有数据显示此图表 ';
+
+  @override
+  String get trendNotLoaded => '无法加载图表数据';
 
   @override
   String get noData => '无数据';
@@ -5500,10 +5686,82 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get disallowingClient => '正在禁止客户端...';
 
   @override
+  String get clientIpCopied => '客户端 IP 已复制到剪贴板';
+
+  @override
+  String get clientNameCopied => '客户端名称已复制到剪贴板';
+
+  @override
+  String get dnsServerAddressCopied => 'DNS 服务器地址已复制到剪贴板';
+
+  @override
+  String get select => '选择';
+
+  @override
   String get liveLogs => '实时日志';
 
   @override
   String get hereWillAppearRealtimeLogs => '这里会显示实时日志';
+
+  @override
+  String get applicationDetails => '应用详情';
+
+  @override
+  String get applicationDetailsDescription => '应用仓库、可用的应用商店等信息';
+
+  @override
+  String get myOtherApps => '我的其他应用';
+
+  @override
+  String get myOtherAppsDescription => '查看我的其他应用、捐赠、联系支持等';
+
+  @override
+  String get topToBottom => '从上到下';
+
+  @override
+  String get bottomToTop => '从下到上';
+
+  @override
+  String get upstreamTimeout => '上游超时';
+
+  @override
+  String get upstreamTimeoutHelper => '指定等待上游服务器响应的秒数';
+
+  @override
+  String get fieldCannotBeEmpty => '此字段不能为空';
+
+  @override
+  String get enableDnsRewriteRules => '启用 DNS 重写规则';
+
+  @override
+  String get dnsRewriteRuleEnabled => 'DNS 重写规则启用成功';
+
+  @override
+  String get dnsRewriteRuleDisabled => 'DNS 重写规则禁用成功';
+
+  @override
+  String get allDnsRewriteRulesEnabled => 'DNS 重写规则全部启用成功';
+
+  @override
+  String get allDnsRewriteRulesDisabled => 'DNS 重写规则全部禁用成功';
+
+  @override
+  String get errorEnablingAllDnsRewriteRules => '启用全部 DNS 重写规则时出错';
+
+  @override
+  String get errorDisablingAllDnsRewriteRules => '禁用全部 DNS 重写规则时出错';
+
+  @override
+  String get enablingDnsRewriteRule => '正在启用 DNS 重写规则...';
+
+  @override
+  String get disablingDnsRewriteRule => '正在禁用 DNS 重写规则...';
+
+  @override
+  String get selectIdToFilter => '选择要筛选的 ID';
+
+  @override
+  String get clientIds => '客户端 ID';
 
   @override
   String get devices => '设备';
@@ -5512,8 +5770,13 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get identifiedDevices => '已识别设备';
 
   @override
-  String shownDevices(Object count) {
-    return '$count 台设备';
+  String shownDevices(num count, Object shown) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$shown 台设备',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -5533,14 +5796,24 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get hasDefaultSettings => '默认配置';
 
   @override
+  String viewDeviceLog(Object device) {
+    return '查看 $device 的日志';
+  }
+
+  @override
   String get onlyCustom => '已单独配置';
 
   @override
   String get onlyDefault => '未配置';
 
   @override
-  String protectingDevices(Object count) {
-    return '正在为 $count 台设备拦截广告与跟踪';
+  String protectingDevices(num count, Object shown) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '正在为 $shown 台设备拦截广告与跟踪',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -5607,26 +5880,39 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get customRulesSyntaxHelper => '改写 / 例外 / 本地规则';
 
   @override
-  String rulesCount(Object count) {
-    return '$count 条规则';
+  String rulesCount(num count, Object shown) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$shown 条规则',
+    );
+    return '$_temp0';
   }
 
   @override
   String get customRulesPreview => '自定义规则预览';
 
   @override
-  String showAllRules(Object count) {
-    return '查看全部 $count 条规则';
+  String showAllRules(num count, Object shown) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '查看全部 $shown 条规则',
+    );
+    return '$_temp0';
   }
 
   @override
   String get blockByService => '按服务拦截';
 
   @override
+  String get clearBlockedServicesConfirm => '这将一次性停止拦截列表中的全部服务。';
+
+  @override
   String get clearAll => '清空';
 
   @override
-  String listsEnabledWithRules(Object lists, Object rules) {
+  String listsEnabledWithRules(num lists, num rules) {
     return '$lists 个列表已启用 · $rules 条规则';
   }
 
@@ -5675,7 +5961,13 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get protectionRunning => '防护运行中';
 
   @override
+  String get protectionNotChanged => '服务器未接受此更改';
+
+  @override
   String get protectionPaused => '防护已暂停';
+
+  @override
+  String get protectionUnknown => '状态未知';
 
   @override
   String get protectionOn => '防护已开启';
@@ -5716,8 +6008,14 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get activeRules => '生效规则';
 
   @override
-  String filterListsCount(Object count) {
-    return '$count 个过滤列表';
+  String filterListsCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个过滤列表',
+      zero: '没有过滤列表',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -5800,8 +6098,13 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get identity => '标识';
 
   @override
-  String blockedServicesCount(Object count) {
-    return '已拦截 $count 个服务';
+  String blockedServicesCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已拦截 $count 个服务',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -5820,8 +6123,13 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get parallelRequestsSubtitle => '同时向所有上游查询';
 
   @override
-  String queriesPerSecond(Object count) {
-    return '每秒 $count 次查询';
+  String queriesPerSecond(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '每秒 $count 次查询',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -5874,13 +6182,13 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get sortedByQueries => '按查询量排序';
 
   @override
-  String devicesQueriedLastDay(Object count) {
-    return '$count 台在最近 24 小时发起查询';
-  }
-
-  @override
-  String deviceQueries(Object count) {
-    return '$count 查询';
+  String devicesSeenInStatistics(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '统计中可见 $count 台设备',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -6071,4 +6379,103 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
 
   @override
   String get ruleAlreadyOnList => '该规则已在列表中';
+
+  @override
+  String get logQueryDetails => '查询详情';
+
+  @override
+  String get logResponseDetails => '响应细节';
+
+  @override
+  String get logClientDetails => '客户端详情';
+
+  @override
+  String get logProtocol => '协议';
+
+  @override
+  String get logProtocolPlain => '无加密 DNS';
+
+  @override
+  String get logProtocolDoh => 'DNS-over-HTTPS';
+
+  @override
+  String get logProtocolDot => 'DNS-over-TLS';
+
+  @override
+  String get logProtocolDoq => 'DNS-over-QUIC';
+
+  @override
+  String get logStatusProcessed => '已处理';
+
+  @override
+  String get logStatusRewritten => '重写项';
+
+  @override
+  String get logReasonBlockedByFilter => '被过滤器拦截';
+
+  @override
+  String get logReasonBlockedByParental => '被家长控制拦截';
+
+  @override
+  String get logReasonBlockedThreats => '已拦截的威胁';
+
+  @override
+  String get logReasonSafeSearch => '安全搜索';
+
+  @override
+  String get logReasonBlockedServices => '已阻止的服务';
+
+  @override
+  String get logReasonRewrittenByHosts => '根据 hosts 文件规则已被重写';
+
+  @override
+  String get logReasonAllowed => '白名单';
+
+  @override
+  String get logSourceCustomRules => '自定义过滤器规则';
+
+  @override
+  String get logSourceParentalControl => '家长控制';
+
+  @override
+  String get logDetailRules => '规则';
+
+  @override
+  String get logDetailSource => '来源';
+
+  @override
+  String get logDetailServedFromCache => '来自缓存';
+
+  @override
+  String get logDetailOriginalResponse => '原始响应';
+
+  @override
+  String get logDetailServiceName => '服务名称';
+
+  @override
+  String get logDetailEcs => 'ECS';
+
+  @override
+  String get logDetailDnssec => 'DNSSEC';
+
+  @override
+  String get logDetailValidatedWithDnssec => '通过 DNSSEC 验证';
+
+  @override
+  String get logDetailClientIp => '客户端 IP';
+
+  @override
+  String get logDetailWhois => 'WHOIS';
+
+  @override
+  String get logDetailAddress => '地址';
+
+  @override
+  String get logDetailCountry => '国家/地区';
+
+  @override
+  String get logDetailNetwork => '网络';
+
+  @override
+  String get logDetailCategory => '类别';
 }

@@ -12,7 +12,6 @@ import 'package:adguard_home_manager/models/applied_filters.dart';
 import 'package:adguard_home_manager/models/clients.dart';
 import 'package:adguard_home_manager/providers/clients_provider.dart';
 import 'package:adguard_home_manager/providers/logs_provider.dart';
-import 'package:adguard_home_manager/providers/status_provider.dart';
 import 'package:adguard_home_manager/screens/logs/filters/clients_modal.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
@@ -73,7 +72,6 @@ class _LogsFiltersModalState extends State<LogsFiltersModal> {
     final l = AppLocalizations.of(context)!;
     final logsProvider = Provider.of<LogsProvider>(context);
     final clientsProvider = Provider.of<ClientsProvider>(context);
-    final statusProvider = Provider.of<StatusProvider>(context);
     final width = MediaQuery.of(context).size.width;
 
     void apply() {
@@ -124,13 +122,12 @@ class _LogsFiltersModalState extends State<LogsFiltersModal> {
             : const [];
 
     String? nameOf(String ip) {
-      try {
-        return statusProvider.serverStatus!.clients
-            .firstWhere((c) => c.ids.contains(ip))
-            .name;
-      } catch (e) {
-        return null;
+      final known = clientsProvider.clients;
+      if (known == null) return null;
+      for (final configured in known.clients) {
+        if (configured.ids.contains(ip)) return configured.name;
       }
+      return null;
     }
 
     final inline = knownClients.take(_inlineClientLimit).toList();
@@ -240,23 +237,26 @@ class _LogsFiltersModalState extends State<LogsFiltersModal> {
     // user added; without either, the row shows the address itself.
     final name = auto.name ?? addedName;
     final seed = name ?? ip;
+    // The selection keys on the label the query log writes for the device —
+    // the configured name above all — so a row switched on here narrows the
+    // same way as the count tap on the devices page.
+    final key = addedName ?? name ?? ip;
 
     // The prototype wraps the switch in a label, so the whole row toggles; the
     // switch itself keeps winning the arena where it is hit.
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => _toggleClient(ip),
+      onTap: () => _toggleClient(key),
       child: AppleSwitchListTile(
         leading: AppleAvatar(
           text: seed,
           size: 30,
           color: palette.seeded(seed),
-          gradientTo: palette.seededAlt(seed),
         ),
         title: seed,
         subtitle: name == null ? null : ip,
-        value: _clients.contains(ip),
-        onChanged: (_) => _toggleClient(ip),
+        value: _clients.contains(key),
+        onChanged: (_) => _toggleClient(key),
       ),
     );
   }

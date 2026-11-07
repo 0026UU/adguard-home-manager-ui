@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
+import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+/// Asks before the cache of the server is emptied, as an iOS alert.
 class ClearDnsCacheDialog extends StatelessWidget {
   final void Function() onConfirm;
 
@@ -12,49 +14,18 @@ class ClearDnsCacheDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Column(
-        children: [
-          Icon(
-            Icons.delete_rounded,
-            size: 24,
-            color: Theme.of(context).listTileTheme.iconColor
-          ),
-          const SizedBox(height: 16),
-          Text(
-            AppLocalizations.of(context)!.clearDnsCache, 
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 24,
-              color: Theme.of(context).colorScheme.onSurface
-            ),
-          )
-        ],
-      ),
-      content: Text(
-        AppLocalizations.of(context)!.clearDnsCacheMessage,
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurface
-        ),
-      ),
+    final l = AppLocalizations.of(context)!;
+
+    return AppleAlertDialog(
+      title: l.clearDnsCache,
+      message: l.clearDnsCacheMessage,
       actions: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(AppLocalizations.of(context)!.cancel)
-            ),
-            const SizedBox(width: 16),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                onConfirm();
-              }, 
-              child: Text(AppLocalizations.of(context)!.confirm)
-            )
-          ],
-        )
+        AppleSheetAction(label: l.cancel),
+        AppleSheetAction(
+          label: l.confirm,
+          destructive: true,
+          onTap: onConfirm,
+        ),
       ],
     );
   }

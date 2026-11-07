@@ -56,6 +56,12 @@ class Log {
   /// answer it, so a stock server leaves it null.
   final int? size;
 
+  /// EDNS Client Subnet the server recorded, when the entry carries one.
+  final String? ecs;
+
+  /// Name of the blocked service, when the query died on the service list.
+  final String? serviceName;
+
   Log({
     this.answerDnssec,
     required this.cached,
@@ -74,6 +80,8 @@ class Log {
     this.rule,
     this.originalAnswer,
     this.size,
+    this.ecs,
+    this.serviceName,
   });
 
   factory Log.fromJson(Map<String, dynamic> json) => Log(
@@ -94,6 +102,8 @@ class Log {
     rule: json["rule"],
     originalAnswer: json["original_answer"] == null ? null : List<Answer>.from(json["original_answer"].map((x) => Answer.fromJson(x))),
     size: json["size"],
+    ecs: json["ecs"],
+    serviceName: json["service_name"],
   );
 
   Map<String, dynamic> toJson() => {
@@ -114,6 +124,8 @@ class Log {
     "rule": rule,
     "original_answer": originalAnswer == null ? null : List<dynamic>.from(originalAnswer!.map((x) => x.toJson())),
     "size": size,
+    "ecs": ecs,
+    "service_name": serviceName,
   };
 }
 
@@ -169,12 +181,51 @@ class ClientInfo {
   };
 }
 
+/// The WHOIS block the server attaches to a client. Every field is optional:
+/// the web UI only draws the lines the server actually resolved, so a null
+/// field means "no row", not "unknown value".
 class Whois {
-  Whois();
+  final String? city;
+  final String? country;
+  final String? orgname;
+  final String? network;
+  final String? location;
+  final String? category;
 
-  factory Whois.fromJson(Map<String, dynamic> json) => Whois();
+  Whois({
+    this.city,
+    this.country,
+    this.orgname,
+    this.network,
+    this.location,
+    this.category,
+  });
 
-  Map<String, dynamic> toJson() => {};
+  factory Whois.fromJson(Map<String, dynamic> json) => Whois(
+    city: json["city"] as String?,
+    country: json["country"] as String?,
+    orgname: json["orgname"] as String?,
+    network: json["network"] as String?,
+    location: json["location"] as String?,
+    category: json["category"] as String?,
+  );
+
+  Map<String, dynamic> toJson() => {
+    "city": city,
+    "country": country,
+    "orgname": orgname,
+    "network": network,
+    "location": location,
+    "category": category,
+  };
+
+  bool get isEmpty =>
+    (city ?? '').isEmpty &&
+    (country ?? '').isEmpty &&
+    (orgname ?? '').isEmpty &&
+    (network ?? '').isEmpty &&
+    (location ?? '').isEmpty &&
+    (category ?? '').isEmpty;
 }
 
 class Question {

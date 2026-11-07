@@ -5,11 +5,8 @@ import 'package:adguard_home_manager/l10n/app_localizations.dart';
 
 import 'package:adguard_home_manager/providers/clients_provider.dart';
 import 'package:adguard_home_manager/providers/logs_provider.dart';
-import 'package:adguard_home_manager/providers/status_provider.dart';
 import 'package:adguard_home_manager/screens/logs/filters/added_client_id_selection_modal.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
-import 'package:adguard_home_manager/widgets/custom_checkbox_list_tile.dart';
-import 'package:adguard_home_manager/widgets/custom_list_tile.dart';
 
 class _ClientLog {
   final String? name;
@@ -19,6 +16,11 @@ class _ClientLog {
     required this.name,
     required this.ids,
   });
+
+  /// The label a query-log row carries for this client: the configured name
+  /// when it has one, else the address its queries come from.  An id the log
+  /// never writes, a MAC above all, would narrow the log to nothing.
+  String get logKey => (name != null && name!.isNotEmpty) ? name! : ids[0];
 }
 
 /// Multi-choice picker of the clients a log search can be restricted to.
@@ -42,17 +44,15 @@ class _ClientsModalState extends State<ClientsModal> {
   void initState() {
     final clientsProvider =
         Provider.of<ClientsProvider>(context, listen: false);
-    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
     _filteredClients = clientsProvider.clients!.autoClients.map((e) {
       String? name;
-      try {
-        name = statusProvider.serverStatus!.clients
-            .firstWhere((c) => c.ids.contains(e.ip))
-            .name;
-      } catch (e) {
-        // ---- //
+      for (final configured in clientsProvider.clients!.clients) {
+        if (configured.ids.contains(e.ip)) {
+          name = configured.name;
+          break;
+        }
       }
-      return _ClientLog(name: name, ids: [e.ip]);
+      return _ClientLog(name: name ?? e.name, ids: [e.ip]);
     }).toList();
 
     super.initState();
@@ -70,33 +70,23 @@ class _ClientsModalState extends State<ClientsModal> {
     final p = ApplePalette.of(context);
     final clientsProvider = Provider.of<ClientsProvider>(context);
     final logsProvider = Provider.of<LogsProvider>(context);
-    final statusProvider = Provider.of<StatusProvider>(context);
 
     void onSearch({required String value, int? selectedList}) {
       if ((selectedList ?? _selectedList) == 1) {
-        final filtered = clientsProvider.clients!.clients.map((e) {
-          String? name;
-          try {
-            name = statusProvider.serverStatus!.clients
-                .firstWhere((c) => c.ids.contains(e.ids[0]))
-                .name;
-          } catch (e) {
-            // ---- //
-          }
-          return _ClientLog(name: name, ids: e.ids);
-        }).toList();
+        final filtered = clientsProvider.clients!.clients
+            .map((e) => _ClientLog(name: e.name, ids: e.ids))
+            .toList();
         setState(() => _filteredClients = filtered);
       } else {
         final filtered = clientsProvider.clients!.autoClients.map((e) {
           String? name;
-          try {
-            name = statusProvider.serverStatus!.clients
-                .firstWhere((c) => c.ids.contains(e.ip))
-                .name;
-          } catch (e) {
-            // ---- //
+          for (final configured in clientsProvider.clients!.clients) {
+            if (configured.ids.contains(e.ip)) {
+              name = configured.name;
+              break;
+            }
           }
-          return _ClientLog(name: name, ids: [e.ip]);
+          return _ClientLog(name: name ?? e.name, ids: [e.ip]);
         }).toList();
         setState(() => _filteredClients = filtered);
       }
@@ -164,7 +154,9 @@ class _ClientsModalState extends State<ClientsModal> {
                       : _filteredClients[index].ids.join(", "),
                   checkboxActive: _filteredClients[index]
                       .ids
-                      .any((id) => logsProvider.selectedClients.contains(id)),
+                      .any((id) => logsProvider.selectedClients.contains(id))
+                      || logsProvider.selectedClients
+                          .contains(_filteredClients[index].logKey),
                   ids: _filteredClients[index].ids,
                   isAddedClient: _selectedList == 1,
                   onSearchAddedClient: searchAddedClient,
@@ -172,13 +164,14 @@ class _ClientsModalState extends State<ClientsModal> {
                     if (isSelected == true) {
                       logsProvider.setSelectedClients([
                         ...logsProvider.selectedClients,
-                        _filteredClients[index].ids[0]
+                        _filteredClients[index].logKey
                       ]);
                     } else {
                       logsProvider.setSelectedClients(logsProvider
                           .selectedClients
                           .where((item) =>
-                              !_filteredClients[index].ids.contains(item))
+                              !_filteredClients[index].ids.contains(item)
+                              && item != _filteredClients[index].logKey)
                           .toList());
                     }
                   },
@@ -229,9 +222,10 @@ class _ListItem extends StatelessWidget {
     }
 
     if (isAddedClient == true) {
-      return CustomListTile(
+      return AppleListTile(
         title: title,
         subtitle: subtitle,
+        showChevron: false,
         trailing: AppleFormButton(
           label: l.select,
           background: Colors.transparent,
@@ -241,11 +235,18 @@ class _ListItem extends StatelessWidget {
         ),
       );
     } else {
-      return CustomCheckboxListTile(
-        value: checkboxActive,
-        onChanged: (v) => onChanged(v),
+      return AppleListTile(
         title: title,
         subtitle: subtitle,
+        showChevron: false,
+        // Tapping anywhere on the row ticks it, like the system lists.
+        onTap: () => onChanged(!checkboxActive),
+        trailing: SizedBox(
+          width: 24,
+          child: checkboxActive
+              ? Icon(CupertinoIcons.checkmark, size: 20, color: p.tint)
+              : null,
+        ),
       );
     }
   }

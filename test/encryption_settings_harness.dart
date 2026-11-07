@@ -18,6 +18,8 @@ import 'package:adguard_home_manager/screens/settings/encryption/encryption.dart
 import 'package:adguard_home_manager/services/api_client.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+import 'surface.dart';
+
 // The encryption page reads `/tls/status`, validates every edit against
 // `/tls/validate` and writes `/tls/configure`. No test here can reach a server,
 // so the API client below answers from the fixture and keeps every payload the
@@ -217,8 +219,7 @@ Future<EncryptionHarness> pumpEncryption(
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
 
-  await tester.binding.setSurfaceSize(surface);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, surface);
 
   final server = serverFixture();
   final api = EncryptionApiStub(

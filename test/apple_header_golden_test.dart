@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:adguard_home_manager/config/apple_theme.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
 
+import 'surface.dart';
+
 // The collapsing header and the inset-grouped list card are both paint-level
 // behaviour: a widget test that only looks for the title text passes even when
 // the title is not drawn at all. These goldens are rendered by the test
@@ -12,8 +14,7 @@ import 'package:adguard_home_manager/widgets/apple/apple.dart';
 // Regenerate with: flutter test --update-goldens test/apple_header_golden_test.dart
 
 Future<void> _pump(WidgetTester tester, Widget home) async {
-  await tester.binding.setSurfaceSize(const Size(390, 700));
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  setTestSurface(tester, const Size(390, 700));
 
   await tester.pumpWidget(
     MaterialApp(
@@ -87,7 +88,7 @@ void main() {
 
     final style = tester.widget<Text>(title).style!;
     expect(style.fontSize, 34);
-    expect(style.fontWeight, FontWeight.w800);
+    expect(style.fontWeight, FontWeight.w600);
 
     // It has to sit inside the bar, not under the list.
     final bar = tester.getRect(find.byType(AppleLargeTitle));
@@ -99,6 +100,35 @@ void main() {
       find.byType(MaterialApp),
       matchesGoldenFile('goldens/header_expanded.png'),
     );
+  });
+
+  testWidgets('the expanded bar is only as tall as the title needs',
+      (tester) async {
+    await _pump(tester, _screen());
+
+    // Collapsed band, the title block and a breath: nothing more, so no empty
+    // band is left between the bar actions and the large title.
+    final bar = tester.getRect(find.byType(AppleLargeTitle));
+    expect(bar.height, closeTo(64 + 34 * 1.15 + 10 + 6, 0.51));
+
+    final title = tester.getRect(find.descendant(
+      of: find.byType(AppleLargeTitle),
+      matching: find.text('Settings'),
+    ));
+    expect(title.top - 64, lessThan(16),
+        reason: 'the large title sits right under the collapsed band');
+
+    // A pinned header band gets its own room back instead of clipping the
+    // title away when expanded.
+    await _pump(tester, _screen(header: const Placeholder()));
+    final withHeader = tester.getRect(find.byType(AppleLargeTitle));
+    expect(withHeader.height, closeTo(64 + 44 + 34 * 1.15 + 4 + 6, 0.51));
+    final titled = tester.getRect(find.descendant(
+      of: find.byType(AppleLargeTitle),
+      matching: find.text('Settings'),
+    ));
+    expect(titled.top, greaterThanOrEqualTo(64 - 0.5));
+    expect(titled.bottom, lessThanOrEqualTo(withHeader.bottom - 44 + 0.5));
   });
 
   testWidgets('the header collapses to the inline title', (tester) async {
@@ -237,7 +267,7 @@ void main() {
 
     final caps = find.byType(AppleCardCap);
     expect(caps, findsNWidgets(2));
-    expect(tester.getSize(caps.first).height, 10);
+    expect(tester.getSize(caps.first).height, 12);
 
     // The rows are inset 16pt from the window edge, like the prototype.
     final row = find.widgetWithText(AppleListTile, 'Row 1');

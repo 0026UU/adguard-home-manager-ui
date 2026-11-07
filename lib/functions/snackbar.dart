@@ -14,44 +14,28 @@ void showSnackbar({
   GlobalKey<ScaffoldMessengerState>? key,
   Duration? duration,
 }) async {
-  final GlobalKey<ScaffoldMessengerState> scaffoldKey = key ?? scaffoldMessengerKey;
-
-  // The Apple shell has no bottom bar to clear, so a result is announced with
-  // the floating pill instead of a Material snack bar. The context has to come
+  // The shell has no bottom bar to clear, so a result is announced with the
+  // floating pill instead of a Material snack bar. The context has to come
   // from below MaterialApp's theme, which the messenger key is not. A label
   // with no colour is a plain confirmation, so the pill carries no accent.
-  if (appConfigProvider.useAppleStyle) {
-    final BuildContext? context = globalNavigatorKey.currentContext;
-    if (context == null) return;
+  final BuildContext? context = globalNavigatorKey.currentContext;
+  if (context == null) return;
 
-    AppleToast.show(
-      context,
-      message: label,
-      accent: color,
-      duration: duration ?? const Duration(milliseconds: 1600),
-    );
-    return;
-  }
+  // Callers still hand over Material's own palette — they predate the design
+  // layer — and Material red/green are the wrong hue and weight against an
+  // Apple card in either appearance. Translating it here fixes every pill at
+  // once instead of at the hundred call sites.
+  final ApplePalette palette = ApplePalette.of(context);
+  Color? accent = color;
+  if (color == Colors.red) accent = palette.red;
+  if (color == Colors.green) accent = palette.green;
+  if (color == Colors.orange) accent = palette.orange;
+  if (color == Colors.blue) accent = palette.tint;
 
-  if (appConfigProvider.showingSnackbar == true) {
-    scaffoldKey.currentState?.clearSnackBars();
-    await Future.delayed(const Duration(milliseconds: 500));
-  }
-  appConfigProvider.setShowingSnackbar(true);
-
-  final snackBar = SnackBar(
-    content: Text(
-      label,
-      style: TextStyle(
-        color: labelColor ?? Colors.white
-      ),
-    ),
-    backgroundColor: color ?? Colors.black87,
-    // Leaving this null keeps the framework default of four seconds, which is
-    // what every existing call relies on.
-    duration: duration ?? const Duration(seconds: 4),
+  AppleToast.show(
+    context,
+    message: label,
+    accent: accent,
+    duration: duration ?? const Duration(milliseconds: 1600),
   );
-  scaffoldKey.currentState?.showSnackBar(snackBar).closed.then(
-    (value) => appConfigProvider.setShowingSnackbar(false)
-  ); 
 }

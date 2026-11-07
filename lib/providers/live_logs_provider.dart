@@ -37,13 +37,20 @@ class LiveLogsProvider with ChangeNotifier {
   /// the server's query log.
   static const int _maxLogs = 500;
 
-  DateTime? _lastTime;
+  /// The newest query the stream has read, in the server's own clock, and the
+  /// only thing "new" is measured against.  The phone and the server never
+  /// agree on the time, so a wall-clock anchor replays rows it already showed
+  /// or hides them for good.
+  DateTime? _newestTime;
+
+  DateTime? get newestTime {
+    return _newestTime;
+  }
 
   void startFetchLogs() {
     if (_isFetching) return;
 
     _isFetching = true;
-    _lastTime = DateTime.now();
     _keepFetching();
   }
 
@@ -54,12 +61,12 @@ class LiveLogsProvider with ChangeNotifier {
   /// One pass of the stream, for the live view when it is not refreshing on
   /// its own: the queries up to now, and then it waits for a pull.
   Future<void> fetchOnce() async {
-    _lastTime ??= DateTime.now();
-    await _fetchLogs();
+    await _fetchLogs(takesThePageWhenUnanchored: true);
   }
 
   void clearLogs() {
     _logs = [];
+    _newestTime = null;
     notifyListeners();
   }
 
@@ -71,8 +78,10 @@ class LiveLogsProvider with ChangeNotifier {
     _keepFetching();
   }
 
-  Future<void> _fetchLogs() async {
-    if (_isDisposed || _lastTime == null) return;
+  Future<void> _fetchLogs({
+    bool takesThePageWhenUnanchored = false,
+  }) async {
+    if (_isDisposed) return;
 
     final api = _serversProvider?.apiClient2;
     final result = api == null ? null : await api.getLogs(
@@ -80,12 +89,29 @@ class LiveLogsProvider with ChangeNotifier {
     );
 
     // A failed poll only delays the next try, it does not end the stream.
-    if (result?.successful == true && result?.content != null) {
-      final valid = (result!.content as LogsData).data.where((e) => e.time.isAfter(_lastTime!));
-      _logs = [...valid, ..._logs];
-      if (_logs.length > _maxLogs) _logs.removeRange(_maxLogs, _logs.length);
-      _lastTime = DateTime.now();
-      notifyListeners();
+    if (result?.successful != true || result?.content == null) return;
+
+    final incoming = (result!.content as LogsData).data;
+    final anchor = _newestTime;
+
+    // The first pass of a stream only says where it begins; the queries the
+    // server already kept belong to the query log, unless the user pulled.
+    final fresh = anchor == null
+      ? (takesThePageWhenUnanchored ? incoming : const <Log>[])
+      : incoming.where((log) => log.time.isAfter(anchor));
+
+    // Only ever forward: a server that corrects its own clock must not make
+    // the stream replay what the view already shows.
+    var newest = anchor;
+    for (final log in incoming) {
+      if (newest == null || log.time.isAfter(newest)) newest = log.time;
     }
+    _newestTime = newest;
+
+    if (fresh.isEmpty) return;
+
+    _logs = [...fresh, ..._logs];
+    if (_logs.length > _maxLogs) _logs.removeRange(_maxLogs, _logs.length);
+    notifyListeners();
   }
 }

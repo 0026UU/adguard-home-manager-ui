@@ -306,9 +306,11 @@ class _EncryptionSettingsState extends State<EncryptionSettings> {
           "serve_plain_dns": true
         }
       );
-      if (!mounted) return;
-
+      // Close the global sheet before anything can return early: a page that
+      // has gone away still leaves the "Saving…" dialog on screen.
       processModal.close();
+
+      if (!mounted) return;
 
       if (result.successful == true) {
         showSnackbar(
@@ -397,7 +399,6 @@ class _EncryptionSettingsState extends State<EncryptionSettings> {
           icon: const Icon(CupertinoIcons.checkmark),
           tooltip: l.save,
         ),
-        const SizedBox(width: 6),
       ],
       onRefresh: () async => fetchData(),
       slivers: [
@@ -413,6 +414,15 @@ class _EncryptionSettingsState extends State<EncryptionSettings> {
             child: AppleEmptyState(
               icon: CupertinoIcons.exclamationmark_triangle,
               title: l.encryptionSettingsNotLoaded,
+              // Every other card that says this says it with the retry under
+              // it, so the page does not depend on the user finding the bar
+              // button above a screenful of nothing.
+              action: AppleFormButton(
+                label: l.refresh,
+                background: p.tint,
+                foreground: Colors.white,
+                onPressed: fetchData,
+              ),
               color: p.red,
             ),
           ),

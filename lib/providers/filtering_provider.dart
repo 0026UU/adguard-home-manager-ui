@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:adguard_home_manager/constants/enums.dart';
+import 'package:adguard_home_manager/providers/error_reason.dart';
 import 'package:adguard_home_manager/providers/servers_provider.dart';
 import 'package:adguard_home_manager/models/blocked_services.dart';
 import 'package:adguard_home_manager/models/filtering.dart';
@@ -8,7 +9,7 @@ import 'package:adguard_home_manager/providers/status_provider.dart';
 
 enum FilteringListActions { edit, enable, disable }
 
-class FilteringProvider with ChangeNotifier {
+class FilteringProvider with ChangeNotifier, ErrorReason {
   StatusProvider? _statusProvider;
   ServersProvider? _serversProvider;
 
@@ -89,6 +90,10 @@ class FilteringProvider with ChangeNotifier {
     if (showLoader == true) notifyListeners(); 
 
     final result = await _serversProvider!.apiClient2!.getBlockedServices();
+    captureErrorReason(
+      result,
+      fallback: 'the server gave nothing back for the service names',
+    );
     if (result.successful == true) {
       _blockedServicesLoadStatus = LoadStatus.loaded;
       _blockedServicesList = BlockedServices(services: result.content as List<BlockedService>);
@@ -97,10 +102,11 @@ class FilteringProvider with ChangeNotifier {
       return true;
     }
     else {
-      if (showLoader == true) {
-        _blockedServicesLoadStatus = LoadStatus.error;
-        notifyListeners();
-      }
+      // A failed fetch is an error whether or not a spinner was promised:
+      // leaving the catalogue marked as loaded is what lets the picker render
+      // an empty list under a server that never answered.
+      _blockedServicesLoadStatus = LoadStatus.error;
+      notifyListeners();
       return false;
     }
   }
@@ -113,6 +119,10 @@ class FilteringProvider with ChangeNotifier {
     }
 
     final result = await _serversProvider!.apiClient2!.getFiltering();
+    captureErrorReason(
+      result,
+      fallback: 'the server gave nothing back for the filter lists',
+    );
     if (result.successful == true) {
       _filtering = result.content as Filtering;
       _loadStatus = LoadStatus.loaded;
@@ -154,6 +164,7 @@ class FilteringProvider with ChangeNotifier {
     final result = await _serversProvider!.apiClient2!.updateFiltering(
       enable: newValue
     );
+    captureErrorReason(result);
     if (result.successful == true) {
       setFilteringProtectionStatus(newValue, false);
       notifyListeners();
@@ -172,6 +183,7 @@ class FilteringProvider with ChangeNotifier {
         "interval": value
       }
     );
+    captureErrorReason(result);
     if (result.successful == true) {
       setFiltersUpdateFrequency(value);
       return true;
@@ -186,6 +198,7 @@ class FilteringProvider with ChangeNotifier {
     final List<String> newRules = filtering!.userRules.where((r) => r != rule).toList();
 
     final result = await _serversProvider!.apiClient2!.setCustomRules(rules: newRules);
+    captureErrorReason(result);
 
     if (result.successful == true) {
       Filtering filteringData = filtering!;
@@ -201,6 +214,38 @@ class FilteringProvider with ChangeNotifier {
     }
   }
 
+  /// What the page shows after a write the server accepted, in the case the
+  /// re-read below it does not answer.
+  ///
+  /// [Filter] is immutable apart from its switch, so an edit is a new object
+  /// carrying the new name over the same url.
+  Filter _foldWrite(Filter old, Filter incoming, FilteringListActions action) {
+    if (old.url != incoming.url) return old;
+
+    final toggled = action == FilteringListActions.enable ||
+      action == FilteringListActions.disable;
+
+    return Filter(
+      url: incoming.url,
+      name: incoming.name,
+      lastUpdated: old.lastUpdated,
+      id: old.id,
+      rulesCount: old.rulesCount,
+      // The request body flips the switch it was handed, so the server now
+      // holds the opposite of what the row showed.
+      enabled: toggled ? !incoming.enabled : incoming.enabled,
+    );
+  }
+
+  /// Ask the server what it holds now, and keep the local answer if it does
+  /// not reply: a write that worked is not undone by a slow refresh.
+  Future<void> _reloadAfterWrite() async {
+    final result = await _serversProvider!.apiClient2!.getFiltering();
+    if (result.successful == true) {
+      _filtering = result.content as Filtering;
+    }
+  }
+
   Future<bool> deleteList({
   required String listUrl,
   required String type
@@ -211,19 +256,25 @@ class FilteringProvider with ChangeNotifier {
         "whitelist": type == 'whitelist' ? true : false
       }
     );
+    captureErrorReason(result1);
         
     if (result1.successful == true) {
-      final result2 = await _serversProvider!.apiClient2!.getFiltering();
-          
-      if (result2.successful == true) {
-        _filtering = result2.content as Filtering;
-        notifyListeners();
-        return true;
+      // The list is gone whether or not the refresh below answers. Returning
+      // false on a failed refresh told the user the deleted list was still
+      // there and left the same delete on screen to press again.
+      final filteringData = filtering!;
+      if (type == 'whitelist') {
+        filteringData.whitelistFilters =
+          filteringData.whitelistFilters.where((f) => f.url != listUrl).toList();
       }
       else {
-        notifyListeners();
-        return false;
-      } 
+        filteringData.filters =
+          filteringData.filters.where((f) => f.url != listUrl).toList();
+      }
+
+      await _reloadAfterWrite();
+      notifyListeners();
+      return true;
     }
     else {
       notifyListeners();
@@ -249,19 +300,27 @@ class FilteringProvider with ChangeNotifier {
         "whitelist": type == 'whitelist' ? true : false
       }
     );
+    captureErrorReason(result1);
         
     if (result1.successful == true) {
-      final result2 = await _serversProvider!.apiClient2!.getFiltering();
-          
-      if (result2.successful == true) {
-        _filtering = result2.content as Filtering;
-        notifyListeners();
-        return true;
+      // Same reason as the delete above: the switch the server now holds is
+      // the one this page just asked for, so a refresh that does not answer
+      // must not turn the toast red.
+      final filteringData = filtering!;
+      if (type == 'whitelist') {
+        filteringData.whitelistFilters = filteringData.whitelistFilters
+          .map((f) => _foldWrite(f, list, action))
+          .toList();
       }
       else {
-        notifyListeners();
-        return false;
-      } 
+        filteringData.filters = filteringData.filters
+          .map((f) => _foldWrite(f, list, action))
+          .toList();
+      }
+
+      await _reloadAfterWrite();
+      notifyListeners();
+      return true;
     }
     else {
       notifyListeners();
@@ -270,10 +329,13 @@ class FilteringProvider with ChangeNotifier {
   }
 
   Future<bool> addCustomRule(String rule) async {
-    final List<String> newRules = filtering!.userRules;
-    newRules.add(rule);
+    // A copy, not the live list: `userRules` is the very object the preview
+    // card renders, so adding to it in place would show the rule before the
+    // server agreed to it — and keep showing it after the server said no.
+    final List<String> newRules = [...filtering!.userRules, rule];
 
     final result = await _serversProvider!.apiClient2!.setCustomRules(rules: newRules);
+    captureErrorReason(result);
     
     if (result.successful == true) {
       Filtering filteringData = filtering!;
@@ -291,6 +353,7 @@ class FilteringProvider with ChangeNotifier {
   Future<bool> setCustomRules(List<String> rules) async {
     final newRules = rules.where((r) => r != " " && r != "").toList();
     final result = await _serversProvider!.apiClient2!.setCustomRules(rules: newRules);
+    captureErrorReason(result);
     
     if (result.successful == true) {
       Filtering filteringData = filtering!;
@@ -305,6 +368,14 @@ class FilteringProvider with ChangeNotifier {
     }
   }
   
+  /// Adds one filter list, and says why it could not be added.
+  ///
+  /// The map keeps its historical `success`/`data`/`error` keys — the add
+  /// button still branches on the two named errors — and gains `reason`, the
+  /// server's own sentence where it has one. Every branch used to answer
+  /// `error: null`, which is how a refused URL, a dead server and a
+  /// half-finished refresh all came out of the app as the same "couldn't be
+  /// added".
   Future<Map<String, dynamic>> addList({required String name, required String url, required String type}) async {
     final result1 = await _serversProvider!.apiClient2!.addFilteringList(
       data: {
@@ -312,6 +383,10 @@ class FilteringProvider with ChangeNotifier {
         'url': url,
         'whitelist': type == 'whitelist' ? true : false
       }
+    );
+    captureErrorReason(
+      result1,
+      fallback: 'the server did not say why it took the list',
     );
 
     if (result1.successful == true) {
@@ -328,18 +403,29 @@ class FilteringProvider with ChangeNotifier {
           };
         }
         else {
+          // The list is on the server; only the refreshed table is missing.
+          setErrorMessage(
+            'the list was added but the server did not answer the refresh '
+            'that would show it',
+          );
           notifyListeners();
           return {
             'success': false,
-            'error': null
+            'error': null,
+            'reason': errorMessage,
           };
         }
       }
       else {
+        setErrorMessage(
+          'the server answered "${result1.content}" instead of accepting the '
+          'list',
+        );
         notifyListeners();
         return {
           'success': false,
-          'error': null
+          'error': null,
+          'reason': errorMessage,
         };
       }
     }
@@ -361,7 +447,8 @@ class FilteringProvider with ChangeNotifier {
       notifyListeners();
       return {
         'success': false,
-        'error': null
+        'error': null,
+        'reason': errorMessage,
       };
     }
   }
@@ -369,11 +456,18 @@ class FilteringProvider with ChangeNotifier {
   Future<bool> loadBlockedServices({
     bool? showLoading
   }) async {
-    if (showLoading == true) {
+    // Only worth announcing when it is a change, so a retry fired while the
+    // page is still building does not notify during build.
+    if (showLoading == true && _blockedServicesLoadStatus != LoadStatus.loading) {
       _blockedServicesLoadStatus = LoadStatus.loading;
+      notifyListeners();
     } 
 
     final result = await _serversProvider!.apiClient2!.getBlockedServices();
+    captureErrorReason(
+      result,
+      fallback: 'the server gave nothing back for the service names',
+    );
     if (result.successful == true) {
       _blockedServicesList = BlockedServices(services: result.content as List<BlockedService>);
       _blockedServicesLoadStatus = LoadStatus.loaded;
@@ -382,7 +476,10 @@ class FilteringProvider with ChangeNotifier {
       return true;
     }
     else {
-      if (showLoading == true) _blockedServicesLoadStatus = LoadStatus.error;
+      // The error is recorded whether or not a spinner was promised: a
+      // refresh that could not reach the service names must not leave the
+      // previous grid standing there looking like the server's answer.
+      _blockedServicesLoadStatus = LoadStatus.error;
       notifyListeners();
       return false;
     }
@@ -392,6 +489,7 @@ class FilteringProvider with ChangeNotifier {
     final result = await _serversProvider!.apiClient2!.setBlockedServices(
       data: values
     );
+    captureErrorReason(result);
 
     if (result.successful == true) {
       setBlockedServices(values); 
@@ -421,6 +519,9 @@ class FilteringProvider with ChangeNotifier {
         return ProcessedList(list: list, successful: true);
       }
       else {
+        // The picker reports a count, so this keeps only the last refusal —
+        // but it keeps the server's sentence rather than nothing at all.
+        captureErrorReason(result);
         return ProcessedList(list: list, successful: false);
       }
     }
@@ -459,6 +560,9 @@ class FilteringProvider with ChangeNotifier {
         return ProcessedList(list: list, successful: true);
       }
       else {
+        // The picker reports a count, so this keeps only the last refusal —
+        // but it keeps the server's sentence rather than nothing at all.
+        captureErrorReason(result);
         return ProcessedList(list: list, successful: false);
       }
     }

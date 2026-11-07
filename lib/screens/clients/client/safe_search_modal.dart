@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:adguard_home_manager/l10n/app_localizations.dart';
 import 'package:adguard_home_manager/models/safe_search.dart';
 import 'package:adguard_home_manager/widgets/apple/apple.dart';
-import 'package:adguard_home_manager/widgets/custom_checkbox_list_tile.dart';
 
 /// Safe search picker for a single device: a master switch plus one row per
 /// search engine.
@@ -83,11 +82,21 @@ class _SafeSearchModalState extends State<SafeSearchModal> {
     final p = ApplePalette.of(context);
 
     Widget engine(String label, bool value, ValueChanged<bool> onChanged) {
-      return CustomCheckboxListTile(
+      final locked = !_draft.enabled;
+
+      return AppleListTile(
         title: label,
-        value: value,
-        disabled: !_draft.enabled,
-        onChanged: onChanged,
+        showChevron: false,
+        enabled: !locked,
+        // Under a disabled safe search the row neither dims its tick nor
+        // takes the tap: an engine ticked there has no effect server-side.
+        onTap: locked ? null : () => onChanged(!value),
+        trailing: SizedBox(
+          width: 24,
+          child: value
+              ? Icon(CupertinoIcons.checkmark, size: 20, color: p.tint)
+              : null,
+        ),
       );
     }
 
